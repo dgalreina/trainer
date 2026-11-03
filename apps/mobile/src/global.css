@@ -7,3 +7,17 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* Mismo fondo que el tema de la app: si no, asoma una franja del color por defecto
+   en las zonas que la app no cubre (barra de estado, indicador de inicio, rebote). */
+html,
+body {
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background-color: #000000;
+  }
+}

@@ -172,7 +172,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'web' ? 88 : Spacing.four,
     gap: Spacing.three,
   },
-  chipScroll: { flexGrow: 0 },
+  // Sin flexShrink: 0 la fila se aplasta cuando la lista ocupa todo el alto.
+  chipScroll: { flexGrow: 0, flexShrink: 0 },
   chips: { flexDirection: 'row', gap: Spacing.two },
   chip: {
     paddingHorizontal: Spacing.three,
