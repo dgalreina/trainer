@@ -16,7 +16,7 @@ export default function RoutinesScreen() {
   const { byId } = useExercises();
 
   return (
-    <Screen title="Rutinas" subtitle="Tus entrenamientos">
+    <Screen tabIndex={1} title="Rutinas" subtitle="Tus entrenamientos">
       <Button title="Nueva rutina" onPress={() => router.push('/rutina/nueva')} />
       <ErrorText message={error} />
 

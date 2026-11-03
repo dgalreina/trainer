@@ -1,12 +1,15 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ExercisesProvider } from '@/lib/exercises';
 import { RoutinesProvider } from '@/lib/routines';
+import { ThemePreferenceProvider, useThemePreference } from '@/lib/theme-preference';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,9 +32,22 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function ThemedApp() {
   const dark = useColorScheme() === 'dark';
+  const { forceLight } = useThemePreference();
   const colors = Colors[dark ? 'dark' : 'light'];
+
+  // En la web, el fondo de la página y el esquema de color del navegador siguen a la app:
+  // si no, con el modo claro forzado en un móvil oscuro asomaría una franja oscura (rebote,
+  // zonas seguras) y el navegador pintaría sus controles en oscuro.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const root = document.documentElement;
+    root.style.backgroundColor = colors.background;
+    document.body.style.backgroundColor = colors.background;
+    root.style.colorScheme = forceLight ? 'light' : 'light dark';
+  }, [colors.background, forceLight]);
+
   // El tema de navegación sale de nuestros tokens, no del de Expo.
   const base = dark ? DarkTheme : DefaultTheme;
   const navTheme = {
@@ -57,5 +73,13 @@ export default function RootLayout() {
         </ExercisesProvider>
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemePreferenceProvider>
+      <ThemedApp />
+    </ThemePreferenceProvider>
   );
 }

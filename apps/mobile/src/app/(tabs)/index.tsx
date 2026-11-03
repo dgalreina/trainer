@@ -29,7 +29,7 @@ export default function TodayScreen() {
   const openRoutine = (id: string) => router.push({ pathname: '/rutina/[id]', params: { id } });
 
   return (
-    <Screen title="Hoy" subtitle={todayLabel()}>
+    <Screen tabIndex={0} title="Hoy" subtitle={todayLabel()}>
       <ErrorText message={error} />
 
       {loading && routines.length === 0 ? (

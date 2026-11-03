@@ -55,7 +55,7 @@ export default function ExercisesScreen() {
   }
 
   return (
-    <Screen title="Ejercicios" subtitle={`${exercises.length} en tu catálogo`} scroll={false}>
+    <Screen tabIndex={2} title="Ejercicios" subtitle={`${exercises.length} en tu catálogo`} scroll={false}>
       <Field
         label="Buscar o crear"
         value={query}
