@@ -10,5 +10,6 @@ import { ExercisesService } from "./exercises.service.js";
   ],
   controllers: [ExercisesController],
   providers: [ExercisesService],
+  exports: [ExercisesService],
 })
 export class ExercisesModule {}

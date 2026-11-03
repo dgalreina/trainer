@@ -42,6 +42,18 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 3. Fotos de progreso con análisis.
 4. Dieta y, al pasar a iOS, pasos de Salud.
 
+## Diseño
+
+- **App luminosa:** predomina el blanco. Acentos en rosa claro/salmón, azul cielo y azul verdoso. Limpio y minimalista. La paleta concreta y el estilo gráfico se deciden más adelante: llevarlos como tokens de tema (`constants/theme.ts`), nunca colores sueltos en las pantallas.
+- **Las ondas son el motivo principal** de la identidad visual, con degradados, modernas y suaves.
+- **Visión de la pantalla del día (futuro):** calendario con las horas de arriba abajo y los eventos marcados (comida, entreno...). Detrás, una gráfica de ondas superpuestas sobre la línea del 0 de calorías, en el centro:
+  - **Azul (gasto):** metabolismo basal (banda tenue constante), pasos y entrenos. Hacia la izquierda.
+  - **Rosa (ingesta):** cada comida es un bulto en su hora. Hacia la derecha.
+  - **Naranja, por detrás (balance acumulado del día):** cruza la línea del 0; cada comida lo empuja al rosa y el gasto al azul.
+  - Cuidado al implementarlo: las tasas por hora y el acumulado tienen escalas muy distintas (normalizarlas por separado y dar los números al tocar una hora); el acumulado va como línea fina con relleno suave para que no se confunda con el rosa; por la mañana el acumulado siempre irá hacia el azul antes de comer, así que conviene marcar el objetivo del día y dibujar el resto del día más tenue, como proyección.
+  - Requiere hora en cada comida y entreno. Pasos y energía activa vendrán de Salud en iOS; antes, entrada manual. El basal lo calcula el código (Mifflin-St Jeor).
+- **Implementación prevista:** `react-native-svg` (funciona igual en web e iOS) con `linearGradient` y curvas suaves; animaciones con Reanimated. Los datos del balance salen del código (Mifflin-St Jeor, energía activa), no de la IA.
+
 ## Convenciones
 
 - TypeScript estricto en todo el repo.

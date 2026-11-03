@@ -5,8 +5,10 @@ import { AuthModule } from "./auth/auth.module.js";
 import { getMongoUri } from "./config/mongo-uri.js";
 import { ExercisesModule } from "./exercises/exercises.module.js";
 import { HealthController } from "./health.controller.js";
+import { RoutinesModule } from "./routines/routines.module.js";
+import { SessionsModule } from "./sessions/sessions.module.js";
 
-// Aquí irán los módulos de la API (routines, sessions, coach...).
+// Aquí irán los módulos de la API (coach...).
 // Todos viven en la misma Lambda: un solo arranque en frío para toda la API.
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { HealthController } from "./health.controller.js";
     }),
     AuthModule,
     ExercisesModule,
+    RoutinesModule,
+    SessionsModule,
   ],
   controllers: [HealthController],
 })

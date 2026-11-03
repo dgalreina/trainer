@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -102,6 +103,25 @@ export class ExercisesService {
     const doc = await this.findEditable(userId, id);
     doc.archived = true;
     await doc.save();
+  }
+
+  /**
+   * Comprueba que todos los ejercicios existen y son visibles para el usuario
+   * (catálogo base o suyos). Los archivados valen: el historial puede seguir
+   * apuntando a ellos.
+   */
+  async assertVisible(userId: string, ids: string[]): Promise<void> {
+    const unique = [...new Set(ids)];
+    if (unique.some((id) => !isValidObjectId(id))) {
+      throw new BadRequestException("Identificador de ejercicio no válido");
+    }
+    const found = await this.model.countDocuments({
+      _id: { $in: unique },
+      ownerId: { $in: [null, userId] },
+    });
+    if (found !== unique.length) {
+      throw new BadRequestException("Algún ejercicio no existe");
+    }
   }
 
   private async findEditable(
