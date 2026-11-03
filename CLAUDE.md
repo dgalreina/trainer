@@ -20,7 +20,7 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 - **Dieta:** el cálculo de calorías y macros lo hace el código (Mifflin-St Jeor, energía activa), no la IA. La IA solo explica y adapta. Topes duros en código: sin déficits agresivos ni calorías por debajo de un mínimo seguro.
 - **Fotos de progreso:** la IA habla de indicios y tendencias, sin juicios estéticos. Consentimiento explícito, almacenamiento privado y cifrado, posibilidad de borrarlas (datos de salud, RGPD).
 - **Región UE** para todo lo que guarde datos.
-- **Login con Amazon Cognito** (email y contraseña, user pool en la UE). No guardamos contraseñas. La app inicia sesión con `amazon-cognito-identity-js`; la API valida el access token con un guard global (`aws-jwt-verify`) y usa el `sub` como `userId`. Más adelante se podrá añadir Apple/Google.
+- **Login con Amazon Cognito** (email y contraseña, user pool en la UE). No guardamos contraseñas. La app habla con Cognito por `fetch` directo (`apps/mobile/src/lib/cognito.ts`, sin SDK: mismo código en web, iOS y Android); solo se guarda el refresh token (SecureStore en el móvil, localStorage en la web). La API valida el access token con un guard global (`aws-jwt-verify`) y usa el `sub` como `userId`. Más adelante se podrá añadir Apple/Google.
 - **Entrenos:** `Routine` es la plantilla (lo planeado) y `WorkoutSession` lo realizado. Los ejercicios del catálogo base tienen `ownerId` nulo; los de usuario llevan su `userId` y se archivan en vez de borrarse.
 
 ## Backend en AWS (decidido)
