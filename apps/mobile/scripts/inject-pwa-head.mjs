@@ -20,7 +20,7 @@ const tags = [
   // "default": iOS adapta el texto de la barra de estado al modo claro u oscuro.
   `<meta name="apple-mobile-web-app-status-bar-style" content="default"/>`,
   `<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>`,
-  `<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)"/>`,
+  `<meta name="theme-color" content="#150F12" media="(prefers-color-scheme: dark)"/>`,
 ].join("");
 
 function* htmlFiles(dir) {

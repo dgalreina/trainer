@@ -42,10 +42,22 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 3. Fotos de progreso con análisis.
 4. Dieta y, al pasar a iOS, pasos de Salud.
 
+## Visión del producto
+
+- **La IA es un entrenador personal omnipresente, dedicado solo al cuerpo del usuario.** No es una función suelta que opina tras un entreno: conoce todo su historial, su estado físico, su peso cada vez que lo registra, lo que come y lo que anda, y sus mejoras. Todo lo que registra la app es información para ese entrenador.
+- **Pantalla principal ("Hoy"):** el usuario elige qué entrena hoy (Pecho, Hombro, Espalda...); al tocarlo se abre el entreno del día, donde ve y modifica pesos y repeticiones, con botón "Comenzar" arriba, "Finalizar" abajo y un temporizador de descanso opcional entre series. Al finalizar, la IA da su opinión sobre cómo ha ido.
+- **Sin entrenamiento asignado**, la pantalla principal invita a hablar con la IA para que genere uno según las necesidades del usuario.
+- **Cómo encaja con las decisiones técnicas** (al construirlo):
+  - El contexto de la IA sigue siendo mínimo: un resumen compacto y mantenido por el código del estado del usuario (objetivos, lesiones, tendencias) más herramientas (tool use) para consultar datos concretos bajo demanda, en vez de volcar el historial en cada llamada.
+  - Lo que la IA genera (rutinas, ajustes) sale como datos estructurados validados con los esquemas de `packages/shared` y usando ejercicios del catálogo por id; nunca texto libre que la app tenga que interpretar.
+  - Los cálculos de calorías y macros siguen en código; los topes de seguridad no dependen de la IA. No da consejo médico.
+  - Guardar siempre `userId` y tokens por llamada, y `max_tokens` limitado.
+- **El entreno en curso se guarda como borrador en el dispositivo** (el gimnasio implica bloquear el móvil o cambiar de app). El temporizador de descanso se calcula con la hora de fin, no con una cuenta atrás: iOS suspende las PWA en segundo plano.
+
 ## Diseño
 
-- **App luminosa:** predomina el blanco. Acentos en rosa claro/salmón, azul cielo y azul verdoso. Limpio y minimalista. La paleta concreta y el estilo gráfico se deciden más adelante: llevarlos como tokens de tema (`constants/theme.ts`), nunca colores sueltos en las pantallas.
-- **Las ondas son el motivo principal** de la identidad visual, con degradados, modernas y suaves.
+- **App luminosa:** predomina el blanco. El color de la app es el **rosa-salmón** (acción principal, ingesta); el naranja solo en último caso; el azul cielo y el azul verdoso son acentos y se reservan sobre todo para el gasto de calorías. Limpio y minimalista. Tokens en `constants/theme.ts`, nunca colores sueltos en las pantallas; la paleta fina se afinará más adelante. Texto sobre salmón en oscuro, y `primaryText` (salmón más profundo) para texto y enlaces, porque el salmón base no tiene contraste sobre blanco.
+- **Las ondas son el motivo principal** de la identidad visual: anchas, redondeadas, con degradado y dominadas por el salmón y el rosa (componente `Waves`). El azul solo asoma como un matiz aparte que se desvanece: mezclado con el salmón en el degradado sale un malva grisáceo. En modo oscuro se atenúan a la mitad.
 - **Visión de la pantalla del día (futuro):** calendario con las horas de arriba abajo y los eventos marcados (comida, entreno...). Detrás, una gráfica de ondas superpuestas sobre la línea del 0 de calorías, en el centro:
   - **Azul (gasto):** metabolismo basal (banda tenue constante), pasos y entrenos. Hacia la izquierda.
   - **Rosa (ingesta):** cada comida es un bulto en su hora. Hacia la derecha.

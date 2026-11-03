@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, ErrorText, Field, LinkButton } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Waves } from '@/components/waves';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { CognitoError } from '@/lib/cognito';
 import { useAuth } from '@/lib/auth';
@@ -76,6 +77,7 @@ export default function LoginScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Waves height={260} />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           style={styles.flex}

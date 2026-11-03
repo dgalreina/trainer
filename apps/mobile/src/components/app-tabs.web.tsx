@@ -6,7 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -20,6 +20,12 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="index" href="/" asChild>
+            <TabButton>Hoy</TabButton>
+          </TabTrigger>
+          <TabTrigger name="rutinas" href="/rutinas" asChild>
+            <TabButton>Rutinas</TabButton>
+          </TabTrigger>
+          <TabTrigger name="ejercicios" href="/ejercicios" asChild>
             <TabButton>Ejercicios</TabButton>
           </TabTrigger>
           <TabTrigger name="cuenta" href="/cuenta" asChild>
@@ -46,13 +52,19 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   );
 }
 
+// Por debajo de este ancho las cuatro pestañas ocupan todo el espacio: sin nombre de marca.
+const BRAND_MIN_WIDTH = 520;
+
 export function CustomTabList(props: TabListProps) {
+  const { width } = useWindowDimensions();
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Trainer
-        </ThemedText>
+        {width >= BRAND_MIN_WIDTH && (
+          <ThemedText type="smallBold" style={styles.brandText}>
+            Trainer
+          </ThemedText>
+        )}
 
         {props.children}
 
@@ -72,7 +84,8 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    justifyContent: 'space-between',
     borderRadius: Spacing.five,
     flexDirection: 'row',
     alignItems: 'center',
@@ -88,7 +101,7 @@ const styles = StyleSheet.create({
   },
   tabButtonView: {
     paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two + 4,
     borderRadius: Spacing.three,
   },
 });

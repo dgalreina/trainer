@@ -7,7 +7,7 @@
   "scope": "/trainer/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
+  "background_color": "#FFFFFF",
   "theme_color": "#208AEF",
   "icons": [
     { "src": "/trainer/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
