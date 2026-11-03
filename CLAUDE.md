@@ -49,3 +49,7 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 - Variables de entorno en `.env` (ignorado por git); documentar las necesarias en `.env.example`.
 - Idioma de la interfaz: español.
 - `packages/shared` se compila a `dist` (`npm run build`); el script `prepare` del repo lo hace tras `npm install`. Si cambias los tipos, vuelve a compilarlo.
+
+## Git
+
+- **No hacer `commit` ni `push` sin permiso explícito**, aunque se haya dado antes en esa misma conversación. Enseñar lo que se ha hecho y preguntar. Hay un workflow que publica la web en GitHub Pages en cada push a `main`, así que un push también despliega.
