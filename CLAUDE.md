@@ -54,7 +54,7 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
   - Lo que la IA genera (rutinas, ajustes) sale como datos estructurados validados con los esquemas de `packages/shared` y usando ejercicios del catálogo por id; nunca texto libre que la app tenga que interpretar.
   - Los cálculos de calorías y macros siguen en código; los topes de seguridad no dependen de la IA. No da consejo médico.
   - Guardar siempre `userId` y tokens por llamada, y `max_tokens` limitado.
-- **El entreno en curso se guarda como borrador en el dispositivo** (el gimnasio implica bloquear el móvil o cambiar de app). El temporizador de descanso se calcula con la hora de fin, no con una cuenta atrás: iOS suspende las PWA en segundo plano.
+- **El entreno en curso se guarda como borrador en el dispositivo** (el gimnasio implica bloquear el móvil o cambiar de app). El temporizador de descanso se calcula con la hora de fin, no con una cuenta atrás: iOS suspende las PWA en segundo plano. Hoy vive en `lib/workout-draft.ts` y se guarda con `lib/storage.ts`: en la web va a localStorage; en iOS/Android SecureStore se queda corto (límite de ~2 KB por valor), así que al hacer la app nativa hay que pasar el borrador a un almacenamiento de ficheros (por ejemplo `expo-file-system`). El aviso de fin de descanso (vibración y pitido) solo funciona con la app abierta y en primer plano.
 
 ## Diseño
 

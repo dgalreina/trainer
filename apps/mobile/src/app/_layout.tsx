@@ -26,6 +26,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="entrenamiento/[id]/index" />
         <Stack.Screen name="entrenamiento/[id]/rutina/[rid]" />
+        <Stack.Screen name="entreno/[id]/[rid]" />
         <Stack.Screen name="ejercicios" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>

@@ -28,6 +28,8 @@ export const workoutSessionSchema = z.object({
   routineId: z.string().optional(),
   /** Fecha y hora de inicio en ISO 8601. */
   date: z.iso.datetime({ offset: true }),
+  /** Duración total, de pulsar «Comenzar» a «Finalizar». */
+  durationSeconds: z.number().int().min(0).optional(),
   entries: z.array(sessionEntrySchema).min(1),
   notes: z.string().trim().max(1000).optional(),
 });

@@ -1,4 +1,4 @@
-import { trainingProgress, type Training, type TrainingProgress } from '@trainer/shared';
+import { trainingProgress } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
@@ -7,16 +7,10 @@ import { Button, ErrorText, LinkButton } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { formatDay, todayISO } from '@/lib/dates';
+import { todayISO } from '@/lib/dates';
 import { useSettings } from '@/lib/settings';
+import { progressLabel } from '@/lib/training-progress';
 import { useTrainings } from '@/lib/trainings';
-
-/** "Semana 2 de 8", "Empieza el 10 nov" o "Terminado". */
-export function progressLabel(training: Training, progress: TrainingProgress): string {
-  if (progress.status === 'upcoming') return `Empieza el ${formatDay(training.startDate)}`;
-  if (progress.status === 'finished') return `Terminado el ${formatDay(progress.endDate)}`;
-  return `Semana ${progress.week} de ${progress.totalWeeks}`;
-}
 
 export function TrainingsScreen() {
   const router = useRouter();

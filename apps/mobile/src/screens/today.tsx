@@ -1,19 +1,17 @@
-import { trainingProgress } from '@trainer/shared';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
+import { TrainingBadge } from '@/components/training-badge';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { todayISO } from '@/lib/dates';
 import { useExercises } from '@/lib/exercises';
 import { routineSummary } from '@/lib/routine-summary';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
-import { progressLabel } from '@/screens/trainings';
 
 function todayLabel(): string {
   const text = new Date().toLocaleDateString('es-ES', {
@@ -31,14 +29,29 @@ export function TodayScreen() {
   const { activeTraining } = useSettings();
   const { byId } = useExercises();
 
-  const openRoutine = (trainingId: string, routineId: string) =>
+  const openWorkout = (trainingId: string, routineId: string) =>
+    router.push({ pathname: '/entreno/[id]/[rid]', params: { id: trainingId, rid: routineId } });
+
+  const newRoutine = (trainingId: string) =>
     router.push({
       pathname: '/entrenamiento/[id]/rutina/[rid]',
-      params: { id: trainingId, rid: routineId },
+      params: { id: trainingId, rid: 'nueva' },
     });
 
   return (
-    <Screen title="Hoy" subtitle={todayLabel()}>
+    <Screen
+      title="Hoy"
+      subtitle={todayLabel()}
+      action={
+        activeTraining ? (
+          <TrainingBadge
+            training={activeTraining}
+            onPress={() =>
+              router.push({ pathname: '/entrenamiento/[id]', params: { id: activeTraining.id } })
+            }
+          />
+        ) : undefined
+      }>
       <ErrorText message={error} />
 
       {loading && trainings.length === 0 ? (
@@ -64,30 +77,6 @@ export function TodayScreen() {
         </Card>
       ) : (
         <>
-          <Card
-            tone="primarySoft"
-            onPress={() =>
-              router.push({ pathname: '/entrenamiento/[id]', params: { id: activeTraining.id } })
-            }
-            style={styles.now}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Ahora estás con
-            </ThemedText>
-            <View style={styles.nowRow}>
-              <ThemedText type="smallBold">Entrenamiento</ThemedText>
-              <ThemedText type="small">
-                {activeTraining.name} ·{' '}
-                {progressLabel(activeTraining, trainingProgress(activeTraining, todayISO()))}
-              </ThemedText>
-            </View>
-            <View style={styles.nowRow}>
-              <ThemedText type="smallBold">Dieta</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Sin dieta todavía
-              </ThemedText>
-            </View>
-          </Card>
-
           {activeTraining.routines.length === 0 ? (
             <Card style={styles.empty}>
               <ThemedText themeColor="textSecondary">
@@ -95,7 +84,7 @@ export function TodayScreen() {
               </ThemedText>
               <Button
                 title="Añadir rutina"
-                onPress={() => openRoutine(activeTraining.id, 'nueva')}
+                onPress={() => newRoutine(activeTraining.id)}
               />
             </Card>
           ) : (
@@ -106,7 +95,7 @@ export function TodayScreen() {
                 return (
                   <Card
                     key={routine.id}
-                    onPress={() => openRoutine(activeTraining.id, routine.id)}
+                    onPress={() => openWorkout(activeTraining.id, routine.id)}
                     style={styles.routine}>
                     <ThemedText type="subtitle" style={styles.routineName}>
                       {routine.name}
@@ -128,8 +117,6 @@ export function TodayScreen() {
 
 const styles = StyleSheet.create({
   empty: { gap: Spacing.three, padding: Spacing.four },
-  now: { gap: Spacing.one },
-  nowRow: { gap: Spacing.half },
   routine: { gap: Spacing.one, paddingVertical: Spacing.four },
   routineName: { fontSize: 26, lineHeight: 32 },
 });

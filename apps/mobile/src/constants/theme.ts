@@ -31,6 +31,9 @@ export const Colors = {
     teal: '#6FD3C8',
     danger: '#D93B3B',
     dangerSoft: '#FDE4E4',
+    /** Blanco translúcido, para elementos que dejan ver las ondas de detrás. */
+    glass: 'rgba(255, 255, 255, 0.55)',
+    glassBorder: 'rgba(255, 255, 255, 0.85)',
   },
   dark: {
     text: '#FBEFEC',
@@ -48,6 +51,8 @@ export const Colors = {
     teal: '#6FD3C8',
     danger: '#FF6B6B',
     dangerSoft: '#3F2224',
+    glass: 'rgba(255, 255, 255, 0.10)',
+    glassBorder: 'rgba(255, 255, 255, 0.22)',
   },
 } as const;
 

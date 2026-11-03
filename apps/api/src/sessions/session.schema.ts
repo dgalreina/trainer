@@ -48,6 +48,9 @@ export class SessionDoc {
   @Prop({ type: Date, required: true })
   date!: Date;
 
+  @Prop({ type: Number })
+  durationSeconds?: number;
+
   @Prop({ type: [SessionEntrySchema], default: [] })
   entries!: SessionEntryDoc[];
 

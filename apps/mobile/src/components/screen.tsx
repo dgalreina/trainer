@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useTheme } from '@/hooks/use-theme';
 import { Waves } from '@/components/waves';
 import {
   BottomTabInset,
@@ -21,8 +22,13 @@ interface ScreenProps {
   scroll?: boolean;
   /** true en pantallas fuera de las pestañas: sin hueco para la barra inferior. */
   stacked?: boolean;
+  /** Barra fija abajo (por ejemplo, el botón Finalizar de un entreno). */
+  footer?: ReactNode;
   children: ReactNode;
 }
+
+// Hueco que se deja bajo el contenido para que la barra fija no tape lo último.
+const FOOTER_SPACE = 200;
 
 /**
  * Estructura común: título y contenido centrado. En las pestañas de la web las ondas de
@@ -30,8 +36,8 @@ interface ScreenProps {
  * mientras ellas siguen ondeando); en el resto (móvil nativo, pantallas fuera de las
  * pestañas) las pone cada pantalla.
  */
-export function Screen({ title, subtitle, action, scroll = true, stacked, children }: ScreenProps) {
-  const bottomInset = stacked ? Spacing.four : BottomTabInset + Spacing.four;
+export function Screen({ title, subtitle, action, scroll = true, stacked, footer, children }: ScreenProps) {
+  const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
   const header = (
@@ -43,6 +49,8 @@ export function Screen({ title, subtitle, action, scroll = true, stacked, childr
       {action}
     </View>
   );
+
+  const theme = useTheme();
 
   const body = (
     <SafeAreaView style={styles.safe}>
@@ -59,6 +67,9 @@ export function Screen({ title, subtitle, action, scroll = true, stacked, childr
           {children}
         </View>
       )}
+      {footer ? (
+        <View style={[styles.footer, { backgroundColor: theme.background }]}>{footer}</View>
+      ) : null}
     </SafeAreaView>
   );
 
@@ -77,6 +88,18 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center' },
   safe: { flex: 1, width: '100%', maxWidth: MaxContentWidth },
   fill: { flex: 1 },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    gap: Spacing.two,
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
+  },
   content: {
     paddingHorizontal: Spacing.four,
     paddingTop: Platform.OS === 'web' ? WebTabBarInset : Spacing.four,

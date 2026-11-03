@@ -15,6 +15,7 @@ function toSession(doc: SessionDocument): WorkoutSession {
     trainingId: doc.trainingId,
     routineId: doc.routineId,
     date: doc.date.toISOString(),
+    durationSeconds: doc.durationSeconds,
     entries: doc.entries.map((e) => ({
       exerciseId: e.exerciseId,
       sets: e.sets.map((s) => ({ reps: s.reps, weightKg: s.weightKg, rpe: s.rpe })),
@@ -51,6 +52,7 @@ export class SessionsService {
       trainingId: dto.trainingId,
       routineId: dto.routineId,
       date: new Date(dto.date),
+      durationSeconds: dto.durationSeconds,
       entries: dto.entries,
       notes: dto.notes,
     });
