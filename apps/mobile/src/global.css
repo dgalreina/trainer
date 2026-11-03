@@ -13,6 +13,8 @@
 html,
 body {
   background-color: #ffffff;
+  /* Sin rebote ni gesto de "atrás" al arrastrar en horizontal: ese gesto es de las pestañas. */
+  overscroll-behavior: none;
 }
 
 @media (prefers-color-scheme: dark) {
