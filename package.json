@@ -1,0 +1,16 @@
+{
+  "name": "trainer",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "npm run web --workspace apps/mobile",
+    "api": "npm run dev --workspace apps/api",
+    "build": "npm run build --workspace packages/shared && npm run build --workspace apps/api",
+    "typecheck": "npm run build --workspace packages/shared && npm run typecheck --workspaces --if-present",
+    "prepare": "npm run build --workspace packages/shared"
+  }
+}

@@ -1,0 +1,6 @@
+// Contrato compartido entre apps/mobile y apps/api.
+// Los esquemas de Zod son la fuente de verdad: los tipos salen de ellos.
+export * from "./exercise";
+export * from "./routine";
+export * from "./session";
+export * from "./health";
