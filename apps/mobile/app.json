@@ -40,6 +40,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
+      "baseUrl": "/trainer",
       "reactCompiler": true
     }
   }
