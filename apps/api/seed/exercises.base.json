@@ -1,0 +1,534 @@
+[
+  {
+    "name": "Curl de muñeca con barra",
+    "category": "antebrazo"
+  },
+  {
+    "name": "Curl de muñeca inverso",
+    "category": "antebrazo"
+  },
+  {
+    "name": "Paseo del granjero (farmer walk)",
+    "category": "antebrazo"
+  },
+  {
+    "name": "Curl 21s",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl concentrado",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl de bíceps con barra",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl de bíceps con mancuernas",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl en banco Scott (predicador)",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl en máquina",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl en polea",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl inverso con barra",
+    "category": "biceps"
+  },
+  {
+    "name": "Curl martillo",
+    "category": "biceps"
+  },
+  {
+    "name": "Crunch abdominal",
+    "category": "core"
+  },
+  {
+    "name": "Crunch en polea",
+    "category": "core"
+  },
+  {
+    "name": "Dragon flag",
+    "category": "core"
+  },
+  {
+    "name": "Elevación de piernas colgado",
+    "category": "core"
+  },
+  {
+    "name": "Elevación de piernas tumbado",
+    "category": "core"
+  },
+  {
+    "name": "Elevación de rodillas colgado",
+    "category": "core"
+  },
+  {
+    "name": "Encogimiento abdominal en máquina",
+    "category": "core"
+  },
+  {
+    "name": "Escaladores (mountain climbers)",
+    "category": "core"
+  },
+  {
+    "name": "Giro ruso (russian twist)",
+    "category": "core"
+  },
+  {
+    "name": "Plancha abdominal",
+    "category": "core"
+  },
+  {
+    "name": "Plancha lateral",
+    "category": "core"
+  },
+  {
+    "name": "Rueda abdominal (ab wheel)",
+    "category": "core"
+  },
+  {
+    "name": "Buenos días",
+    "category": "espalda"
+  },
+  {
+    "name": "Dominadas",
+    "category": "espalda"
+  },
+  {
+    "name": "Dominadas asistidas en máquina",
+    "category": "espalda"
+  },
+  {
+    "name": "Dominadas supinas",
+    "category": "espalda"
+  },
+  {
+    "name": "Encogimientos de hombros con barra",
+    "category": "espalda"
+  },
+  {
+    "name": "Encogimientos de hombros con mancuernas",
+    "category": "espalda"
+  },
+  {
+    "name": "Face pull",
+    "category": "espalda"
+  },
+  {
+    "name": "Hiperextensiones",
+    "category": "espalda"
+  },
+  {
+    "name": "Jalón al pecho",
+    "category": "espalda"
+  },
+  {
+    "name": "Jalón al pecho agarre cerrado",
+    "category": "espalda"
+  },
+  {
+    "name": "Jalón tras nuca",
+    "category": "espalda"
+  },
+  {
+    "name": "Peso muerto",
+    "category": "espalda"
+  },
+  {
+    "name": "Peso muerto con trap bar",
+    "category": "espalda"
+  },
+  {
+    "name": "Peso muerto rumano",
+    "category": "espalda"
+  },
+  {
+    "name": "Peso muerto sumo",
+    "category": "espalda"
+  },
+  {
+    "name": "Pull-over en polea",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo con barra",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo con mancuerna a una mano",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo en máquina",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo en polea baja (sentado)",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo en T",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo invertido (australiano)",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo pendlay",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo renegado",
+    "category": "espalda"
+  },
+  {
+    "name": "Arrastre de trineo (sled pull)",
+    "category": "funcional"
+  },
+  {
+    "name": "Battle ropes",
+    "category": "funcional"
+  },
+  {
+    "name": "Bicicleta estática",
+    "category": "funcional"
+  },
+  {
+    "name": "Burpees",
+    "category": "funcional"
+  },
+  {
+    "name": "Cinta de correr",
+    "category": "funcional"
+  },
+  {
+    "name": "Comba (salto de cuerda)",
+    "category": "funcional"
+  },
+  {
+    "name": "Empuje de trineo (sled push)",
+    "category": "funcional"
+  },
+  {
+    "name": "Jumping jacks",
+    "category": "funcional"
+  },
+  {
+    "name": "Kettlebell swing",
+    "category": "funcional"
+  },
+  {
+    "name": "Remo en máquina (rowing)",
+    "category": "funcional"
+  },
+  {
+    "name": "Saltos al cajón (box jumps)",
+    "category": "funcional"
+  },
+  {
+    "name": "Sprints",
+    "category": "funcional"
+  },
+  {
+    "name": "Wall balls",
+    "category": "funcional"
+  },
+  {
+    "name": "Elevación posterior en máquina",
+    "category": "hombros"
+  },
+  {
+    "name": "Elevaciones frontales con barra",
+    "category": "hombros"
+  },
+  {
+    "name": "Elevaciones frontales con mancuernas",
+    "category": "hombros"
+  },
+  {
+    "name": "Elevaciones laterales con mancuernas",
+    "category": "hombros"
+  },
+  {
+    "name": "Elevaciones laterales en polea",
+    "category": "hombros"
+  },
+  {
+    "name": "Pájaros (elevación posterior)",
+    "category": "hombros"
+  },
+  {
+    "name": "Press Arnold",
+    "category": "hombros"
+  },
+  {
+    "name": "Press militar con barra",
+    "category": "hombros"
+  },
+  {
+    "name": "Press militar con mancuernas",
+    "category": "hombros"
+  },
+  {
+    "name": "Press militar en máquina",
+    "category": "hombros"
+  },
+  {
+    "name": "Press tras nuca",
+    "category": "hombros"
+  },
+  {
+    "name": "Remo al mentón",
+    "category": "hombros"
+  },
+  {
+    "name": "Clean (cargada)",
+    "category": "olimpicos"
+  },
+  {
+    "name": "Clean and jerk",
+    "category": "olimpicos"
+  },
+  {
+    "name": "Push press",
+    "category": "olimpicos"
+  },
+  {
+    "name": "Snatch (arrancada)",
+    "category": "olimpicos"
+  },
+  {
+    "name": "Thruster",
+    "category": "olimpicos"
+  },
+  {
+    "name": "Turkish get-up",
+    "category": "olimpicos"
+  },
+  {
+    "name": "Aperturas con mancuernas",
+    "category": "pecho"
+  },
+  {
+    "name": "Aperturas inclinadas con mancuernas",
+    "category": "pecho"
+  },
+  {
+    "name": "Contractora (pec deck)",
+    "category": "pecho"
+  },
+  {
+    "name": "Cruces en polea (cable crossover)",
+    "category": "pecho"
+  },
+  {
+    "name": "Flexiones de brazos",
+    "category": "pecho"
+  },
+  {
+    "name": "Flexiones diamante",
+    "category": "pecho"
+  },
+  {
+    "name": "Fondos en paralelas",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca con agarre cerrado",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca con barra",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca con mancuernas",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca declinado con barra",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca declinado con mancuernas",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca en máquina Smith",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca inclinado con barra",
+    "category": "pecho"
+  },
+  {
+    "name": "Press de banca inclinado con mancuernas",
+    "category": "pecho"
+  },
+  {
+    "name": "Press en máquina",
+    "category": "pecho"
+  },
+  {
+    "name": "Pullover con mancuerna",
+    "category": "pecho"
+  },
+  {
+    "name": "Abducción de cadera en máquina",
+    "category": "piernas"
+  },
+  {
+    "name": "Aducción de cadera en máquina",
+    "category": "piernas"
+  },
+  {
+    "name": "Curl femoral de pie",
+    "category": "piernas"
+  },
+  {
+    "name": "Curl femoral nórdico",
+    "category": "piernas"
+  },
+  {
+    "name": "Curl femoral sentado",
+    "category": "piernas"
+  },
+  {
+    "name": "Curl femoral tumbado",
+    "category": "piernas"
+  },
+  {
+    "name": "Elevación de gemelos de pie",
+    "category": "piernas"
+  },
+  {
+    "name": "Elevación de gemelos en prensa",
+    "category": "piernas"
+  },
+  {
+    "name": "Elevación de gemelos sentado",
+    "category": "piernas"
+  },
+  {
+    "name": "Extensión de cuádriceps",
+    "category": "piernas"
+  },
+  {
+    "name": "Hip thrust con barra",
+    "category": "piernas"
+  },
+  {
+    "name": "Patada de glúteo en polea",
+    "category": "piernas"
+  },
+  {
+    "name": "Peso muerto a una pierna",
+    "category": "piernas"
+  },
+  {
+    "name": "Prensa de piernas",
+    "category": "piernas"
+  },
+  {
+    "name": "Puente de glúteo",
+    "category": "piernas"
+  },
+  {
+    "name": "Puente de glúteo a una pierna",
+    "category": "piernas"
+  },
+  {
+    "name": "Sentadilla búlgara",
+    "category": "piernas"
+  },
+  {
+    "name": "Sentadilla con barra",
+    "category": "piernas"
+  },
+  {
+    "name": "Sentadilla en máquina Smith",
+    "category": "piernas"
+  },
+  {
+    "name": "Sentadilla frontal",
+    "category": "piernas"
+  },
+  {
+    "name": "Sentadilla goblet",
+    "category": "piernas"
+  },
+  {
+    "name": "Sentadilla hack",
+    "category": "piernas"
+  },
+  {
+    "name": "Sissy squat",
+    "category": "piernas"
+  },
+  {
+    "name": "Step-up con mancuernas",
+    "category": "piernas"
+  },
+  {
+    "name": "Zancada inversa",
+    "category": "piernas"
+  },
+  {
+    "name": "Zancada lateral",
+    "category": "piernas"
+  },
+  {
+    "name": "Zancadas caminando",
+    "category": "piernas"
+  },
+  {
+    "name": "Zancadas con mancuernas",
+    "category": "piernas"
+  },
+  {
+    "name": "Extensión de tríceps en máquina",
+    "category": "triceps"
+  },
+  {
+    "name": "Extensión de tríceps en polea (barra)",
+    "category": "triceps"
+  },
+  {
+    "name": "Extensión de tríceps en polea (cuerda)",
+    "category": "triceps"
+  },
+  {
+    "name": "Extensión de tríceps sobre la cabeza con mancuerna",
+    "category": "triceps"
+  },
+  {
+    "name": "Fondos en banco",
+    "category": "triceps"
+  },
+  {
+    "name": "Fondos en paralelas (tríceps)",
+    "category": "triceps"
+  },
+  {
+    "name": "Patada de tríceps con mancuerna",
+    "category": "triceps"
+  },
+  {
+    "name": "Press francés con barra",
+    "category": "triceps"
+  },
+  {
+    "name": "Press francés con mancuerna",
+    "category": "triceps"
+  }
+]

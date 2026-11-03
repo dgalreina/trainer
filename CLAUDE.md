@@ -28,7 +28,10 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 - **AWS Lambda, no servidor fijo.** La API sigue siendo REST normal; Lambda es solo dónde se ejecuta.
 - **Una sola Lambda para toda la API normal (CRUD)** con NestJS: un único arranque en frío para todos los endpoints. No una Lambda por endpoint ni por colección de Mongo.
 - **Chat con la IA en streaming:** handler aparte (como máximo 2 funciones en total). Node soporta streaming de forma nativa en Lambda (`awslambda.streamifyResponse`); Python no. Las Function URLs con streaming no funcionan dentro de una VPC, y si el cliente se desconecta la función sigue ejecutándose y cobrando. Pendiente de confirmar: si API Gateway (REST o HTTP) soporta el streaming. Mientras tanto se puede empezar sin streaming (respuesta completa).
-- **Pendiente al desplegar:** empaquetado. NestJS usa decoradores con metadatos y esbuild no los emite; usar tsc/SWC o una herramienta (SST, SAM) configurada para ello.
+- **Empaquetado (resuelto):** `npm run build:lambda --workspace apps/api` compila con tsc y copia el JS con sus dependencias de producción a `apps/api/lambda-dist`. No se usa esbuild: no emite los metadatos de los decoradores y además rompe `mongoose` con `@nestjs/mongoose` ("Cannot set property nextConnectionId").
+- **Infraestructura con AWS CDK** en `apps/infra` (stack `TrainerStack`, eu-west-1): Lambda + API Gateway HTTP + presupuesto mensual de 10 $. Desplegar: `npm run build:lambda --workspace apps/api` y luego `npx cdk deploy` dentro de `apps/infra`. La URI de Mongo vive en SSM (`/trainer/mongodb-uri`, SecureString), no en variables de entorno. Atlas (M0) permite `0.0.0.0/0` porque Lambda no tiene IP fija: pasar a PrivateLink antes de abrir la app al público.
+- **Catálogo base de ejercicios:** `apps/api/seed/exercises.base.json` (133, copiado de zitytraining) y `npm run seed --workspace apps/api` para cargarlo (idempotente).
+- **Web:** GitHub Pages en https://dgalreina.github.io/trainer/ (workflow `.github/workflows/pages.yml`).
 - Reutilizar la conexión a MongoDB entre invocaciones (variable fuera del handler).
 - Alerta de facturación en AWS Budgets desde el primer día.
 

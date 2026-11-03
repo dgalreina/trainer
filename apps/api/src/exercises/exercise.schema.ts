@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { EXERCISE_CATEGORIES, type ExerciseCategory } from "@trainer/shared";
 import type { HydratedDocument } from "mongoose";
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: "exercises" })
 export class ExerciseDoc {
   @Prop({ type: String, required: true, trim: true })
   name!: string;

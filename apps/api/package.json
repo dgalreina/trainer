@@ -8,7 +8,9 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:lambda": "nest build && node scripts/package-lambda.mjs",
+    "seed": "node --env-file=.env scripts/seed-exercises.mjs"
   },
   "dependencies": {
     "@codegenie/serverless-express": "^4.17.1",
@@ -24,6 +26,7 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@aws-sdk/client-ssm": "^3.1161.0",
     "@nestjs/cli": "^12.0.11",
     "@nestjs/schematics": "^12.0.12",
     "@types/aws-lambda": "^8.10.164",

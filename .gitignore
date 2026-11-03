@@ -8,3 +8,6 @@ dist/
 .DS_Store
 .sst/
 .aws-sam/
+lambda-dist/
+cdk.out/
+cdk-outputs.json

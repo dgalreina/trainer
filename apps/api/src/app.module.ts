@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "./auth/auth.module.js";
+import { getMongoUri } from "./config/mongo-uri.js";
 import { ExercisesModule } from "./exercises/exercises.module.js";
 import { HealthController } from "./health.controller.js";
 
@@ -13,8 +14,8 @@ import { HealthController } from "./health.controller.js";
     ConfigModule.forRoot({ isGlobal: true }),
     // La conexión se abre una vez por instancia y se reutiliza entre invocaciones.
     MongooseModule.forRootAsync({
-      useFactory: () => ({
-        uri: process.env.MONGODB_URI,
+      useFactory: async () => ({
+        uri: await getMongoUri(),
         maxPoolSize: 5,
       }),
     }),
