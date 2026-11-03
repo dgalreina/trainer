@@ -12,6 +12,7 @@ function toSession(doc: SessionDocument): WorkoutSession {
   return {
     id: doc.id,
     userId: doc.userId,
+    trainingId: doc.trainingId,
     routineId: doc.routineId,
     date: doc.date.toISOString(),
     entries: doc.entries.map((e) => ({
@@ -47,6 +48,7 @@ export class SessionsService {
     await this.exercises.assertVisible(userId, dto.entries.map((e) => e.exerciseId));
     const doc = await this.model.create({
       userId,
+      trainingId: dto.trainingId,
       routineId: dto.routineId,
       date: new Date(dto.date),
       entries: dto.entries,

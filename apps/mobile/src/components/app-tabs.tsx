@@ -17,14 +17,14 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="sun.max" md="today" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="rutinas">
-        <NativeTabs.Trigger.Label>Rutinas</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="list.bullet.rectangle" md="list" />
+      <NativeTabs.Trigger name="entrenamientos">
+        <NativeTabs.Trigger.Label>Entrenos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="figure.strengthtraining.traditional" md="fitness_center" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="ejercicios">
-        <NativeTabs.Trigger.Label>Ejercicios</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="figure.strengthtraining.traditional" md="fitness_center" />
+      <NativeTabs.Trigger name="dieta">
+        <NativeTabs.Trigger.Label>Dieta</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="cuenta">

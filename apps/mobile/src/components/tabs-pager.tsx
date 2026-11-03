@@ -12,11 +12,11 @@ import Animated, {
 
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
 import { AccountScreen } from '@/screens/account';
-import { ExercisesScreen } from '@/screens/exercises';
-import { RoutinesScreen } from '@/screens/routines';
+import { DietScreen } from '@/screens/diet';
 import { TodayScreen } from '@/screens/today';
+import { TrainingsScreen } from '@/screens/trainings';
 
-const PAGES = [TodayScreen, RoutinesScreen, ExercisesScreen, AccountScreen];
+const PAGES = [TodayScreen, TrainingsScreen, DietScreen, AccountScreen];
 
 const SLIDE_MS = 380;
 /** Cuánto se mueve el dedo en horizontal antes de que el gesto cuente como arrastre. */
@@ -68,10 +68,12 @@ export function TabsPager() {
     let startOffset = 0;
     let startDx = 0;
 
+    // Cada gesto mueve como mucho una pestaña a cada lado de la actual, por fuerte que sea.
+    const lowest = -Math.min(index + 1, last) * width;
+    const highest = -Math.max(index - 1, 0) * width;
     const resist = (x: number) => {
-      const min = -last * width;
-      if (x > 0) return x * EDGE_RESISTANCE;
-      if (x < min) return min + (x - min) * EDGE_RESISTANCE;
+      if (x > highest) return highest + (x - highest) * EDGE_RESISTANCE;
+      if (x < lowest) return lowest + (x - lowest) * EDGE_RESISTANCE;
       return x;
     };
 
@@ -79,7 +81,7 @@ export function TabsPager() {
       const page = -offset.value / width;
       // vx va en px/ms: hacia la izquierda es negativa y avanza de página.
       const projected = page - (velocityX * FLICK_MS) / width;
-      const next = Math.min(Math.max(Math.round(projected), 0), last);
+      const next = Math.min(Math.max(Math.round(projected), index - 1, 0), index + 1, last);
       slideTo(next);
       if (next !== index) router.navigate(TABS[next].path);
     };

@@ -1,5 +1,6 @@
+import { trainingProgress } from '@trainer/shared';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
@@ -7,9 +8,12 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { todayISO } from '@/lib/dates';
 import { useExercises } from '@/lib/exercises';
 import { routineSummary } from '@/lib/routine-summary';
-import { useRoutines } from '@/lib/routines';
+import { useSettings } from '@/lib/settings';
+import { useTrainings } from '@/lib/trainings';
+import { progressLabel } from '@/screens/trainings';
 
 function todayLabel(): string {
   const text = new Date().toLocaleDateString('es-ES', {
@@ -23,43 +27,99 @@ function todayLabel(): string {
 export function TodayScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { routines, loading, error } = useRoutines();
+  const { trainings, loading, error } = useTrainings();
+  const { activeTraining } = useSettings();
   const { byId } = useExercises();
 
-  const openRoutine = (id: string) => router.push({ pathname: '/rutina/[id]', params: { id } });
+  const openRoutine = (trainingId: string, routineId: string) =>
+    router.push({
+      pathname: '/entrenamiento/[id]/rutina/[rid]',
+      params: { id: trainingId, rid: routineId },
+    });
 
   return (
     <Screen title="Hoy" subtitle={todayLabel()}>
       <ErrorText message={error} />
 
-      {loading && routines.length === 0 ? (
+      {loading && trainings.length === 0 ? (
         <ActivityIndicator color={theme.primary} />
-      ) : routines.length === 0 ? (
+      ) : !activeTraining ? (
         <Card tone="primarySoft" style={styles.empty}>
-          <ThemedText type="smallBold">Aún no tienes entrenamiento</ThemedText>
-          <ThemedText themeColor="textSecondary">
-            Pronto podrás hablar con tu entrenador y te preparará uno según lo que necesites.
-            Mientras tanto, puedes crear tu primera rutina a mano.
+          <ThemedText type="smallBold">
+            {trainings.length === 0 ? 'Aún no tienes entrenamiento' : 'No hay un entrenamiento actual'}
           </ThemedText>
-          <Button title="Crear una rutina" onPress={() => router.push('/rutina/nueva')} />
+          <ThemedText themeColor="textSecondary">
+            {trainings.length === 0
+              ? 'Pronto podrás hablar con tu entrenador y te preparará uno según lo que necesites. Mientras tanto, puedes crear el tuyo a mano.'
+              : 'Elige cuál estás haciendo ahora para verlo aquí.'}
+          </ThemedText>
+          <Button
+            title={trainings.length === 0 ? 'Crear un entrenamiento' : 'Elegir entrenamiento'}
+            onPress={() =>
+              trainings.length === 0
+                ? router.push('/entrenamiento/nuevo')
+                : router.navigate('/entrenamientos')
+            }
+          />
         </Card>
       ) : (
         <>
-          <ThemedText type="smallBold">¿Qué entrenas hoy?</ThemedText>
-          {routines.map((routine) => {
-            const summary = routineSummary(routine, byId);
-            return (
-              <Card key={routine.id} onPress={() => openRoutine(routine.id)} style={styles.routine}>
-                <ThemedText type="subtitle" style={styles.routineName}>
-                  {routine.name}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {summary.counts}
-                </ThemedText>
-                {summary.preview ? <ThemedText type="small">{summary.preview}</ThemedText> : null}
-              </Card>
-            );
-          })}
+          <Card
+            tone="primarySoft"
+            onPress={() =>
+              router.push({ pathname: '/entrenamiento/[id]', params: { id: activeTraining.id } })
+            }
+            style={styles.now}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Ahora estás con
+            </ThemedText>
+            <View style={styles.nowRow}>
+              <ThemedText type="smallBold">Entrenamiento</ThemedText>
+              <ThemedText type="small">
+                {activeTraining.name} ·{' '}
+                {progressLabel(activeTraining, trainingProgress(activeTraining, todayISO()))}
+              </ThemedText>
+            </View>
+            <View style={styles.nowRow}>
+              <ThemedText type="smallBold">Dieta</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Sin dieta todavía
+              </ThemedText>
+            </View>
+          </Card>
+
+          {activeTraining.routines.length === 0 ? (
+            <Card style={styles.empty}>
+              <ThemedText themeColor="textSecondary">
+                Este entrenamiento aún no tiene rutinas. Añade una por cada día de entreno.
+              </ThemedText>
+              <Button
+                title="Añadir rutina"
+                onPress={() => openRoutine(activeTraining.id, 'nueva')}
+              />
+            </Card>
+          ) : (
+            <>
+              <ThemedText type="smallBold">¿Qué entrenas hoy?</ThemedText>
+              {activeTraining.routines.map((routine) => {
+                const summary = routineSummary(routine, byId);
+                return (
+                  <Card
+                    key={routine.id}
+                    onPress={() => openRoutine(activeTraining.id, routine.id)}
+                    style={styles.routine}>
+                    <ThemedText type="subtitle" style={styles.routineName}>
+                      {routine.name}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {summary.counts}
+                    </ThemedText>
+                    {summary.preview ? <ThemedText type="small">{summary.preview}</ThemedText> : null}
+                  </Card>
+                );
+              })}
+            </>
+          )}
         </>
       )}
     </Screen>
@@ -68,6 +128,8 @@ export function TodayScreen() {
 
 const styles = StyleSheet.create({
   empty: { gap: Spacing.three, padding: Spacing.four },
+  now: { gap: Spacing.one },
+  nowRow: { gap: Spacing.half },
   routine: { gap: Spacing.one, paddingVertical: Spacing.four },
   routineName: { fontSize: 26, lineHeight: 32 },
 });

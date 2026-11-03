@@ -39,6 +39,9 @@ export class SessionDoc {
   userId!: string;
 
   @Prop({ type: String })
+  trainingId?: string;
+
+  @Prop({ type: String })
   routineId?: string;
 
   // Se guarda como Date para poder ordenar y filtrar por rango.

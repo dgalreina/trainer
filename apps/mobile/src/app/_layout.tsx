@@ -8,8 +8,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ExercisesProvider } from '@/lib/exercises';
-import { RoutinesProvider } from '@/lib/routines';
+import { SettingsProvider } from '@/lib/settings';
 import { ThemePreferenceProvider, useThemePreference } from '@/lib/theme-preference';
+import { TrainingsProvider } from '@/lib/trainings';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,7 +24,9 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="rutina/[id]" />
+        <Stack.Screen name="entrenamiento/[id]/index" />
+        <Stack.Screen name="entrenamiento/[id]/rutina/[rid]" />
+        <Stack.Screen name="ejercicios" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="login" />
@@ -66,10 +69,12 @@ function ThemedApp() {
     <ThemeProvider value={navTheme}>
       <AuthProvider>
         <ExercisesProvider>
-          <RoutinesProvider>
-            <AnimatedSplashOverlay />
-            <RootNavigator />
-          </RoutinesProvider>
+          <TrainingsProvider>
+            <SettingsProvider>
+              <AnimatedSplashOverlay />
+              <RootNavigator />
+            </SettingsProvider>
+          </TrainingsProvider>
         </ExercisesProvider>
       </AuthProvider>
     </ThemeProvider>

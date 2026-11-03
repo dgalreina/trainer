@@ -23,7 +23,8 @@ export type SessionEntry = z.infer<typeof sessionEntrySchema>;
 export const workoutSessionSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  /** Rutina de la que se partió, si se partió de alguna. */
+  /** Entrenamiento y rutina de los que se partió, si se partió de alguno. */
+  trainingId: z.string().optional(),
   routineId: z.string().optional(),
   /** Fecha y hora de inicio en ISO 8601. */
   date: z.iso.datetime({ offset: true }),

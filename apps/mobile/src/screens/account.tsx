@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -10,6 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { useThemePreference } from '@/lib/theme-preference';
 
 export function AccountScreen() {
+  const router = useRouter();
   const theme = useTheme();
   const { email, signOut } = useAuth();
   const { forceLight, setForceLight } = useThemePreference();
@@ -45,6 +47,16 @@ export function AccountScreen() {
         </View>
       </Card>
 
+      <Button
+        title="Catálogo de ejercicios"
+        variant="secondary"
+        onPress={() => router.push('/ejercicios')}
+      />
+      <Button
+        title="Catálogo de ejercicios"
+        variant="secondary"
+        onPress={() => router.push('/ejercicios')}
+      />
       <Button title="Cerrar sesión" variant="secondary" onPress={signOut} />
     </Screen>
   );

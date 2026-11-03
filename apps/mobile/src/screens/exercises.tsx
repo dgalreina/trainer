@@ -1,9 +1,10 @@
 import { exerciseNameKey, type ExerciseCategory } from '@trainer/shared';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { Button, Chip, ErrorText, Field } from '@/components/form';
+import { Button, Chip, ErrorText, Field, LinkButton } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -11,7 +12,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { CATEGORIES, CATEGORY_LABELS } from '@/lib/categories';
 import { useExercises } from '@/lib/exercises';
 
-export function ExercisesScreen() {
+/** `stacked`: abierto encima de las pestañas (con botón Atrás), no como una de ellas. */
+export function ExercisesScreen({ stacked }: { stacked?: boolean }) {
+  const router = useRouter();
   const theme = useTheme();
   const { exercises, loading, error: loadError, reload, create, archive } = useExercises();
   const [query, setQuery] = useState('');
@@ -55,7 +58,19 @@ export function ExercisesScreen() {
   }
 
   return (
-    <Screen title="Ejercicios" subtitle={`${exercises.length} en tu catálogo`} scroll={false}>
+    <Screen
+      title="Ejercicios"
+      subtitle={`${exercises.length} en tu catálogo`}
+      scroll={false}
+      stacked={stacked}
+      action={
+        stacked ? (
+          <LinkButton
+            title="Atrás"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/entrenamientos'))}
+          />
+        ) : undefined
+      }>
       <Field
         label="Buscar o crear"
         value={query}

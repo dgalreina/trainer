@@ -1,0 +1,82 @@
+import { z } from "zod";
+import { routineSchema } from "./routine";
+
+/** Fecha de calendario sin hora, "AAAA-MM-DD". */
+const dateSchema = z.iso.date();
+
+export const MAX_TRAINING_WEEKS = 104;
+
+/**
+ * Entrenamiento (por ejemplo "Fuerza"): un bloque con fecha de inicio y duración en
+ * semanas que agrupa las rutinas de cada día ("Pecho + Espalda", "Pierna"...).
+ */
+export const trainingSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string().trim().min(1).max(100),
+  startDate: dateSchema,
+  durationWeeks: z.number().int().min(1).max(MAX_TRAINING_WEEKS),
+  routines: z.array(routineSchema),
+});
+export type Training = z.infer<typeof trainingSchema>;
+
+/** Al crearlo no lleva rutinas: se añaden después, una a una. */
+export const createTrainingSchema = trainingSchema.omit({ id: true, userId: true, routines: true });
+export type CreateTraining = z.input<typeof createTrainingSchema>;
+
+export const updateTrainingSchema = createTrainingSchema.partial();
+export type UpdateTraining = z.input<typeof updateTrainingSchema>;
+
+export type TrainingStatus = "upcoming" | "active" | "finished";
+
+export interface TrainingProgress {
+  status: TrainingStatus;
+  /** Semana en curso (1-based). Antes de empezar vale 0; al acabar, `totalWeeks`. */
+  week: number;
+  totalWeeks: number;
+  /** Último día del entrenamiento, "AAAA-MM-DD". */
+  endDate: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function toDayNumber(date: string): number {
+  return Math.floor(Date.parse(`${date}T00:00:00Z`) / DAY_MS);
+}
+
+/**
+ * En qué punto va un entrenamiento el día `today` ("AAAA-MM-DD"). Se calcula por días de
+ * calendario, sin horas, para que no cambie con el huso horario.
+ */
+export function trainingProgress(
+  training: Pick<Training, "startDate" | "durationWeeks">,
+  today: string,
+): TrainingProgress {
+  const start = toDayNumber(training.startDate);
+  const totalDays = training.durationWeeks * 7;
+  const elapsed = toDayNumber(today) - start;
+  const endDate = new Date((start + totalDays - 1) * DAY_MS).toISOString().slice(0, 10);
+
+  if (elapsed < 0) {
+    return { status: "upcoming", week: 0, totalWeeks: training.durationWeeks, endDate };
+  }
+  if (elapsed >= totalDays) {
+    return { status: "finished", week: training.durationWeeks, totalWeeks: training.durationWeeks, endDate };
+  }
+  return {
+    status: "active",
+    week: Math.floor(elapsed / 7) + 1,
+    totalWeeks: training.durationWeeks,
+    endDate,
+  };
+}
+
+/** Lo que el usuario tiene en marcha ahora. */
+export const userSettingsSchema = z.object({
+  activeTrainingId: z.string().nullable(),
+  activeDietId: z.string().nullable(),
+});
+export type UserSettings = z.infer<typeof userSettingsSchema>;
+
+export const updateUserSettingsSchema = userSettingsSchema.partial();
+export type UpdateUserSettings = z.infer<typeof updateUserSettingsSchema>;

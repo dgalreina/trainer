@@ -31,11 +31,9 @@ export class RoutineSlotDoc {
 }
 const RoutineSlotSchema = SchemaFactory.createForClass(RoutineSlotDoc);
 
-@Schema({ timestamps: true, collection: "routines" })
-export class RoutineDoc {
-  @Prop({ type: String, required: true, index: true })
-  userId!: string;
-
+// Con `_id` propio: las sesiones registradas apuntan a la rutina por ese id.
+@Schema()
+export class TrainingRoutineDoc {
   @Prop({ type: String, required: true, trim: true })
   name!: string;
 
@@ -43,6 +41,26 @@ export class RoutineDoc {
   @Prop({ type: [RoutineSlotSchema], default: [] })
   slots!: RoutineSlotDoc[];
 }
+const TrainingRoutineSchema = SchemaFactory.createForClass(TrainingRoutineDoc);
 
-export type RoutineDocument = HydratedDocument<RoutineDoc>;
-export const RoutineSchema = SchemaFactory.createForClass(RoutineDoc);
+@Schema({ timestamps: true, collection: "trainings" })
+export class TrainingDoc {
+  @Prop({ type: String, required: true, index: true })
+  userId!: string;
+
+  @Prop({ type: String, required: true, trim: true })
+  name!: string;
+
+  // Día de calendario "AAAA-MM-DD", sin hora: no depende del huso horario.
+  @Prop({ type: String, required: true })
+  startDate!: string;
+
+  @Prop({ type: Number, required: true })
+  durationWeeks!: number;
+
+  @Prop({ type: [TrainingRoutineSchema], default: [] })
+  routines!: TrainingRoutineDoc[];
+}
+
+export type TrainingDocument = HydratedDocument<TrainingDoc>;
+export const TrainingSchema = SchemaFactory.createForClass(TrainingDoc);

@@ -12,7 +12,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
 import { useExercises } from '@/lib/exercises';
-import { useRoutines } from '@/lib/routines';
+import { useTrainings } from '@/lib/trainings';
 
 // El editor trabaja con texto en los campos numéricos y lo convierte al guardar.
 interface EditorSet {
@@ -50,15 +50,17 @@ function fromRoutine(routine: Routine): EditorSlot[] {
   }));
 }
 
-export default function RoutineEditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+/** Rutina de un entrenamiento: crear una nueva (rid = 'nueva') o editar una existente. */
+export function RoutineEditorScreen() {
+  const { id, rid } = useLocalSearchParams<{ id: string; rid: string }>();
   const router = useRouter();
   const theme = useTheme();
-  const { routines, loading, save, remove } = useRoutines();
+  const { trainings, loading, addRoutine, updateRoutine, removeRoutine } = useTrainings();
   const { byId } = useExercises();
 
-  const isNew = id === 'nueva';
-  const existing = isNew ? undefined : routines.find((r) => r.id === id);
+  const isNew = rid === 'nueva';
+  const training = trainings.find((t) => t.id === id);
+  const existing = isNew ? undefined : training?.routines.find((r) => r.id === rid);
 
   const [name, setName] = useState('');
   const [slots, setSlots] = useState<EditorSlot[]>([]);
@@ -75,7 +77,8 @@ export default function RoutineEditorScreen() {
     setSlots(fromRoutine(existing));
   }, [existing]);
 
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/rutinas'));
+  const goBack = () =>
+    router.canGoBack() ? router.back() : router.replace({ pathname: '/entrenamiento/[id]', params: { id } });
 
   const updateSlot = (key: string, change: (slot: EditorSlot) => EditorSlot) =>
     setSlots((prev) => prev.map((s) => (s.key === key ? change(s) : s)));
@@ -111,7 +114,8 @@ export default function RoutineEditorScreen() {
     setSaving(true);
     setError(null);
     try {
-      await save(isNew ? null : id, payload);
+      if (isNew) await addRoutine(id, payload);
+      else await updateRoutine(id, rid, payload);
       goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar');
@@ -124,12 +128,12 @@ export default function RoutineEditorScreen() {
     if (!existing) return;
     const ok = await confirmAction(
       'Borrar rutina',
-      `Se borrará «${existing.name}». Los entrenos ya registrados no se tocan.`,
+      `Se borrará «${existing.name}» de este entrenamiento. Los entrenos ya registrados no se tocan.`,
       'Borrar',
     );
     if (!ok) return;
     try {
-      await remove(existing.id);
+      await removeRoutine(id, existing.id);
       goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido borrar');
@@ -138,7 +142,7 @@ export default function RoutineEditorScreen() {
 
   const back = <LinkButton title="Atrás" onPress={goBack} />;
 
-  if (!isNew && !existing) {
+  if (!training || (!isNew && !existing)) {
     return (
       <Screen title="Rutina" stacked action={back}>
         {loading ? (
@@ -151,8 +155,8 @@ export default function RoutineEditorScreen() {
   }
 
   return (
-    <Screen title={isNew ? 'Nueva rutina' : 'Editar rutina'} stacked action={back}>
-      <Field label="Nombre" value={name} onChangeText={setName} placeholder="Pecho, Espalda, Pierna…" />
+    <Screen title={isNew ? 'Nueva rutina' : 'Editar rutina'} subtitle={training.name} stacked action={back}>
+      <Field label="Nombre" value={name} onChangeText={setName} placeholder="Pecho + Espalda, Pierna…" />
 
       {slots.map((slot, index) => {
         const exercise = byId.get(slot.exerciseId);

@@ -20,18 +20,18 @@ export const routineSlotSchema = z.object({
 export type RoutineSlot = z.infer<typeof routineSlotSchema>;
 
 /**
- * Plantilla de entreno: lo que planeas hacer. El orden de `slots` es el de
- * ejecución. Lo que realmente haces cada día es una `WorkoutSession`.
+ * Rutina: lo que planeas hacer un día de entreno (por ejemplo "Pecho + Espalda"). El orden
+ * de `slots` es el de ejecución. No existe suelta: siempre vive dentro de un `Training`.
+ * Lo que realmente haces cada día es una `WorkoutSession`.
  */
 export const routineSchema = z.object({
   id: z.string(),
-  userId: z.string(),
   name: z.string().trim().min(1).max(100),
   slots: z.array(routineSlotSchema).min(1),
 });
 export type Routine = z.infer<typeof routineSchema>;
 
-export const createRoutineSchema = routineSchema.omit({ id: true, userId: true });
+export const createRoutineSchema = routineSchema.omit({ id: true });
 export type CreateRoutine = z.input<typeof createRoutineSchema>;
 
 export const updateRoutineSchema = createRoutineSchema.partial();
