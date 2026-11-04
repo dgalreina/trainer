@@ -2,9 +2,9 @@
 export const TABS = [
   { key: 'index', path: '/', label: 'Hoy' },
   { key: 'calendario', path: '/calendario', label: 'Calendario' },
-  { key: 'yo', path: '/yo', label: 'Yo' },
   { key: 'entrenamientos', path: '/entrenamientos', label: 'Entrenos' },
   { key: 'dieta', path: '/dieta', label: 'Dietas' },
+  { key: 'yo', path: '/yo', label: 'Yo' },
 ] as const;
 
 /** Índice de la pestaña a la que corresponde la ruta, o -1 si no es una pestaña. */

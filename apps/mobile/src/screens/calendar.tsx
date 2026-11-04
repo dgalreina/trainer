@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DayTimeline } from '@/components/day-timeline';
 import { ErrorText, LinkButton } from '@/components/form';
@@ -41,6 +41,7 @@ export function CalendarScreen() {
 
   return (
     <Screen
+      scroll={false}
       fixedTop={
         <>
           <View style={styles.dayNav}>
@@ -73,13 +74,20 @@ export function CalendarScreen() {
       }>
       <ErrorText message={error ?? loadError} />
       <DayTimeline day={day} events={dayEvents} onPressEvent={onPressEvent} onMoveEvent={moveEvent} />
-      <MealLogSection day={day} logs={mealsOf(day)} onChanged={reload} />
-      <WeighInCard day={day} />
+      {/* Lo de abajo queda fijo; si crece (formulario abierto, muchas comidas) tiene su propio scroll. */}
+      <ScrollView style={styles.bottom} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={styles.bottomContent}>
+          <MealLogSection day={day} logs={mealsOf(day)} onChanged={reload} />
+          <WeighInCard day={day} />
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  bottom: { flexGrow: 0, flexShrink: 0, maxHeight: '45%' },
+  bottomContent: { gap: Spacing.three },
   dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dayTitle: { flex: 1, alignItems: 'center' },
   dayText: { textAlign: 'center' },

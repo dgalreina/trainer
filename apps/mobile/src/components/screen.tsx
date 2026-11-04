@@ -71,7 +71,13 @@ export function Screen({ title, subtitle, action, scroll = true, stacked, footer
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.content, styles.fill, { paddingBottom: bottomInset }]}>
+        <View
+          style={[
+            styles.content,
+            styles.fill,
+            fixedTop ? styles.afterFixedTop : null,
+            { paddingBottom: bottomInset },
+          ]}>
           {header}
           {children}
         </View>
