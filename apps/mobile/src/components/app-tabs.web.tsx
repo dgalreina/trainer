@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
   },
-  tabListCompact: { padding: Spacing.two },
+  tabListCompact: { paddingHorizontal: Spacing.two },
   innerCompact: { paddingHorizontal: Spacing.two, gap: 0 },
   tabButtonCompact: { paddingHorizontal: Spacing.two },
   brandText: {

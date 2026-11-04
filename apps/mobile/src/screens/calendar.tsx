@@ -40,33 +40,37 @@ export function CalendarScreen() {
   }
 
   return (
-    <Screen>
-      <View style={styles.dayNav}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Día anterior"
-          onPress={() => setDay(addDays(day, -1))}
-          hitSlop={12}>
-          <ThemedText type="subtitle" style={styles.arrow}>
-            ‹
-          </ThemedText>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setDay(today)} style={styles.dayTitle}>
-          <ThemedText type="smallBold" style={styles.dayText}>
-            {formatLongDay(day)}
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Día siguiente"
-          onPress={() => setDay(addDays(day, 1))}
-          hitSlop={12}>
-          <ThemedText type="subtitle" style={styles.arrow}>
-            ›
-          </ThemedText>
-        </Pressable>
-      </View>
-      {day !== today && <LinkButton centered title="Ir a hoy" onPress={() => setDay(today)} />}
+    <Screen
+      fixedTop={
+        <>
+          <View style={styles.dayNav}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Día anterior"
+              onPress={() => setDay(addDays(day, -1))}
+              hitSlop={12}>
+              <ThemedText type="subtitle" style={styles.arrow}>
+                ‹
+              </ThemedText>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setDay(today)} style={styles.dayTitle}>
+              <ThemedText type="smallBold" style={styles.dayText}>
+                {formatLongDay(day)}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Día siguiente"
+              onPress={() => setDay(addDays(day, 1))}
+              hitSlop={12}>
+              <ThemedText type="subtitle" style={styles.arrow}>
+                ›
+              </ThemedText>
+            </Pressable>
+          </View>
+          {day !== today && <LinkButton centered title="Ir a hoy" onPress={() => setDay(today)} />}
+        </>
+      }>
       <ErrorText message={error ?? loadError} />
       <DayTimeline day={day} events={dayEvents} onPressEvent={onPressEvent} onMoveEvent={moveEvent} />
       <MealLogSection day={day} logs={mealsOf(day)} onChanged={reload} />

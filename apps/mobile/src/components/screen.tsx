@@ -23,6 +23,8 @@ interface ScreenProps {
   scroll?: boolean;
   /** true en pantallas fuera de las pestañas: sin hueco para la barra inferior. */
   stacked?: boolean;
+  /** Contenido fijo arriba, bajo la barra de pestañas: no se desplaza con el resto. */
+  fixedTop?: ReactNode;
   /** Barra fija abajo (por ejemplo, el botón Finalizar de un entreno). */
   footer?: ReactNode;
   children: ReactNode;
@@ -37,7 +39,7 @@ const FOOTER_SPACE = 200;
  * mientras ellas siguen ondeando); en el resto (móvil nativo, pantallas fuera de las
  * pestañas) las pone cada pantalla.
  */
-export function Screen({ title, subtitle, action, scroll = true, stacked, footer, children }: ScreenProps) {
+export function Screen({ title, subtitle, action, scroll = true, stacked, footer, fixedTop, children }: ScreenProps) {
   const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
@@ -56,10 +58,15 @@ export function Screen({ title, subtitle, action, scroll = true, stacked, footer
 
   const body = (
     <SafeAreaView style={styles.safe}>
+      {fixedTop ? <View style={[styles.content, styles.fixedTop]}>{fixedTop}</View> : null}
       {scroll ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}>
+          contentContainerStyle={[
+            styles.content,
+            fixedTop ? styles.afterFixedTop : null,
+            { paddingBottom: bottomInset },
+          ]}>
           {header}
           {children}
         </ScrollView>
@@ -107,6 +114,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'web' ? WebTabBarInset : Spacing.four,
     gap: Spacing.three,
   },
+  fixedTop: { paddingBottom: Spacing.two },
+  afterFixedTop: { paddingTop: Spacing.two },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
