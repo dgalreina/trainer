@@ -1,0 +1,1451 @@
+[
+  {
+    "name": "Pechuga de pollo cruda",
+    "category": "carne",
+    "kcal": 120,
+    "protein": 22.5,
+    "carbs": 0,
+    "fat": 2.6,
+    "portions": [
+      {
+        "name": "1 pechuga",
+        "grams": 180
+      }
+    ]
+  },
+  {
+    "name": "Pechuga de pollo cocinada",
+    "category": "carne",
+    "kcal": 165,
+    "protein": 31,
+    "carbs": 0,
+    "fat": 3.6,
+    "portions": [
+      {
+        "name": "1 filete",
+        "grams": 120
+      }
+    ]
+  },
+  {
+    "name": "Muslo de pollo sin piel crudo",
+    "category": "carne",
+    "kcal": 121,
+    "protein": 19.7,
+    "carbs": 0,
+    "fat": 4.1,
+    "portions": []
+  },
+  {
+    "name": "Pechuga de pavo cruda",
+    "category": "carne",
+    "kcal": 105,
+    "protein": 23,
+    "carbs": 0,
+    "fat": 1,
+    "portions": []
+  },
+  {
+    "name": "Ternera magra cruda",
+    "category": "carne",
+    "kcal": 120,
+    "protein": 21,
+    "carbs": 0,
+    "fat": 3.5,
+    "portions": [
+      {
+        "name": "1 filete",
+        "grams": 150
+      }
+    ]
+  },
+  {
+    "name": "Carne picada de ternera",
+    "category": "carne",
+    "kcal": 137,
+    "protein": 21,
+    "carbs": 0,
+    "fat": 5,
+    "portions": []
+  },
+  {
+    "name": "Lomo de cerdo crudo",
+    "category": "carne",
+    "kcal": 143,
+    "protein": 21,
+    "carbs": 0,
+    "fat": 6,
+    "portions": []
+  },
+  {
+    "name": "Jamón serrano",
+    "category": "carne",
+    "kcal": 241,
+    "protein": 31,
+    "carbs": 0,
+    "fat": 13,
+    "portions": [
+      {
+        "name": "1 loncha",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "Jamón cocido",
+    "category": "carne",
+    "kcal": 110,
+    "protein": 18,
+    "carbs": 1,
+    "fat": 3.5,
+    "portions": [
+      {
+        "name": "1 loncha",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "Chorizo",
+    "category": "carne",
+    "kcal": 455,
+    "protein": 24,
+    "carbs": 2,
+    "fat": 38,
+    "portions": [
+      {
+        "name": "1 rodaja",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "Beicon crudo",
+    "category": "carne",
+    "kcal": 417,
+    "protein": 12,
+    "carbs": 1,
+    "fat": 40,
+    "portions": [
+      {
+        "name": "1 loncha",
+        "grams": 15
+      }
+    ]
+  },
+  {
+    "name": "Salmón crudo",
+    "category": "pescado",
+    "kcal": 208,
+    "protein": 20,
+    "carbs": 0,
+    "fat": 13,
+    "portions": [
+      {
+        "name": "1 filete",
+        "grams": 150
+      }
+    ]
+  },
+  {
+    "name": "Atún al natural (lata)",
+    "category": "pescado",
+    "kcal": 116,
+    "protein": 26,
+    "carbs": 0,
+    "fat": 1,
+    "portions": [
+      {
+        "name": "1 lata",
+        "grams": 52
+      }
+    ]
+  },
+  {
+    "name": "Atún en aceite (lata, escurrido)",
+    "category": "pescado",
+    "kcal": 198,
+    "protein": 29,
+    "carbs": 0,
+    "fat": 8.2,
+    "portions": [
+      {
+        "name": "1 lata",
+        "grams": 52
+      }
+    ]
+  },
+  {
+    "name": "Merluza cruda",
+    "category": "pescado",
+    "kcal": 80,
+    "protein": 17,
+    "carbs": 0,
+    "fat": 1.5,
+    "portions": [
+      {
+        "name": "1 filete",
+        "grams": 150
+      }
+    ]
+  },
+  {
+    "name": "Bacalao fresco",
+    "category": "pescado",
+    "kcal": 82,
+    "protein": 18,
+    "carbs": 0,
+    "fat": 0.7,
+    "portions": []
+  },
+  {
+    "name": "Gambas crudas",
+    "category": "pescado",
+    "kcal": 85,
+    "protein": 20,
+    "carbs": 0,
+    "fat": 0.5,
+    "portions": []
+  },
+  {
+    "name": "Sardinas en lata",
+    "category": "pescado",
+    "kcal": 208,
+    "protein": 25,
+    "carbs": 0,
+    "fat": 11,
+    "portions": []
+  },
+  {
+    "name": "Dorada cruda",
+    "category": "pescado",
+    "kcal": 100,
+    "protein": 19,
+    "carbs": 0,
+    "fat": 2.5,
+    "portions": []
+  },
+  {
+    "name": "Lubina cruda",
+    "category": "pescado",
+    "kcal": 97,
+    "protein": 18,
+    "carbs": 0,
+    "fat": 2.5,
+    "portions": []
+  },
+  {
+    "name": "Huevo entero",
+    "category": "huevos",
+    "kcal": 143,
+    "protein": 12.6,
+    "carbs": 0.7,
+    "fat": 9.5,
+    "portions": [
+      {
+        "name": "1 huevo M",
+        "grams": 58
+      }
+    ]
+  },
+  {
+    "name": "Clara de huevo",
+    "category": "huevos",
+    "kcal": 52,
+    "protein": 11,
+    "carbs": 0.7,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 clara",
+        "grams": 33
+      }
+    ]
+  },
+  {
+    "name": "Leche entera",
+    "category": "lacteos",
+    "kcal": 64,
+    "protein": 3.3,
+    "carbs": 4.7,
+    "fat": 3.6,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Leche semidesnatada",
+    "category": "lacteos",
+    "kcal": 46,
+    "protein": 3.4,
+    "carbs": 4.8,
+    "fat": 1.6,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Leche desnatada",
+    "category": "lacteos",
+    "kcal": 34,
+    "protein": 3.4,
+    "carbs": 4.9,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Yogur natural",
+    "category": "lacteos",
+    "kcal": 61,
+    "protein": 3.5,
+    "carbs": 4.7,
+    "fat": 3.3,
+    "portions": [
+      {
+        "name": "1 yogur",
+        "grams": 125
+      }
+    ]
+  },
+  {
+    "name": "Yogur griego natural",
+    "category": "lacteos",
+    "kcal": 97,
+    "protein": 9,
+    "carbs": 4,
+    "fat": 5,
+    "portions": [
+      {
+        "name": "1 yogur",
+        "grams": 125
+      }
+    ]
+  },
+  {
+    "name": "Yogur desnatado",
+    "category": "lacteos",
+    "kcal": 45,
+    "protein": 4.5,
+    "carbs": 6,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 yogur",
+        "grams": 125
+      }
+    ]
+  },
+  {
+    "name": "Skyr natural",
+    "category": "lacteos",
+    "kcal": 63,
+    "protein": 11,
+    "carbs": 4,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 tarrina",
+        "grams": 150
+      }
+    ]
+  },
+  {
+    "name": "Queso batido 0%",
+    "category": "lacteos",
+    "kcal": 45,
+    "protein": 8,
+    "carbs": 3.5,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 tarrina",
+        "grams": 250
+      }
+    ]
+  },
+  {
+    "name": "Requesón (cottage)",
+    "category": "lacteos",
+    "kcal": 98,
+    "protein": 11,
+    "carbs": 3.4,
+    "fat": 4.3,
+    "portions": []
+  },
+  {
+    "name": "Queso fresco de Burgos",
+    "category": "lacteos",
+    "kcal": 174,
+    "protein": 12,
+    "carbs": 3,
+    "fat": 13,
+    "portions": []
+  },
+  {
+    "name": "Mozzarella",
+    "category": "lacteos",
+    "kcal": 280,
+    "protein": 18,
+    "carbs": 2,
+    "fat": 22,
+    "portions": []
+  },
+  {
+    "name": "Queso curado",
+    "category": "lacteos",
+    "kcal": 400,
+    "protein": 26,
+    "carbs": 0.5,
+    "fat": 33,
+    "portions": [
+      {
+        "name": "1 cuña",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Mantequilla",
+    "category": "lacteos",
+    "kcal": 717,
+    "protein": 0.9,
+    "carbs": 0.1,
+    "fat": 81,
+    "portions": [
+      {
+        "name": "1 cucharadita",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "Arroz blanco crudo",
+    "category": "cereales",
+    "kcal": 360,
+    "protein": 7,
+    "carbs": 79,
+    "fat": 0.6,
+    "portions": []
+  },
+  {
+    "name": "Arroz blanco cocido",
+    "category": "cereales",
+    "kcal": 130,
+    "protein": 2.7,
+    "carbs": 28,
+    "fat": 0.3,
+    "portions": [
+      {
+        "name": "1 plato",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Arroz integral crudo",
+    "category": "cereales",
+    "kcal": 362,
+    "protein": 7.5,
+    "carbs": 76,
+    "fat": 2.7,
+    "portions": []
+  },
+  {
+    "name": "Pasta cruda",
+    "category": "cereales",
+    "kcal": 359,
+    "protein": 13,
+    "carbs": 73,
+    "fat": 1.5,
+    "portions": []
+  },
+  {
+    "name": "Pasta cocida",
+    "category": "cereales",
+    "kcal": 158,
+    "protein": 5.8,
+    "carbs": 31,
+    "fat": 0.9,
+    "portions": [
+      {
+        "name": "1 plato",
+        "grams": 220
+      }
+    ]
+  },
+  {
+    "name": "Pan blanco",
+    "category": "cereales",
+    "kcal": 265,
+    "protein": 9,
+    "carbs": 49,
+    "fat": 3.2,
+    "portions": [
+      {
+        "name": "1 rebanada",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Pan integral",
+    "category": "cereales",
+    "kcal": 247,
+    "protein": 13,
+    "carbs": 41,
+    "fat": 3.4,
+    "portions": [
+      {
+        "name": "1 rebanada",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Pan de molde",
+    "category": "cereales",
+    "kcal": 270,
+    "protein": 8,
+    "carbs": 50,
+    "fat": 3.5,
+    "portions": [
+      {
+        "name": "1 rebanada",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Tortilla de trigo (wrap)",
+    "category": "cereales",
+    "kcal": 310,
+    "protein": 8,
+    "carbs": 50,
+    "fat": 8,
+    "portions": [
+      {
+        "name": "1 tortilla",
+        "grams": 60
+      }
+    ]
+  },
+  {
+    "name": "Copos de avena",
+    "category": "cereales",
+    "kcal": 372,
+    "protein": 13,
+    "carbs": 60,
+    "fat": 7,
+    "portions": [
+      {
+        "name": "1 puñado",
+        "grams": 40
+      }
+    ]
+  },
+  {
+    "name": "Cereales de maíz (copos)",
+    "category": "cereales",
+    "kcal": 357,
+    "protein": 7,
+    "carbs": 84,
+    "fat": 0.9,
+    "portions": [
+      {
+        "name": "1 bol",
+        "grams": 40
+      }
+    ]
+  },
+  {
+    "name": "Tortita de arroz",
+    "category": "cereales",
+    "kcal": 387,
+    "protein": 8,
+    "carbs": 81,
+    "fat": 3,
+    "portions": [
+      {
+        "name": "1 tortita",
+        "grams": 9
+      }
+    ]
+  },
+  {
+    "name": "Quinoa cruda",
+    "category": "cereales",
+    "kcal": 368,
+    "protein": 14,
+    "carbs": 64,
+    "fat": 6,
+    "portions": []
+  },
+  {
+    "name": "Quinoa cocida",
+    "category": "cereales",
+    "kcal": 120,
+    "protein": 4.4,
+    "carbs": 21,
+    "fat": 1.9,
+    "portions": []
+  },
+  {
+    "name": "Cuscús crudo",
+    "category": "cereales",
+    "kcal": 376,
+    "protein": 13,
+    "carbs": 77,
+    "fat": 0.6,
+    "portions": []
+  },
+  {
+    "name": "Harina de trigo",
+    "category": "cereales",
+    "kcal": 364,
+    "protein": 10,
+    "carbs": 76,
+    "fat": 1,
+    "portions": []
+  },
+  {
+    "name": "Patata cruda",
+    "category": "cereales",
+    "kcal": 77,
+    "protein": 2,
+    "carbs": 17,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 patata",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Patata cocida",
+    "category": "cereales",
+    "kcal": 87,
+    "protein": 1.9,
+    "carbs": 20,
+    "fat": 0.1,
+    "portions": []
+  },
+  {
+    "name": "Boniato crudo",
+    "category": "cereales",
+    "kcal": 86,
+    "protein": 1.6,
+    "carbs": 20,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 boniato",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Lentejas crudas",
+    "category": "legumbres",
+    "kcal": 340,
+    "protein": 24,
+    "carbs": 55,
+    "fat": 1.5,
+    "portions": []
+  },
+  {
+    "name": "Lentejas cocidas",
+    "category": "legumbres",
+    "kcal": 116,
+    "protein": 9,
+    "carbs": 20,
+    "fat": 0.4,
+    "portions": []
+  },
+  {
+    "name": "Garbanzos crudos",
+    "category": "legumbres",
+    "kcal": 360,
+    "protein": 20,
+    "carbs": 55,
+    "fat": 6,
+    "portions": []
+  },
+  {
+    "name": "Garbanzos cocidos",
+    "category": "legumbres",
+    "kcal": 139,
+    "protein": 8.9,
+    "carbs": 22,
+    "fat": 2.6,
+    "portions": []
+  },
+  {
+    "name": "Alubias cocidas",
+    "category": "legumbres",
+    "kcal": 127,
+    "protein": 8.7,
+    "carbs": 23,
+    "fat": 0.5,
+    "portions": []
+  },
+  {
+    "name": "Hummus",
+    "category": "legumbres",
+    "kcal": 177,
+    "protein": 8,
+    "carbs": 14,
+    "fat": 11,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 15
+      }
+    ]
+  },
+  {
+    "name": "Tofu",
+    "category": "legumbres",
+    "kcal": 76,
+    "protein": 8,
+    "carbs": 1.9,
+    "fat": 4.8,
+    "portions": []
+  },
+  {
+    "name": "Brócoli",
+    "category": "verduras",
+    "kcal": 34,
+    "protein": 2.8,
+    "carbs": 7,
+    "fat": 0.4,
+    "portions": []
+  },
+  {
+    "name": "Espinacas",
+    "category": "verduras",
+    "kcal": 23,
+    "protein": 2.9,
+    "carbs": 3.6,
+    "fat": 0.4,
+    "portions": []
+  },
+  {
+    "name": "Lechuga",
+    "category": "verduras",
+    "kcal": 15,
+    "protein": 1.4,
+    "carbs": 2.9,
+    "fat": 0.2,
+    "portions": []
+  },
+  {
+    "name": "Tomate",
+    "category": "verduras",
+    "kcal": 18,
+    "protein": 0.9,
+    "carbs": 3.9,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 tomate",
+        "grams": 120
+      }
+    ]
+  },
+  {
+    "name": "Pepino",
+    "category": "verduras",
+    "kcal": 15,
+    "protein": 0.7,
+    "carbs": 3.6,
+    "fat": 0.1,
+    "portions": []
+  },
+  {
+    "name": "Zanahoria",
+    "category": "verduras",
+    "kcal": 41,
+    "protein": 0.9,
+    "carbs": 9.6,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 zanahoria",
+        "grams": 70
+      }
+    ]
+  },
+  {
+    "name": "Pimiento rojo",
+    "category": "verduras",
+    "kcal": 31,
+    "protein": 1,
+    "carbs": 6,
+    "fat": 0.3,
+    "portions": []
+  },
+  {
+    "name": "Cebolla",
+    "category": "verduras",
+    "kcal": 40,
+    "protein": 1.1,
+    "carbs": 9.3,
+    "fat": 0.1,
+    "portions": []
+  },
+  {
+    "name": "Calabacín",
+    "category": "verduras",
+    "kcal": 17,
+    "protein": 1.2,
+    "carbs": 3.1,
+    "fat": 0.3,
+    "portions": []
+  },
+  {
+    "name": "Champiñones",
+    "category": "verduras",
+    "kcal": 22,
+    "protein": 3.1,
+    "carbs": 3.3,
+    "fat": 0.3,
+    "portions": []
+  },
+  {
+    "name": "Judías verdes",
+    "category": "verduras",
+    "kcal": 31,
+    "protein": 1.8,
+    "carbs": 7,
+    "fat": 0.1,
+    "portions": []
+  },
+  {
+    "name": "Coliflor",
+    "category": "verduras",
+    "kcal": 25,
+    "protein": 1.9,
+    "carbs": 5,
+    "fat": 0.3,
+    "portions": []
+  },
+  {
+    "name": "Berenjena",
+    "category": "verduras",
+    "kcal": 25,
+    "protein": 1,
+    "carbs": 6,
+    "fat": 0.2,
+    "portions": []
+  },
+  {
+    "name": "Aguacate",
+    "category": "verduras",
+    "kcal": 160,
+    "protein": 2,
+    "carbs": 8.5,
+    "fat": 14.7,
+    "portions": [
+      {
+        "name": "1/2 aguacate",
+        "grams": 100
+      }
+    ]
+  },
+  {
+    "name": "Plátano",
+    "category": "frutas",
+    "kcal": 89,
+    "protein": 1.1,
+    "carbs": 23,
+    "fat": 0.3,
+    "portions": [
+      {
+        "name": "1 plátano",
+        "grams": 120
+      }
+    ]
+  },
+  {
+    "name": "Manzana",
+    "category": "frutas",
+    "kcal": 52,
+    "protein": 0.3,
+    "carbs": 14,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 manzana",
+        "grams": 180
+      }
+    ]
+  },
+  {
+    "name": "Naranja",
+    "category": "frutas",
+    "kcal": 47,
+    "protein": 0.9,
+    "carbs": 12,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 naranja",
+        "grams": 180
+      }
+    ]
+  },
+  {
+    "name": "Mandarina",
+    "category": "frutas",
+    "kcal": 53,
+    "protein": 0.8,
+    "carbs": 13,
+    "fat": 0.3,
+    "portions": [
+      {
+        "name": "1 mandarina",
+        "grams": 80
+      }
+    ]
+  },
+  {
+    "name": "Pera",
+    "category": "frutas",
+    "kcal": 57,
+    "protein": 0.4,
+    "carbs": 15,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 pera",
+        "grams": 170
+      }
+    ]
+  },
+  {
+    "name": "Melocotón",
+    "category": "frutas",
+    "kcal": 39,
+    "protein": 0.9,
+    "carbs": 10,
+    "fat": 0.3,
+    "portions": [
+      {
+        "name": "1 melocotón",
+        "grams": 150
+      }
+    ]
+  },
+  {
+    "name": "Fresas",
+    "category": "frutas",
+    "kcal": 32,
+    "protein": 0.7,
+    "carbs": 7.7,
+    "fat": 0.3,
+    "portions": []
+  },
+  {
+    "name": "Arándanos",
+    "category": "frutas",
+    "kcal": 57,
+    "protein": 0.7,
+    "carbs": 14,
+    "fat": 0.3,
+    "portions": []
+  },
+  {
+    "name": "Uvas",
+    "category": "frutas",
+    "kcal": 69,
+    "protein": 0.7,
+    "carbs": 18,
+    "fat": 0.2,
+    "portions": []
+  },
+  {
+    "name": "Piña",
+    "category": "frutas",
+    "kcal": 50,
+    "protein": 0.5,
+    "carbs": 13,
+    "fat": 0.1,
+    "portions": []
+  },
+  {
+    "name": "Sandía",
+    "category": "frutas",
+    "kcal": 30,
+    "protein": 0.6,
+    "carbs": 7.6,
+    "fat": 0.2,
+    "portions": []
+  },
+  {
+    "name": "Melón",
+    "category": "frutas",
+    "kcal": 34,
+    "protein": 0.8,
+    "carbs": 8,
+    "fat": 0.2,
+    "portions": []
+  },
+  {
+    "name": "Kiwi",
+    "category": "frutas",
+    "kcal": 61,
+    "protein": 1.1,
+    "carbs": 15,
+    "fat": 0.5,
+    "portions": [
+      {
+        "name": "1 kiwi",
+        "grams": 75
+      }
+    ]
+  },
+  {
+    "name": "Dátiles",
+    "category": "frutas",
+    "kcal": 282,
+    "protein": 2.5,
+    "carbs": 75,
+    "fat": 0.4,
+    "portions": [
+      {
+        "name": "1 dátil",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "Almendras",
+    "category": "frutos_secos",
+    "kcal": 579,
+    "protein": 21,
+    "carbs": 22,
+    "fat": 50,
+    "portions": [
+      {
+        "name": "1 puñado",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Nueces",
+    "category": "frutos_secos",
+    "kcal": 654,
+    "protein": 15,
+    "carbs": 14,
+    "fat": 65,
+    "portions": [
+      {
+        "name": "1 nuez",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "Cacahuetes",
+    "category": "frutos_secos",
+    "kcal": 567,
+    "protein": 26,
+    "carbs": 16,
+    "fat": 49,
+    "portions": [
+      {
+        "name": "1 puñado",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Anacardos",
+    "category": "frutos_secos",
+    "kcal": 553,
+    "protein": 18,
+    "carbs": 30,
+    "fat": 44,
+    "portions": [
+      {
+        "name": "1 puñado",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Pistachos",
+    "category": "frutos_secos",
+    "kcal": 560,
+    "protein": 20,
+    "carbs": 28,
+    "fat": 45,
+    "portions": [
+      {
+        "name": "1 puñado",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Crema de cacahuete",
+    "category": "frutos_secos",
+    "kcal": 588,
+    "protein": 25,
+    "carbs": 20,
+    "fat": 50,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 16
+      }
+    ]
+  },
+  {
+    "name": "Semillas de chía",
+    "category": "frutos_secos",
+    "kcal": 486,
+    "protein": 17,
+    "carbs": 42,
+    "fat": 31,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 12
+      }
+    ]
+  },
+  {
+    "name": "Aceite de oliva",
+    "category": "grasas",
+    "kcal": 884,
+    "protein": 0,
+    "carbs": 0,
+    "fat": 100,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 13
+      },
+      {
+        "name": "1 cucharadita",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "Aceite de girasol",
+    "category": "grasas",
+    "kcal": 884,
+    "protein": 0,
+    "carbs": 0,
+    "fat": 100,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 13
+      }
+    ]
+  },
+  {
+    "name": "Mayonesa",
+    "category": "grasas",
+    "kcal": 680,
+    "protein": 1,
+    "carbs": 2,
+    "fat": 75,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 15
+      }
+    ]
+  },
+  {
+    "name": "Chocolate negro 70%",
+    "category": "dulces",
+    "kcal": 598,
+    "protein": 8,
+    "carbs": 46,
+    "fat": 43,
+    "portions": [
+      {
+        "name": "1 onza",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "Chocolate con leche",
+    "category": "dulces",
+    "kcal": 535,
+    "protein": 7.6,
+    "carbs": 59,
+    "fat": 30,
+    "portions": [
+      {
+        "name": "1 onza",
+        "grams": 10
+      }
+    ]
+  },
+  {
+    "name": "Azúcar",
+    "category": "dulces",
+    "kcal": 387,
+    "protein": 0,
+    "carbs": 100,
+    "fat": 0,
+    "portions": [
+      {
+        "name": "1 cucharadita",
+        "grams": 5
+      }
+    ]
+  },
+  {
+    "name": "Miel",
+    "category": "dulces",
+    "kcal": 304,
+    "protein": 0.3,
+    "carbs": 82,
+    "fat": 0,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "Mermelada",
+    "category": "dulces",
+    "kcal": 250,
+    "protein": 0.4,
+    "carbs": 62,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 20
+      }
+    ]
+  },
+  {
+    "name": "Cacao en polvo",
+    "category": "dulces",
+    "kcal": 228,
+    "protein": 20,
+    "carbs": 58,
+    "fat": 14,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 8
+      }
+    ]
+  },
+  {
+    "name": "Galletas María",
+    "category": "dulces",
+    "kcal": 440,
+    "protein": 7,
+    "carbs": 75,
+    "fat": 12,
+    "portions": [
+      {
+        "name": "1 galleta",
+        "grams": 6
+      }
+    ]
+  },
+  {
+    "name": "Proteína whey en polvo",
+    "category": "otros",
+    "kcal": 400,
+    "protein": 80,
+    "carbs": 8,
+    "fat": 6,
+    "portions": [
+      {
+        "name": "1 cacito",
+        "grams": 30
+      }
+    ]
+  },
+  {
+    "name": "Tomate frito",
+    "category": "otros",
+    "kcal": 90,
+    "protein": 1.5,
+    "carbs": 9,
+    "fat": 5.5,
+    "portions": []
+  },
+  {
+    "name": "Kétchup",
+    "category": "otros",
+    "kcal": 100,
+    "protein": 1.2,
+    "carbs": 25,
+    "fat": 0.1,
+    "portions": [
+      {
+        "name": "1 cucharada",
+        "grams": 17
+      }
+    ]
+  },
+  {
+    "name": "Pizza margarita",
+    "category": "otros",
+    "kcal": 266,
+    "protein": 11,
+    "carbs": 33,
+    "fat": 10,
+    "portions": []
+  },
+  {
+    "name": "Patatas fritas de bolsa",
+    "category": "otros",
+    "kcal": 536,
+    "protein": 7,
+    "carbs": 53,
+    "fat": 34,
+    "portions": [
+      {
+        "name": "1 bolsa pequeña",
+        "grams": 40
+      }
+    ]
+  },
+  {
+    "name": "Tortilla de patata",
+    "category": "otros",
+    "kcal": 160,
+    "protein": 6.5,
+    "carbs": 12,
+    "fat": 9.5,
+    "portions": [
+      {
+        "name": "1 pincho",
+        "grams": 120
+      }
+    ]
+  },
+  {
+    "name": "Cerveza",
+    "category": "bebidas",
+    "kcal": 43,
+    "protein": 0.5,
+    "carbs": 3.6,
+    "fat": 0,
+    "portions": [
+      {
+        "name": "1 caña",
+        "grams": 200
+      },
+      {
+        "name": "1 botellín",
+        "grams": 330
+      }
+    ]
+  },
+  {
+    "name": "Vino tinto",
+    "category": "bebidas",
+    "kcal": 85,
+    "protein": 0.1,
+    "carbs": 2.6,
+    "fat": 0,
+    "portions": [
+      {
+        "name": "1 copa",
+        "grams": 150
+      }
+    ]
+  },
+  {
+    "name": "Refresco de cola",
+    "category": "bebidas",
+    "kcal": 42,
+    "protein": 0,
+    "carbs": 10.6,
+    "fat": 0,
+    "portions": [
+      {
+        "name": "1 lata",
+        "grams": 330
+      }
+    ]
+  },
+  {
+    "name": "Zumo de naranja",
+    "category": "bebidas",
+    "kcal": 45,
+    "protein": 0.7,
+    "carbs": 10.4,
+    "fat": 0.2,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Bebida de avena",
+    "category": "bebidas",
+    "kcal": 45,
+    "protein": 1,
+    "carbs": 7,
+    "fat": 1.5,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Bebida de soja",
+    "category": "bebidas",
+    "kcal": 40,
+    "protein": 3.3,
+    "carbs": 2.5,
+    "fat": 1.8,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  },
+  {
+    "name": "Bebida de almendras",
+    "category": "bebidas",
+    "kcal": 15,
+    "protein": 0.5,
+    "carbs": 0.3,
+    "fat": 1.2,
+    "portions": [
+      {
+        "name": "1 vaso",
+        "grams": 200
+      }
+    ]
+  }
+]

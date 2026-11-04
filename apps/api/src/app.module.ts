@@ -4,6 +4,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "./auth/auth.module.js";
 import { getMongoUri } from "./config/mongo-uri.js";
 import { ExercisesModule } from "./exercises/exercises.module.js";
+import { FoodsModule } from "./foods/foods.module.js";
 import { HealthController } from "./health.controller.js";
 import { ProfileModule } from "./profile/profile.module.js";
 import { SessionsModule } from "./sessions/sessions.module.js";
@@ -26,6 +27,7 @@ import { WeightsModule } from "./weights/weights.module.js";
     }),
     AuthModule,
     ExercisesModule,
+    FoodsModule,
     TrainingsModule,
     SettingsModule,
     SessionsModule,

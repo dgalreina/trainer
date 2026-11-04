@@ -10,7 +10,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build:lambda": "nest build && node scripts/package-lambda.mjs",
-    "seed": "node --env-file=.env scripts/seed-exercises.mjs"
+    "seed": "node --env-file=.env scripts/seed-exercises.mjs && node --env-file=.env scripts/seed-foods.mjs"
   },
   "dependencies": {
     "@codegenie/serverless-express": "^4.17.1",
