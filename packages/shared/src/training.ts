@@ -6,13 +6,6 @@ const dateSchema = z.iso.date();
 
 export const MAX_TRAINING_WEEKS = 104;
 
-/** Descansos entre series que ofrece la app, en segundos. 0 = sin temporizador. */
-export const REST_SECONDS_OPTIONS = [0, 60, 90, 120, 180] as const;
-export const DEFAULT_REST_SECONDS = 90;
-export const MAX_REST_SECONDS = 600;
-
-const restSecondsSchema = z.number().int().min(0).max(MAX_REST_SECONDS);
-
 // Los campos de un entrenamiento, sin valores por defecto. Se comparten entre crear y editar:
 // en editar un campo ausente debe quedarse como está, y con un `.default()` dentro de un
 // `.partial()` Zod lo rellenaría y machacaría el valor guardado.
@@ -20,8 +13,6 @@ const trainingFields = {
   name: z.string().trim().min(1).max(100),
   startDate: dateSchema,
   durationWeeks: z.number().int().min(1).max(MAX_TRAINING_WEEKS),
-  /** Descanso entre series de todo el entrenamiento. Se fija aquí, no mientras se entrena. */
-  restSeconds: restSecondsSchema,
 };
 
 /**
@@ -37,10 +28,7 @@ export const trainingSchema = z.object({
 export type Training = z.infer<typeof trainingSchema>;
 
 /** Al crearlo no lleva rutinas: se añaden después, una a una. */
-export const createTrainingSchema = z.object({
-  ...trainingFields,
-  restSeconds: restSecondsSchema.default(DEFAULT_REST_SECONDS),
-});
+export const createTrainingSchema = z.object(trainingFields);
 export type CreateTraining = z.input<typeof createTrainingSchema>;
 
 export const updateTrainingSchema = z.object(trainingFields).partial();

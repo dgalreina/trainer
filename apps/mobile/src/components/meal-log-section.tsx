@@ -145,7 +145,7 @@ export function MealLogSection({
               </ThemedText>
             </View>
             <Pressable accessibilityLabel={`Borrar ${log.name}`} hitSlop={10} onPress={() => onDelete(log)}>
-              <ThemedText style={{ color: theme.textSecondary }}>✕</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>✕</ThemedText>
             </Pressable>
           </View>
           {log.items.map((item, index) => (
@@ -211,7 +211,7 @@ export function MealLogSection({
                   accessibilityLabel={`Quitar ${food?.name ?? 'alimento'}`}
                   hitSlop={10}
                   onPress={() => setItems((prev) => prev.filter((_, i) => i !== index))}>
-                  <ThemedText style={{ color: theme.textSecondary }}>✕</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>✕</ThemedText>
                 </Pressable>
               </View>
             );

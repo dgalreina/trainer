@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BACK_BUTTON_SIZE, BackButton } from '@/components/back-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -19,6 +20,8 @@ interface ScreenProps {
   subtitle?: string;
   /** Contenido a la derecha del título (por ejemplo, un botón). */
   action?: ReactNode;
+  /** Pantalla apilada con flecha de «atrás» a la izquierda y el título centrado. */
+  onBack?: () => void;
   /** false si el contenido gestiona su propio scroll (una FlatList). */
   scroll?: boolean;
   /** true en pantallas fuera de las pestañas: sin hueco para la barra inferior. */
@@ -39,48 +42,61 @@ const FOOTER_SPACE = 200;
  * mientras ellas siguen ondeando); en el resto (móvil nativo, pantallas fuera de las
  * pestañas) las pone cada pantalla.
  */
-export function Screen({ title, subtitle, action, scroll = true, stacked, footer, fixedTop, children }: ScreenProps) {
+export function Screen({ title, subtitle, action, onBack, scroll = true, stacked, footer, fixedTop, children }: ScreenProps) {
   const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
-  const header =
-    title || action ? (
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          {title ? <ThemedText type="subtitle">{title}</ThemedText> : null}
-          {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
-        </View>
-        {action}
+  const header = onBack ? (
+    <View style={styles.header}>
+      <BackButton onPress={onBack} />
+      <View style={[styles.headerText, styles.headerCentered]}>
+        {title ? <ThemedText type="subtitle" style={styles.centeredText}>{title}</ThemedText> : null}
+        {subtitle ? (
+          <ThemedText themeColor="textSecondary" style={styles.centeredText}>
+            {subtitle}
+          </ThemedText>
+        ) : null}
       </View>
-    ) : null;
+      {/* Hueco del mismo ancho que la flecha: así el título queda centrado de verdad. */}
+      <View style={{ width: BACK_BUTTON_SIZE }} />
+    </View>
+  ) : title || action ? (
+    <View style={[styles.header, styles.headerPlain]}>
+      <View style={styles.headerText}>
+        {title ? <ThemedText type="subtitle">{title}</ThemedText> : null}
+        {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
+      </View>
+      {action}
+    </View>
+  ) : null;
 
   const theme = useTheme();
 
+  // Título y `fixedTop` quedan fijos arriba; lo único que se desplaza es el contenido.
+  const hasFixed = Boolean(header || fixedTop);
+  const contentStyle = [
+    styles.content,
+    hasFixed ? styles.afterFixedTop : null,
+    { paddingBottom: bottomInset },
+  ];
+
   const body = (
     <SafeAreaView style={styles.safe}>
-      {fixedTop ? <View style={[styles.content, styles.fixedTop]}>{fixedTop}</View> : null}
+      {hasFixed ? (
+        <View style={[styles.content, styles.fixedTop]}>
+          {header}
+          {fixedTop}
+        </View>
+      ) : null}
       {scroll ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.content,
-            fixedTop ? styles.afterFixedTop : null,
-            { paddingBottom: bottomInset },
-          ]}>
-          {header}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={contentStyle}>
           {children}
         </ScrollView>
       ) : (
-        <View
-          style={[
-            styles.content,
-            styles.fill,
-            fixedTop ? styles.afterFixedTop : null,
-            { paddingBottom: bottomInset },
-          ]}>
-          {header}
-          {children}
-        </View>
+        <View style={[contentStyle, styles.fill]}>{children}</View>
       )}
       {footer ? (
         <View style={[styles.footer, { backgroundColor: theme.background }]}>{footer}</View>
@@ -124,10 +140,13 @@ const styles = StyleSheet.create({
   afterFixedTop: { paddingTop: Spacing.two },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    // Arriba, no al centro: con subtítulo, la flecha se alinea con la línea del título.
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.three,
-    paddingBottom: Spacing.two,
   },
   headerText: { flex: 1 },
+  headerPlain: { alignItems: 'flex-end' },
+  headerCentered: { alignItems: 'center' },
+  centeredText: { textAlign: 'center' },
 });

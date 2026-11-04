@@ -1,17 +1,11 @@
-import {
-  DEFAULT_REST_SECONDS,
-  MAX_TRAINING_WEEKS,
-  REST_SECONDS_OPTIONS,
-  trainingProgress,
-  type Training,
-} from '@trainer/shared';
+import { dayLabel, MAX_TRAINING_WEEKS, trainingProgress, type Training } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { DateField } from '@/components/date-field';
-import { Button, Chip, ErrorText, Field, LinkButton, NumberInput } from '@/components/form';
+import { Button, ErrorText, Field, NumberInput } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -30,7 +24,7 @@ export function TrainingEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
-  const { trainings, loading, create, update, remove } = useTrainings();
+  const { trainings, loading, create, update, remove, addRoutine, removeRoutine } = useTrainings();
   const { settings, setActiveTraining } = useSettings();
   const { byId } = useExercises();
 
@@ -40,7 +34,6 @@ export function TrainingEditorScreen() {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(todayISO());
   const [weeks, setWeeks] = useState(String(DEFAULT_WEEKS));
-  const [restSeconds, setRestSeconds] = useState<number>(DEFAULT_REST_SECONDS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,19 +45,61 @@ export function TrainingEditorScreen() {
     setName(existing.name);
     setStartDate(existing.startDate);
     setWeeks(String(existing.durationWeeks));
-    setRestSeconds(existing.restSeconds);
   }, [existing]);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/entrenamientos'));
-  const back = <LinkButton title="Atrás" onPress={goBack} />;
-
   const weeksNumber = Number.parseInt(weeks, 10);
   const datesValid = isValidISODate(startDate) && weeksNumber >= 1 && weeksNumber <= MAX_TRAINING_WEEKS;
   const preview = datesValid
     ? trainingProgress({ startDate, durationWeeks: weeksNumber }, todayISO())
     : null;
 
-  async function onSave() {
+  // Un entrenamiento que ya existe se guarda solo: al dejar de tocar un campo válido, se envía el cambio.
+  useEffect(() => {
+    if (isNew || !existing || !initialized.current) return;
+    const trimmed = name.trim();
+    if (!trimmed || !datesValid) return;
+    if (
+      trimmed === existing.name &&
+      startDate === existing.startDate &&
+      weeksNumber === existing.durationWeeks
+    ) {
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        await update(existing.id, { name: trimmed, startDate, durationWeeks: weeksNumber });
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se ha podido guardar');
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [isNew, existing, name, startDate, weeksNumber, datesValid, update]);
+
+  /** Crea la siguiente rutina, vacía y sin nombre: «Día N» es su posición, el nombre y los ejercicios se ponen al abrirla. */
+  async function onAddRoutine() {
+    if (!existing) return;
+    setError(null);
+    try {
+      await addRoutine(existing.id, { name: '' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se ha podido añadir la rutina');
+    }
+  }
+
+  /** Solo se borra desde aquí una rutina vacía; con ejercicios se borra desde dentro. */
+  async function onRemoveEmptyRoutine(routineId: string) {
+    if (!existing) return;
+    setError(null);
+    try {
+      await removeRoutine(existing.id, routineId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se ha podido borrar la rutina');
+    }
+  }
+
+  async function onCreate() {
     const trimmed = name.trim();
     if (!trimmed) return setError('Ponle un nombre al entrenamiento');
     if (!isValidISODate(startDate)) return setError('Elige una fecha de inicio válida');
@@ -75,15 +110,9 @@ export function TrainingEditorScreen() {
     setSaving(true);
     setError(null);
     try {
-      const data = { name: trimmed, startDate, durationWeeks: weeksNumber, restSeconds };
-      if (isNew) {
-        const created = await create(data);
-        // Recién creado está vacío: se pasa a su página para añadirle rutinas.
-        router.replace({ pathname: '/entrenamiento/[id]', params: { id: created.id } });
-      } else {
-        await update(id, data);
-        goBack();
-      }
+      const created = await create({ name: trimmed, startDate, durationWeeks: weeksNumber });
+      // Recién creado está vacío: se pasa a su página para añadirle rutinas.
+      router.replace({ pathname: '/entrenamiento/[id]', params: { id: created.id } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar');
     } finally {
@@ -117,7 +146,7 @@ export function TrainingEditorScreen() {
 
   if (!isNew && !existing) {
     return (
-      <Screen title="Entrenamiento" stacked action={back}>
+      <Screen title="Entrenamiento" stacked onBack={goBack}>
         {loading ? (
           <ActivityIndicator color={theme.primary} />
         ) : (
@@ -130,7 +159,7 @@ export function TrainingEditorScreen() {
   const isActive = existing ? settings.activeTrainingId === existing.id : false;
 
   return (
-    <Screen title={isNew ? 'Nuevo entrenamiento' : existing!.name} stacked action={back}>
+    <Screen title={isNew ? 'Nuevo entrenamiento' : existing!.name} stacked onBack={goBack}>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Fuerza, Definición…" />
       <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
       <View style={styles.weeks}>
@@ -147,39 +176,28 @@ export function TrainingEditorScreen() {
         <NumberInput accessibilityLabel="Semanas de duración" value={weeks} onChangeText={setWeeks} />
       </View>
 
-      <View style={styles.restField}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          Descanso entre series
-        </ThemedText>
-        <View style={styles.chips}>
-          {REST_SECONDS_OPTIONS.map((seconds) => (
-            <Chip
-              key={seconds}
-              label={seconds === 0 ? 'Sin' : `${seconds} s`}
-              active={restSeconds === seconds}
-              onPress={() => setRestSeconds(seconds)}
-            />
-          ))}
-        </View>
-        <ThemedText type="small" themeColor="textSecondary">
-          Es el mismo para todas las rutinas de este entrenamiento.
-        </ThemedText>
-      </View>
-
       <ErrorText message={error} />
-      <Button title={isNew ? 'Crear entrenamiento' : 'Guardar cambios'} onPress={onSave} loading={saving} />
+      {isNew ? <Button title="Crear entrenamiento" onPress={onCreate} loading={saving} /> : null}
 
       {existing && (
         <>
-          <ThemedText type="smallBold" style={styles.section}>
-            Rutinas
-          </ThemedText>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="smallBold">Rutinas</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Añadir rutina"
+              onPress={onAddRoutine}
+              style={[styles.plus, { backgroundColor: theme.primary }]}>
+              <View style={[styles.plusBar, styles.plusH, { backgroundColor: theme.onPrimary }]} />
+              <View style={[styles.plusBar, styles.plusV, { backgroundColor: theme.onPrimary }]} />
+            </Pressable>
+          </View>
           {existing.routines.length === 0 ? (
             <ThemedText themeColor="textSecondary">
-              Aún no tiene rutinas. Añade una por cada día de entreno: «Pecho + Espalda», «Pierna»…
+              Aún no tiene rutinas. Toca + para crear el Día 1, el Día 2… y luego ábrelos para ponerles nombre y ejercicios.
             </ThemedText>
           ) : (
-            existing.routines.map((routine) => {
+            existing.routines.map((routine, index) => {
               const summary = routineSummary(routine, byId);
               return (
                 <Card
@@ -191,26 +209,31 @@ export function TrainingEditorScreen() {
                     })
                   }
                   style={styles.routine}>
-                  <ThemedText type="smallBold">{routine.name}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {summary.counts}
-                  </ThemedText>
-                  {summary.preview ? <ThemedText type="small">{summary.preview}</ThemedText> : null}
+                  <View style={styles.routineRow}>
+                    <View style={styles.routineText}>
+                      <ThemedText type="small" themeColor="primaryText">
+                        {dayLabel(index)}
+                      </ThemedText>
+                      <ThemedText type="smallBold">{routine.name || 'Sin nombre'}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {summary.counts}
+                      </ThemedText>
+                      {summary.preview ? <ThemedText type="small">{summary.preview}</ThemedText> : null}
+                    </View>
+                    {routine.slots.length === 0 && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Borrar ${dayLabel(index)}`}
+                        hitSlop={10}
+                        onPress={() => onRemoveEmptyRoutine(routine.id)}>
+                        <ThemedText type="small" style={{ color: theme.textSecondary }}>✕</ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
                 </Card>
               );
             })
           )}
-          <Button
-            variant="secondary"
-            title="Añadir rutina"
-            onPress={() =>
-              router.push({
-                pathname: '/entrenamiento/[id]/rutina/[rid]',
-                params: { id: existing.id, rid: 'nueva' },
-              })
-            }
-          />
-
           {isActive ? (
             <Card tone="primarySoft">
               <ThemedText type="smallBold">Es tu entrenamiento actual</ThemedText>
@@ -228,8 +251,12 @@ export function TrainingEditorScreen() {
 const styles = StyleSheet.create({
   weeks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
   weeksText: { flex: 1 },
-  restField: { gap: Spacing.two },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  section: { marginTop: Spacing.two },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.two },
+  plus: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  plusBar: { position: 'absolute', borderRadius: 1 },
+  plusH: { width: 18, height: 2.5 },
+  plusV: { width: 2.5, height: 18 },
   routine: { gap: Spacing.one },
+  routineRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  routineText: { flex: 1 },
 });

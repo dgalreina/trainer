@@ -83,12 +83,7 @@ export function FoodsScreen() {
       title="Alimentos"
       scroll={false}
       stacked
-      action={
-        <LinkButton
-          title="Atrás"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/dieta'))}
-        />
-      }>
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/dieta'))}>
       <Field
         label="Buscar"
         accessibilityLabel="Buscar"
@@ -115,6 +110,7 @@ export function FoodsScreen() {
       <ErrorText message={adding ? null : (error ?? loadError)} />
 
       <FlatList
+        showsVerticalScrollIndicator={false}
         data={visible}
         keyExtractor={(f) => f.id}
         refreshing={loading}
@@ -171,7 +167,7 @@ export function FoodsScreen() {
                   )
                 }
                 hitSlop={10}>
-                <ThemedText style={{ color: theme.textSecondary }}>✕</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>✕</ThemedText>
               </Pressable>
             )}
           </Card>

@@ -1,4 +1,4 @@
-import type { PerformedSet, WorkoutSession } from '@trainer/shared';
+import { routineTitle, type PerformedSet, type WorkoutSession } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Vibration, View } from 'react-native';
@@ -54,8 +54,9 @@ export function WorkoutScreen() {
 
   const training = trainings.find((t) => t.id === id);
   const routine = training?.routines.find((r) => r.id === rid);
-  // El descanso se define en el entrenamiento, no mientras se entrena.
-  const restSeconds = training?.restSeconds ?? 0;
+  const title = training && routine ? routineTitle(training.routines, routine.id) : 'Entreno';
+  // El descanso se define en la rutina, no mientras se entrena.
+  const restSeconds = routine?.restSeconds ?? 0;
   const key = draftKey(id, rid);
 
   const [draft, setDraft] = useState<WorkoutDraft | null>(null);
@@ -226,11 +227,9 @@ export function WorkoutScreen() {
     goBack();
   }
 
-  const back = <LinkButton title="Atrás" onPress={goBack} />;
-
   if (!training || !routine) {
     return (
-      <Screen title="Entreno" stacked action={back}>
+      <Screen title="Entreno" stacked onBack={goBack}>
         {loading ? (
           <ActivityIndicator color={theme.primary} />
         ) : (
@@ -242,7 +241,7 @@ export function WorkoutScreen() {
 
   if (finished) {
     return (
-      <Screen title="¡Entreno guardado!" subtitle={routine.name} stacked>
+      <Screen title="¡Entreno guardado!" subtitle={title} stacked>
         <Card tone="primarySoft">
           <ThemedText type="smallBold">Resumen</ThemedText>
           <ThemedText>
@@ -261,7 +260,7 @@ export function WorkoutScreen() {
 
   if (!draft) {
     return (
-      <Screen title={routine.name} subtitle={training.name} stacked action={back}>
+      <Screen title={title} subtitle={training.name} stacked onBack={goBack}>
         <ActivityIndicator color={theme.primary} />
       </Screen>
     );
@@ -302,7 +301,7 @@ export function WorkoutScreen() {
   );
 
   return (
-    <Screen title={routine.name} subtitle={training.name} stacked action={back} footer={footer}>
+    <Screen title={title} subtitle={training.name} stacked onBack={goBack} footer={footer}>
       {draft.startedAt === null ? (
         <Button title="Comenzar" onPress={start} />
       ) : (
@@ -370,7 +369,7 @@ export function WorkoutScreen() {
                   disabled={entry.sets.length === 1}
                   hitSlop={8}
                   style={entry.sets.length === 1 ? styles.disabled : undefined}>
-                  <ThemedText themeColor="textSecondary">✕</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">✕</ThemedText>
                 </Pressable>
               </View>
             ))}

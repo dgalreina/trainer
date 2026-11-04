@@ -65,6 +65,12 @@ const webInput = {
   minHeight: 48,
   boxSizing: 'border-box' as const,
   width: '100%',
+  // En iOS el selector de fecha tiene un ancho propio y se sale de la pantalla si no se le quita.
+  display: 'block' as const,
+  minWidth: 0,
+  maxWidth: '100%',
+  WebkitAppearance: 'none' as const,
+  appearance: 'none' as const,
 };
 
 const styles = StyleSheet.create({

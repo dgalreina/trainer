@@ -16,10 +16,12 @@ import { type TrainingRoutineDoc, TrainingDoc, type TrainingDocument } from "./t
 
 type RoutineDocument = TrainingDocument["routines"][number];
 
-function toRoutine(doc: RoutineDocument & { id?: string }): Routine {
+// Antes el descanso era del entrenamiento: las rutinas que no lo tienen guardado lo heredan.
+function toRoutine(doc: RoutineDocument & { id?: string }, legacyRestSeconds?: number): Routine {
   return {
     id: String(doc.id),
     name: doc.name,
+    restSeconds: doc.restSeconds ?? legacyRestSeconds ?? DEFAULT_REST_SECONDS,
     slots: doc.slots.map((s) => ({
       exerciseId: s.exerciseId,
       sets: s.sets.map((set) => ({ reps: set.reps, weightKg: set.weightKg })),
@@ -37,9 +39,7 @@ function toTraining(doc: TrainingDocument): Training {
     name: doc.name,
     startDate: doc.startDate,
     durationWeeks: doc.durationWeeks,
-    // Los entrenamientos anteriores a este campo no lo tienen guardado.
-    restSeconds: doc.restSeconds ?? DEFAULT_REST_SECONDS,
-    routines: doc.routines.map(toRoutine),
+    routines: doc.routines.map((r) => toRoutine(r, doc.restSeconds)),
   };
 }
 
@@ -70,7 +70,6 @@ export class TrainingsService {
     if (dto.name !== undefined) doc.name = dto.name;
     if (dto.startDate !== undefined) doc.startDate = dto.startDate;
     if (dto.durationWeeks !== undefined) doc.durationWeeks = dto.durationWeeks;
-    if (dto.restSeconds !== undefined) doc.restSeconds = dto.restSeconds;
     return toTraining(await doc.save());
   }
 
@@ -83,8 +82,13 @@ export class TrainingsService {
 
   async addRoutine(userId: string, id: string, dto: CreateRoutine): Promise<Training> {
     const doc = await this.findOwn(userId, id);
-    await this.exercises.assertVisible(userId, dto.slots.map((s) => s.exerciseId));
-    doc.routines.push({ name: dto.name, slots: dto.slots } as RoutineDocument);
+    const slots = dto.slots ?? [];
+    await this.exercises.assertVisible(userId, slots.map((s) => s.exerciseId));
+    doc.routines.push({
+      name: dto.name,
+      slots,
+      restSeconds: dto.restSeconds ?? DEFAULT_REST_SECONDS,
+    } as RoutineDocument);
     return toTraining(await doc.save());
   }
 
@@ -101,6 +105,7 @@ export class TrainingsService {
       routine.set("slots", dto.slots);
     }
     if (dto.name !== undefined) routine.name = dto.name;
+    if (dto.restSeconds !== undefined) routine.restSeconds = dto.restSeconds;
     return toTraining(await doc.save());
   }
 

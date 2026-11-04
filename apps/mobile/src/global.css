@@ -10,6 +10,14 @@
 
 /* Mismo fondo que el tema de la app: si no, asoma una franja del color por defecto
    en las zonas que la app no cubre (barra de estado, indicador de inicio, rebote). */
+/* Sin barras de scroll en ningún sitio: se desplaza con el dedo, pero no se ve la barra. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
 html,
 body {
   background-color: #ffffff;

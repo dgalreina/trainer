@@ -1,4 +1,10 @@
-import type { CreateRoutine, Routine } from '@trainer/shared';
+import {
+  dayLabel,
+  DEFAULT_REST_SECONDS,
+  REST_SECONDS_OPTIONS,
+  type CreateRoutine,
+  type Routine,
+} from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
@@ -64,6 +70,7 @@ export function RoutineEditorScreen() {
 
   const [name, setName] = useState('');
   const [slots, setSlots] = useState<EditorSlot[]>([]);
+  const [restSeconds, setRestSeconds] = useState<number>(DEFAULT_REST_SECONDS);
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +82,7 @@ export function RoutineEditorScreen() {
     initialized.current = true;
     setName(existing.name);
     setSlots(fromRoutine(existing));
+    setRestSeconds(existing.restSeconds);
   }, [existing]);
 
   const goBack = () =>
@@ -94,11 +102,10 @@ export function RoutineEditorScreen() {
 
   async function onSave() {
     const trimmed = name.trim();
-    if (!trimmed) return setError('Ponle un nombre a la rutina');
-    if (slots.length === 0) return setError('Añade al menos un ejercicio');
 
     const payload: CreateRoutine = {
       name: trimmed,
+      restSeconds,
       slots: slots.map((slot, index) => ({
         exerciseId: slot.exerciseId,
         sets: slot.sets.map((s) => {
@@ -140,11 +147,9 @@ export function RoutineEditorScreen() {
     }
   }
 
-  const back = <LinkButton title="Atrás" onPress={goBack} />;
-
   if (!training || (!isNew && !existing)) {
     return (
-      <Screen title="Rutina" stacked action={back}>
+      <Screen title="Rutina" stacked onBack={goBack}>
         {loading ? (
           <ActivityIndicator color={theme.primary} />
         ) : (
@@ -155,8 +160,24 @@ export function RoutineEditorScreen() {
   }
 
   return (
-    <Screen title={isNew ? 'Nueva rutina' : 'Editar rutina'} subtitle={training.name} stacked action={back}>
-      <Field label="Nombre" value={name} onChangeText={setName} placeholder="Pecho + Espalda, Pierna…" />
+    <Screen title={isNew ? 'Nueva rutina' : 'Editar rutina'} subtitle={existing ? `${dayLabel(training.routines.indexOf(existing))} · ${training.name}` : training.name} stacked onBack={goBack}>
+      <Field label="Nombre (opcional)" value={name} onChangeText={setName} placeholder="Pecho + Espalda, Pierna…" />
+
+      <View style={styles.restField}>
+        <ThemedText type="smallBold" themeColor="textSecondary">
+          Descanso entre series
+        </ThemedText>
+        <View style={styles.restChips}>
+          {REST_SECONDS_OPTIONS.map((seconds) => (
+            <Chip
+              key={seconds}
+              label={seconds === 0 ? 'Sin' : `${seconds} s`}
+              active={restSeconds === seconds}
+              onPress={() => setRestSeconds(seconds)}
+            />
+          ))}
+        </View>
+      </View>
 
       {slots.map((slot, index) => {
         const exercise = byId.get(slot.exerciseId);
@@ -290,12 +311,14 @@ function IconAction({
       disabled={disabled}
       hitSlop={8}
       style={[styles.icon, disabled && styles.iconDisabled]}>
-      <ThemedText style={{ color: theme.textSecondary }}>{glyph}</ThemedText>
+      <ThemedText type={glyph === "✕" ? "small" : "default"} style={{ color: theme.textSecondary }}>{glyph}</ThemedText>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  restField: { gap: Spacing.two },
+  restChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   slot: { gap: Spacing.two + 2 },
   slotHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   slotName: { flex: 1 },

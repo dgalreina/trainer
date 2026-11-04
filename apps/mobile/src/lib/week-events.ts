@@ -1,4 +1,4 @@
-import { loggedMacros, type MealLog, type WeightEntry, type WorkoutSession } from '@trainer/shared';
+import { loggedMacros, routineTitle, type MealLog, type WeightEntry, type WorkoutSession } from '@trainer/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api } from '@/lib/api';
@@ -78,9 +78,8 @@ export function useWeekEvents(weekStart: string) {
     const workouts = sessions.map((session): DayEvent => {
       const start = new Date(session.date);
       const minutes = session.durationSeconds ? session.durationSeconds / 60 : FALLBACK_WORKOUT_MINUTES;
-      const routine = trainings
-        .find((t) => t.id === session.trainingId)
-        ?.routines.find((r) => r.id === session.routineId);
+      const routineOf = trainings.find((t) => t.id === session.trainingId);
+      const routine = routineOf?.routines.find((r) => r.id === session.routineId);
       const sets = session.entries.reduce((total, e) => total + e.sets.length, 0);
       const volume = Math.round(
         session.entries.reduce((total, e) => total + e.sets.reduce((v, s) => v + s.reps * s.weightKg, 0), 0),
@@ -91,7 +90,7 @@ export function useWeekEvents(weekStart: string) {
         sessionId: session.id,
         start,
         end: new Date(start.getTime() + minutes * MINUTE_MS),
-        title: routine?.name ?? 'Entreno',
+        title: routineOf && routine ? routineTitle(routineOf.routines, routine.id) : 'Entreno',
         subtitle: `${sets} ${sets === 1 ? 'serie' : 'series'} · ${volume.toLocaleString('es-ES')} kg`,
       };
     });

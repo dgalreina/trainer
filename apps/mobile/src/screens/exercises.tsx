@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { Button, Chip, ErrorText, Field, LinkButton } from '@/components/form';
+import { Button, Chip, ErrorText, Field } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -63,14 +63,7 @@ export function ExercisesScreen({ stacked }: { stacked?: boolean }) {
       subtitle={`${exercises.length} en tu catálogo`}
       scroll={false}
       stacked={stacked}
-      action={
-        stacked ? (
-          <LinkButton
-            title="Atrás"
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/yo'))}
-          />
-        ) : undefined
-      }>
+      onBack={stacked ? () => (router.canGoBack() ? router.back() : router.replace('/yo')) : undefined}>
       <Field
         label="Buscar o crear"
         value={query}
@@ -103,6 +96,7 @@ export function ExercisesScreen({ stacked }: { stacked?: boolean }) {
       <ErrorText message={error ?? loadError} />
 
       <FlatList
+        showsVerticalScrollIndicator={false}
         data={visible}
         keyExtractor={(e) => e.id}
         refreshing={loading}
@@ -128,7 +122,7 @@ export function ExercisesScreen({ stacked }: { stacked?: boolean }) {
                 accessibilityLabel={`Archivar ${item.name}`}
                 onPress={() => onArchive(item.id)}
                 hitSlop={10}>
-                <ThemedText style={{ color: theme.textSecondary }}>✕</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>✕</ThemedText>
               </Pressable>
             )}
           </Card>

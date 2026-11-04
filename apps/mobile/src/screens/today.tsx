@@ -1,3 +1,4 @@
+import { dayLabel, routineTitle } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 
@@ -80,15 +81,20 @@ export function TodayScreen() {
           ) : (
             <>
               <ThemedText type="smallBold">¿Qué entrenas hoy?</ThemedText>
-              {activeTraining.routines.map((routine) => {
+              {activeTraining.routines.map((routine, index) => {
                 const summary = routineSummary(routine, byId);
                 return (
                   <Card
                     key={routine.id}
                     onPress={() => openWorkout(activeTraining.id, routine.id)}
                     style={styles.routine}>
+                    {routine.name ? (
+                      <ThemedText type="small" themeColor="primaryText">
+                        {dayLabel(index)}
+                      </ThemedText>
+                    ) : null}
                     <ThemedText type="subtitle" style={styles.routineName}>
-                      {routine.name}
+                      {routineTitle(activeTraining.routines, routine.id)}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {summary.counts}

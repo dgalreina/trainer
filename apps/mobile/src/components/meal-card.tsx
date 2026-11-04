@@ -105,7 +105,7 @@ export function MealCard({
               accessibilityLabel={`Quitar ${food?.name ?? 'alimento'}`}
               hitSlop={10}
               onPress={() => run({ items: meal.items.filter((_, i) => i !== index) }).catch(() => {})}>
-              <ThemedText style={{ color: theme.textSecondary }}>✕</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>✕</ThemedText>
             </Pressable>
           </View>
         );

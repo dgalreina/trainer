@@ -34,8 +34,14 @@ const RoutineSlotSchema = SchemaFactory.createForClass(RoutineSlotDoc);
 // Con `_id` propio: las sesiones registradas apuntan a la rutina por ese id.
 @Schema()
 export class TrainingRoutineDoc {
-  @Prop({ type: String, required: true, trim: true })
+  // Puede estar vacío: «Día 1», «Día 2»… lo pone la app según la posición.
+  @Prop({ type: String, default: "", trim: true })
   name!: string;
+
+  // Descanso entre series de esta rutina, en segundos (0 = sin temporizador). Sin valor por
+  // defecto: las rutinas anteriores a este campo heredan el descanso de su entrenamiento.
+  @Prop({ type: Number })
+  restSeconds?: number;
 
   // El orden de la lista es el orden de ejecución.
   @Prop({ type: [RoutineSlotSchema], default: [] })
@@ -58,9 +64,10 @@ export class TrainingDoc {
   @Prop({ type: Number, required: true })
   durationWeeks!: number;
 
-  // Descanso entre series de todo el entrenamiento, en segundos (0 = sin temporizador).
-  @Prop({ type: Number, default: 90 })
-  restSeconds!: number;
+  // Heredado: el descanso era del entrenamiento y ahora es de cada rutina. Solo se lee, para
+  // las rutinas que aún no tienen el suyo.
+  @Prop({ type: Number })
+  restSeconds?: number;
 
   @Prop({ type: [TrainingRoutineSchema], default: [] })
   routines!: TrainingRoutineDoc[];

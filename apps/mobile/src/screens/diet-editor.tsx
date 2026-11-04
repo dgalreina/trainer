@@ -67,8 +67,6 @@ export function DietEditorScreen() {
   }, [isNew, goalTouched, profile.goal]);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/dieta'));
-  const back = <LinkButton title="Atrás" onPress={goBack} />;
-
   async function onSave() {
     const trimmed = name.trim();
     if (!trimmed) return setError('Ponle un nombre a la dieta');
@@ -132,7 +130,7 @@ export function DietEditorScreen() {
 
   if (!isNew && !existing) {
     return (
-      <Screen title="Dieta" stacked action={back}>
+      <Screen title="Dieta" stacked onBack={goBack}>
         {loading ? (
           <ActivityIndicator color={theme.primary} />
         ) : (
@@ -152,7 +150,7 @@ export function DietEditorScreen() {
   const isActive = existing ? settings.activeDietId === existing.id : false;
 
   return (
-    <Screen title={isNew ? 'Nueva dieta' : existing!.name} stacked action={back}>
+    <Screen title={isNew ? 'Nueva dieta' : existing!.name} stacked onBack={goBack}>
       <Field
         label="Nombre"
         accessibilityLabel="Nombre de la dieta"

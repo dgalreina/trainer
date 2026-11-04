@@ -1,4 +1,4 @@
-import { trainingProgress } from '@trainer/shared';
+import { routineTitle, trainingProgress } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
@@ -19,7 +19,7 @@ export function TrainingsScreen() {
   const today = todayISO();
 
   return (
-    <Screen title="Entrenamientos" scroll>
+    <Screen title="Entrenos" scroll>
       <Button title="Nuevo entrenamiento" onPress={() => router.push('/entrenamiento/nuevo')} />
       <ErrorText message={error} />
 
@@ -56,7 +56,7 @@ export function TrainingsScreen() {
               {training.routines.length === 1 ? 'rutina' : 'rutinas'}
             </ThemedText>
             {training.routines.length > 0 && (
-              <ThemedText type="small">{training.routines.map((r) => r.name).join(' · ')}</ThemedText>
+              <ThemedText type="small">{training.routines.map((r) => routineTitle(training.routines, r.id)).join(' · ')}</ThemedText>
             )}
           </Card>
         );
