@@ -9,6 +9,8 @@ import { TABS, tabIndexFromPath } from '@/lib/tabs';
 
 // Por debajo de este ancho las cinco pestañas ocupan todo el espacio: sin nombre de marca.
 const BRAND_MIN_WIDTH = 520;
+// Por debajo de este ancho la barra se compacta (menos relleno) para que quepan las cinco sin salirse.
+const COMPACT_MAX_WIDTH = 440;
 
 /**
  * Pestañas de la web: el paginador con las cinco pantallas y la barra flotante encima.
@@ -29,10 +31,11 @@ function TabBar() {
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const active = tabIndexFromPath(pathname);
+  const compact = width < COMPACT_MAX_WIDTH;
 
   return (
-    <View style={styles.tabListContainer} pointerEvents="box-none">
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
+    <View style={[styles.tabListContainer, compact && styles.tabListCompact]} pointerEvents="box-none">
+      <ThemedView type="backgroundElement" style={[styles.innerContainer, compact && styles.innerCompact]}>
         {width >= BRAND_MIN_WIDTH && (
           <ThemedText type="smallBold" style={styles.brandText}>
             Élite Trainer
@@ -50,8 +53,8 @@ function TabBar() {
               style={({ pressed }) => pressed && styles.pressed}>
               <ThemedView
                 type={focused ? 'backgroundSelected' : 'backgroundElement'}
-                style={styles.tabButtonView}>
-                <ThemedText type="small" themeColor={focused ? 'text' : 'textSecondary'}>
+                style={[styles.tabButtonView, compact && styles.tabButtonCompact]}>
+                <ThemedText type="small" numberOfLines={1} themeColor={focused ? 'text' : 'textSecondary'}>
                   {tab.label}
                 </ThemedText>
               </ThemedView>
@@ -84,6 +87,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
   },
+  tabListCompact: { padding: Spacing.two },
+  innerCompact: { paddingHorizontal: Spacing.two, gap: 0 },
+  tabButtonCompact: { paddingHorizontal: Spacing.two },
   brandText: {
     marginRight: 'auto',
   },
