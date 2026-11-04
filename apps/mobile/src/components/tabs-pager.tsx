@@ -17,7 +17,7 @@ import { MeScreen } from '@/screens/me';
 import { TodayScreen } from '@/screens/today';
 import { TrainingsScreen } from '@/screens/trainings';
 
-const PAGES = [TodayScreen, TrainingsScreen, DietScreen, MeScreen, AccountScreen];
+const PAGES = [TodayScreen, MeScreen, TrainingsScreen, DietScreen, AccountScreen];
 
 const SLIDE_MS = 380;
 /** Cuánto se mueve el dedo en horizontal antes de que el gesto cuente como arrastre. */

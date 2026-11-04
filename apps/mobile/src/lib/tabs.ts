@@ -1,9 +1,9 @@
 /** Pestañas de la app, de izquierda a derecha. Fuente única para la barra y el paginador. */
 export const TABS = [
   { key: 'index', path: '/', label: 'Hoy' },
+  { key: 'yo', path: '/yo', label: 'Yo' },
   { key: 'entrenamientos', path: '/entrenamientos', label: 'Entrenos' },
   { key: 'dieta', path: '/dieta', label: 'Dieta' },
-  { key: 'yo', path: '/yo', label: 'Yo' },
   { key: 'cuenta', path: '/cuenta', label: 'Cuenta' },
 ] as const;
 
