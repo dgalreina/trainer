@@ -7,6 +7,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { DietsProvider } from '@/lib/diets';
 import { ExercisesProvider } from '@/lib/exercises';
 import { MeProvider } from '@/lib/me';
 import { SettingsProvider } from '@/lib/settings';
@@ -30,6 +31,7 @@ function RootNavigator() {
         <Stack.Screen name="entreno/[id]/[rid]" />
         <Stack.Screen name="ejercicios" />
         <Stack.Screen name="alimentos" />
+        <Stack.Screen name="mi-dieta/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="login" />
@@ -90,12 +92,14 @@ function ThemedApp() {
       <AuthProvider>
         <ExercisesProvider>
           <TrainingsProvider>
-            <MeProvider>
-              <SettingsProvider>
-                <AnimatedSplashOverlay />
-                <RootNavigator />
-              </SettingsProvider>
-            </MeProvider>
+            <DietsProvider>
+              <MeProvider>
+                <SettingsProvider>
+                  <AnimatedSplashOverlay />
+                  <RootNavigator />
+                </SettingsProvider>
+              </MeProvider>
+            </DietsProvider>
           </TrainingsProvider>
         </ExercisesProvider>
       </AuthProvider>

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { UpdateUserSettings, UserSettings } from "@trainer/shared";
 import { isValidObjectId, type Model } from "mongoose";
+import { DietDoc } from "../diets/diet.schema.js";
 import { TrainingDoc } from "../trainings/training.schema.js";
 import { SettingsDoc } from "./settings.schema.js";
 
@@ -10,6 +11,7 @@ export class SettingsService {
   constructor(
     @InjectModel(SettingsDoc.name) private readonly model: Model<SettingsDoc>,
     @InjectModel(TrainingDoc.name) private readonly trainings: Model<TrainingDoc>,
+    @InjectModel(DietDoc.name) private readonly diets: Model<DietDoc>,
   ) {}
 
   async get(userId: string): Promise<UserSettings> {
@@ -27,8 +29,19 @@ export class SettingsService {
         (await this.trainings.exists({ _id: dto.activeTrainingId, userId }));
       if (!exists) throw new BadRequestException("Ese entrenamiento no existe");
     }
+    if (dto.activeDietId) {
+      const exists =
+        isValidObjectId(dto.activeDietId) &&
+        (await this.diets.exists({ _id: dto.activeDietId, userId }));
+      if (!exists) throw new BadRequestException("Esa dieta no existe");
+    }
     await this.model.updateOne({ userId }, { $set: dto }, { upsert: true });
     return this.get(userId);
+  }
+
+  /** Si se borra la dieta que estaba activa, deja de haber una activa. */
+  async clearActiveDiet(userId: string, dietId: string): Promise<void> {
+    await this.model.updateOne({ userId, activeDietId: dietId }, { $set: { activeDietId: null } });
   }
 
   /** Si se borra el entrenamiento que estaba activo, deja de haber uno activo. */

@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "./auth/auth.module.js";
 import { getMongoUri } from "./config/mongo-uri.js";
+import { DietsModule } from "./diets/diets.module.js";
 import { ExercisesModule } from "./exercises/exercises.module.js";
 import { FoodsModule } from "./foods/foods.module.js";
 import { HealthController } from "./health.controller.js";
@@ -26,6 +27,7 @@ import { WeightsModule } from "./weights/weights.module.js";
       }),
     }),
     AuthModule,
+    DietsModule,
     ExercisesModule,
     FoodsModule,
     TrainingsModule,

@@ -14,7 +14,8 @@ import {
 } from '@/constants/theme';
 
 interface ScreenProps {
-  title: string;
+  /** Sin título (y sin acción) la pantalla no lleva cabecera: más sitio para el contenido. */
+  title?: string;
   subtitle?: string;
   /** Contenido a la derecha del título (por ejemplo, un botón). */
   action?: ReactNode;
@@ -40,15 +41,16 @@ export function Screen({ title, subtitle, action, scroll = true, stacked, footer
   const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
-  const header = (
-    <View style={styles.header}>
-      <View style={styles.headerText}>
-        <ThemedText type="subtitle">{title}</ThemedText>
-        {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
+  const header =
+    title || action ? (
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          {title ? <ThemedText type="subtitle">{title}</ThemedText> : null}
+          {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
+        </View>
+        {action}
       </View>
-      {action}
-    </View>
-  );
+    ) : null;
 
   const theme = useTheme();
 

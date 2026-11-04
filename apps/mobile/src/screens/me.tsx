@@ -43,7 +43,7 @@ export function MeScreen() {
   }
 
   return (
-    <Screen title="Yo">
+    <Screen>
       <View style={styles.sections}>
         <Chip label="Calendario" active={section === 'calendario'} onPress={() => setSection('calendario')} />
         <Chip label="Mis datos" active={section === 'datos'} onPress={() => setSection('datos')} />
@@ -89,7 +89,7 @@ export function MeScreen() {
 }
 
 const styles = StyleSheet.create({
-  sections: { flexDirection: 'row', gap: Spacing.two },
+  sections: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
   dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dayTitle: { flex: 1, alignItems: 'center' },
   dayText: { textAlign: 'center' },
