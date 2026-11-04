@@ -101,7 +101,7 @@ export function ProfileForm() {
       )}
 
       <ThemedText type="smallBold" themeColor="textSecondary">
-        Sexo
+        Sexo (para calcular las calorías)
       </ThemedText>
       <View style={styles.chips}>
         {SEXES.map((value) => (
@@ -113,6 +113,12 @@ export function ProfileForm() {
           />
         ))}
       </View>
+
+      {sex === 'no_indicado' && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Se calculará con un valor intermedio entre hombre y mujer.
+        </ThemedText>
+      )}
 
       <View style={styles.heightRow}>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.heightLabel}>

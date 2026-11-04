@@ -3,6 +3,7 @@ import type { ActivityLevel, Goal, Sex } from '@trainer/shared';
 export const SEX_LABELS: Record<Sex, string> = {
   mujer: 'Mujer',
   hombre: 'Hombre',
+  no_indicado: 'Prefiero no decirlo',
 };
 
 export const ACTIVITY_LABELS: Record<ActivityLevel, { title: string; hint: string }> = {

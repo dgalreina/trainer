@@ -103,8 +103,10 @@ const GOAL_ADJUSTMENT: Record<Goal, number> = {
 
 /** Tope duro: nunca un déficit mayor del 25 % del gasto, pase lo que pase. */
 const MAX_DEFICIT = 0.25;
-/** Calorías mínimas seguras por sexo; además, nunca por debajo del metabolismo basal. */
-const MIN_KCAL: Record<Sex, number> = { mujer: 1200, hombre: 1500 };
+/** Calorías mínimas seguras por sexo (sin indicarlo, el mínimo más alto); además, nunca por debajo del metabolismo basal. */
+const MIN_KCAL: Record<Sex, number> = { mujer: 1200, hombre: 1500, no_indicado: 1500 };
+/** Constante de Mifflin-St Jeor por sexo; sin indicarlo, el punto medio entre las dos. */
+const BMR_SEX_OFFSET: Record<Sex, number> = { mujer: -161, hombre: 5, no_indicado: -78 };
 
 /** Gramos de proteína por kg de peso según el objetivo. */
 const PROTEIN_PER_KG: Record<Goal, number> = {
@@ -158,7 +160,7 @@ export function calculateTargets(input: TargetInput): DailyTargets | null {
   if (!sex || !birthDate || !heightCm || !activityLevel || !weightKg) return null;
 
   const age = ageFromBirthDate(birthDate, today);
-  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + (sex === "hombre" ? 5 : -161);
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + BMR_SEX_OFFSET[sex];
   const tdee = bmr * ACTIVITY_FACTORS[activityLevel];
 
   const adjustment = Math.max(GOAL_ADJUSTMENT[goal], 1 - MAX_DEFICIT);

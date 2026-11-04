@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-export const SEXES = ["mujer", "hombre"] as const;
+/**
+ * Sexo para el cálculo de calorías (Mifflin-St Jeor distingue hombre y mujer). "no_indicado" es
+ * "prefiero no decirlo": se calcula con el punto medio entre ambos.
+ */
+export const SEXES = ["mujer", "hombre", "no_indicado"] as const;
 export type Sex = (typeof SEXES)[number];
 
 /** Cuánto se mueve la persona en el día a día. Alimenta el cálculo de calorías. */
