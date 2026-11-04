@@ -37,6 +37,13 @@ body {
   }
 }
 
+/* Borde de los campos de texto al enfocarlos: salmón de la app, no el negro por defecto del navegador. */
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #ff8f7e;
+  outline-offset: 0;
+}
+
 /* Duración del fundido de la transición de vista (cambio claro/oscuro desde Cuenta). */
 ::view-transition-old(root),
 ::view-transition-new(root) {

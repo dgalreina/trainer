@@ -27,9 +27,14 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="yo">
+        <NativeTabs.Trigger.Label>Yo</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="cuenta">
         <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
+        <NativeTabs.Trigger.Icon sf="gearshape" md="settings" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

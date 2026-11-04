@@ -40,3 +40,9 @@ export const createWorkoutSessionSchema = workoutSessionSchema.omit({
   userId: true,
 });
 export type CreateWorkoutSession = z.input<typeof createWorkoutSessionSchema>;
+
+/** De una sesión ya guardada solo se corrige cuándo empezó (por ejemplo, arrastrándola en el calendario). */
+export const updateWorkoutSessionSchema = z.object({
+  date: z.iso.datetime({ offset: true }),
+});
+export type UpdateWorkoutSession = z.input<typeof updateWorkoutSessionSchema>;

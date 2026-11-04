@@ -8,6 +8,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ExercisesProvider } from '@/lib/exercises';
+import { MeProvider } from '@/lib/me';
 import { SettingsProvider } from '@/lib/settings';
 import { ThemePreferenceProvider, useThemePreference } from '@/lib/theme-preference';
 import { TrainingsProvider } from '@/lib/trainings';
@@ -88,10 +89,12 @@ function ThemedApp() {
       <AuthProvider>
         <ExercisesProvider>
           <TrainingsProvider>
-            <SettingsProvider>
-              <AnimatedSplashOverlay />
-              <RootNavigator />
-            </SettingsProvider>
+            <MeProvider>
+              <SettingsProvider>
+                <AnimatedSplashOverlay />
+                <RootNavigator />
+              </SettingsProvider>
+            </MeProvider>
           </TrainingsProvider>
         </ExercisesProvider>
       </AuthProvider>

@@ -13,15 +13,6 @@ import { routineSummary } from '@/lib/routine-summary';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
 
-function todayLabel(): string {
-  const text = new Date().toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 export function TodayScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -41,7 +32,6 @@ export function TodayScreen() {
   return (
     <Screen
       title="Hoy"
-      subtitle={todayLabel()}
       action={
         activeTraining ? (
           <TrainingBadge

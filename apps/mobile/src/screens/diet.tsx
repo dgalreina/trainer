@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 
 export function DietScreen() {
   return (
-    <Screen title="Dieta" subtitle="Lo que comes">
+    <Screen title="Dieta">
       <Card tone="primarySoft">
         <ThemedText type="smallBold">Próximamente</ThemedText>
         <ThemedText themeColor="textSecondary">

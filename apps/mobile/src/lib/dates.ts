@@ -7,7 +7,7 @@ export function todayISO(): string {
 }
 
 /** "AAAA-MM-DD" → Date en hora local (a mediodía, para que ningún cambio de hora mueva el día). */
-function parseISO(iso: string): Date {
+export function parseISO(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d, 12);
 }
@@ -33,3 +33,45 @@ export function isValidISODate(text: string): boolean {
 function todayLike(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
+
+/** Un `Date` local como día de calendario "AAAA-MM-DD". */
+export function isoOf(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Suma (o resta) días a un día de calendario. */
+export function addDays(iso: string, days: number): string {
+  const date = parseISO(iso);
+  date.setDate(date.getDate() + days);
+  return isoOf(date);
+}
+
+/** El lunes de la semana de ese día (las semanas empiezan en lunes). */
+export function mondayOf(iso: string): string {
+  const weekday = (parseISO(iso).getDay() + 6) % 7; // lunes = 0 ... domingo = 6
+  return addDays(iso, -weekday);
+}
+
+/** Las 00:00 de ese día, en la hora del dispositivo. */
+export function startOfDay(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+/** "08:30". */
+export function formatTime(date: Date): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** "noviembre de 2026". */
+export function formatMonthYear(iso: string): string {
+  return parseISO(iso).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+}
+
+/** "miércoles, 4 de noviembre". */
+export function formatLongDay(iso: string): string {
+  const text = parseISO(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export const WEEKDAY_INITIALS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const;

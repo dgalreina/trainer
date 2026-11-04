@@ -13,10 +13,11 @@ import Animated, {
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
 import { AccountScreen } from '@/screens/account';
 import { DietScreen } from '@/screens/diet';
+import { MeScreen } from '@/screens/me';
 import { TodayScreen } from '@/screens/today';
 import { TrainingsScreen } from '@/screens/trainings';
 
-const PAGES = [TodayScreen, TrainingsScreen, DietScreen, AccountScreen];
+const PAGES = [TodayScreen, TrainingsScreen, DietScreen, MeScreen, AccountScreen];
 
 const SLIDE_MS = 380;
 /** Cuánto se mueve el dedo en horizontal antes de que el gesto cuente como arrastre. */

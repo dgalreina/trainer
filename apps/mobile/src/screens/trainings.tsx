@@ -19,7 +19,7 @@ export function TrainingsScreen() {
   const today = todayISO();
 
   return (
-    <Screen title="Entrenamientos" subtitle="Tus bloques de entreno" scroll>
+    <Screen title="Entrenamientos" scroll>
       <Button title="Nuevo entrenamiento" onPress={() => router.push('/entrenamiento/nuevo')} />
       <ErrorText message={error} />
 

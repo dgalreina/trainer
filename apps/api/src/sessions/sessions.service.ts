@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { CreateWorkoutSession, WorkoutSession } from "@trainer/shared";
+import type { CreateWorkoutSession, UpdateWorkoutSession, WorkoutSession } from "@trainer/shared";
 import { isValidObjectId, type Model } from "mongoose";
 import { ExercisesService } from "../exercises/exercises.service.js";
 import { SessionDoc, type SessionDocument } from "./session.schema.js";
@@ -34,10 +34,11 @@ export class SessionsService {
     private readonly exercises: ExercisesService,
   ) {}
 
-  /** Las más recientes primero. */
-  async list(userId: string, limit?: number): Promise<WorkoutSession[]> {
+  /** Las más recientes primero. Con `from` (incluido) y/o `to` (excluido), solo las de ese rango. */
+  async list(userId: string, limit?: number, from?: Date, to?: Date): Promise<WorkoutSession[]> {
     const take = Math.min(Math.max(limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const docs = await this.model.find({ userId }).sort({ date: -1 }).limit(take);
+    const range = from || to ? { date: { ...(from && { $gte: from }), ...(to && { $lt: to }) } } : {};
+    const docs = await this.model.find({ userId, ...range }).sort({ date: -1 }).limit(take);
     return docs.map(toSession);
   }
 
@@ -57,6 +58,13 @@ export class SessionsService {
       notes: dto.notes,
     });
     return toSession(doc);
+  }
+
+  /** Corrige cuándo empezó el entreno. El resto de la sesión no se toca. */
+  async update(userId: string, id: string, dto: UpdateWorkoutSession): Promise<WorkoutSession> {
+    const doc = await this.findOwn(userId, id);
+    doc.date = new Date(dto.date);
+    return toSession(await doc.save());
   }
 
   async remove(userId: string, id: string): Promise<void> {

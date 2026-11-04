@@ -5,9 +5,11 @@ import { AuthModule } from "./auth/auth.module.js";
 import { getMongoUri } from "./config/mongo-uri.js";
 import { ExercisesModule } from "./exercises/exercises.module.js";
 import { HealthController } from "./health.controller.js";
+import { ProfileModule } from "./profile/profile.module.js";
 import { SessionsModule } from "./sessions/sessions.module.js";
 import { SettingsModule } from "./settings/settings.module.js";
 import { TrainingsModule } from "./trainings/trainings.module.js";
+import { WeightsModule } from "./weights/weights.module.js";
 
 // Aquí irán los módulos de la API (coach...).
 // Todos viven en la misma Lambda: un solo arranque en frío para toda la API.
@@ -27,6 +29,8 @@ import { TrainingsModule } from "./trainings/trainings.module.js";
     TrainingsModule,
     SettingsModule,
     SessionsModule,
+    ProfileModule,
+    WeightsModule,
   ],
   controllers: [HealthController],
 })

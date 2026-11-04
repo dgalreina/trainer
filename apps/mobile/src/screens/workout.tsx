@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { api } from '@/lib/api';
 import { beep, unlockAudio } from '@/lib/beep';
 import { confirmAction } from '@/lib/confirm';
+import { notifySessionSaved } from '@/lib/session-events';
 import { useExercises } from '@/lib/exercises';
 import { deleteItem, getItem, setItem } from '@/lib/storage';
 import { useTrainings } from '@/lib/trainings';
@@ -203,6 +204,8 @@ export function WorkoutScreen() {
     setSaving(true);
     try {
       await api.post('/sessions', result.payload);
+      // El calendario de «Yo» se recarga para mostrar este entreno.
+      notifySessionSaved();
       await deleteItem(key);
       setFinished(result.summary);
     } catch (err) {
