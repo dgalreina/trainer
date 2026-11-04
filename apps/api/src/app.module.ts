@@ -11,6 +11,7 @@ import { ProfileModule } from "./profile/profile.module.js";
 import { SessionsModule } from "./sessions/sessions.module.js";
 import { SettingsModule } from "./settings/settings.module.js";
 import { TrainingsModule } from "./trainings/trainings.module.js";
+import { MealLogsModule } from "./meal-logs/meal-logs.module.js";
 import { WeightsModule } from "./weights/weights.module.js";
 
 // Aquí irán los módulos de la API (coach...).
@@ -30,6 +31,7 @@ import { WeightsModule } from "./weights/weights.module.js";
     DietsModule,
     ExercisesModule,
     FoodsModule,
+    MealLogsModule,
     TrainingsModule,
     SettingsModule,
     SessionsModule,

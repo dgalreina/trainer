@@ -1,4 +1,4 @@
-import type { WeightEntry, WorkoutSession } from '@trainer/shared';
+import { loggedMacros, type MealLog, type WeightEntry, type WorkoutSession } from '@trainer/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api } from '@/lib/api';
@@ -7,9 +7,9 @@ import { useMe } from '@/lib/me';
 import { useSessionsVersion } from '@/lib/session-events';
 import { useTrainings } from '@/lib/trainings';
 
-export type EventKind = 'workout' | 'weight';
+export type EventKind = 'workout' | 'weight' | 'meal';
 
-/** Algo que pasó en un momento del día: un entreno, una pesada (y, más adelante, comidas). */
+/** Algo que pasó en un momento del día: un entreno, una pesada o una comida. */
 export interface DayEvent {
   id: string;
   kind: EventKind;
@@ -21,12 +21,15 @@ export interface DayEvent {
   sessionId?: string;
   /** Solo en pesadas: el id, para poder moverla o borrarla. */
   weightId?: string;
+  /** Solo en comidas: el id del registro, para poder moverlo. */
+  mealId?: string;
 }
 
 const MINUTE_MS = 60_000;
 /** Duración con la que se dibuja lo que no la tiene (pesadas) o no se registró (entrenos antiguos). */
 const POINT_EVENT_MINUTES = 20;
 const FALLBACK_WORKOUT_MINUTES = 45;
+const MEAL_MINUTES = 30;
 /**
  * Se cargan tres semanas (la anterior, la actual y la siguiente): al pasar de día en día, el día
  * de al lado ya está cargado y no hay un parpadeo de "nada registrado" al cruzar de semana.
@@ -41,6 +44,7 @@ export function useWeekEvents(weekStart: string) {
   const sessionsVersion = useSessionsVersion();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [meals, setMeals] = useState<MealLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,12 +55,14 @@ export function useWeekEvents(weekStart: string) {
     const to = startOfDay(addDays(weekStart, 7 * WEEKS_AFTER)).toISOString();
     const range = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     try {
-      const [s, w] = await Promise.all([
+      const [s, w, m] = await Promise.all([
         api.get<WorkoutSession[]>(`/sessions?limit=100&${range}`),
         api.get<WeightEntry[]>(`/me/weights?${range}`),
+        api.get<MealLog[]>(`/me/meals?${range}`),
       ]);
       setSessions(s);
       setWeights(w);
+      setMeals(m);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido cargar el calendario');
     } finally {
@@ -100,14 +106,29 @@ export function useWeekEvents(weekStart: string) {
         weightId: entry.id,
       };
     });
-    return [...workouts, ...weighIns].sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [sessions, weights, trainings]);
+    const eaten = meals.map((meal): DayEvent => {
+      const start = new Date(meal.date);
+      return {
+        id: `meal-${meal.id}`,
+        kind: 'meal',
+        mealId: meal.id,
+        start,
+        end: new Date(start.getTime() + MEAL_MINUTES * MINUTE_MS),
+        title: meal.name,
+        subtitle: `${loggedMacros([meal]).kcal} kcal`,
+      };
+    });
+    return [...workouts, ...weighIns, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [sessions, weights, meals, trainings]);
 
   /** Eventos del día "AAAA-MM-DD", por hora. */
   const eventsOf = useCallback(
     (day: string) => events.filter((event) => isoOf(event.start) === day),
     [events],
   );
+
+  /** Comidas registradas del día "AAAA-MM-DD", por hora. */
+  const mealsOf = useCallback((day: string) => meals.filter((meal) => isoOf(new Date(meal.date)) === day), [meals]);
 
   /**
    * Cambia la hora de un evento. Se ve el cambio al instante y se guarda en el servidor; si falla,
@@ -121,6 +142,9 @@ export function useWeekEvents(weekStart: string) {
         if (event.kind === 'weight' && event.weightId) {
           setWeights((prev) => prev.map((w) => (w.id === event.weightId ? { ...w, date } : w)));
           await updateWeight(event.weightId, { date });
+        } else if (event.kind === 'meal' && event.mealId) {
+          setMeals((prev) => prev.map((m) => (m.id === event.mealId ? { ...m, date } : m)));
+          await api.patch(`/me/meals/${event.mealId}`, { date });
         } else if (event.sessionId) {
           setSessions((prev) => prev.map((s) => (s.id === event.sessionId ? { ...s, date } : s)));
           await api.patch(`/sessions/${event.sessionId}`, { date });
@@ -133,5 +157,5 @@ export function useWeekEvents(weekStart: string) {
     [updateWeight, load],
   );
 
-  return { events, eventsOf, loading, error, reload: load, moveEvent };
+  return { events, eventsOf, mealsOf, loading, error, reload: load, moveEvent };
 }

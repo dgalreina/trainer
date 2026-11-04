@@ -3,6 +3,7 @@
 export * from "./exercise";
 export * from "./food";
 export * from "./diet";
+export * from "./meal-log";
 export * from "./routine";
 export * from "./training";
 export * from "./profile";

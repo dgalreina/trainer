@@ -28,6 +28,8 @@ export const Colors = {
     orange: '#FFB98A',
     /** Azul cielo y azul verdoso: acentos, sobre todo el gasto de calorías. */
     sky: '#8ED3F2',
+    /** Azul cielo muy suave: fondo de lo que es gasto (los entrenos en el calendario). */
+    skySoft: '#E6F5FC',
     teal: '#6FD3C8',
     danger: '#D93B3B',
     dangerSoft: '#FDE4E4',
@@ -48,6 +50,7 @@ export const Colors = {
     pink: '#FFB3C2',
     orange: '#FFC49A',
     sky: '#8ED3F2',
+    skySoft: '#1E3039',
     teal: '#6FD3C8',
     danger: '#FF6B6B',
     dangerSoft: '#3F2224',

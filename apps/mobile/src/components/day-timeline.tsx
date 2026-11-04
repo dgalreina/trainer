@@ -17,7 +17,7 @@ import type { DayEvent } from '@/lib/week-events';
 const HOUR_HEIGHT = 56;
 const LABEL_WIDTH = 48;
 // Alto mínimo de cada tipo: un entreno lleva dos líneas de texto; una pesada, una.
-const MIN_HEIGHT = { workout: 52, weight: 34 } as const;
+const MIN_HEIGHT = { workout: 52, weight: 34, meal: 52 } as const;
 const VIEW_HEIGHT = 460;
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const HOUR_MS = 3_600_000;
@@ -210,7 +210,13 @@ function EventCard({
     MIN_HEIGHT[event.kind],
     ((event.end.getTime() - event.start.getTime()) / HOUR_MS) * HOUR_HEIGHT - 2,
   );
-  const isWorkout = event.kind === 'workout';
+  // Salmón para lo que entra (comidas) y azul cielo para lo que se gasta (entrenos).
+  const background =
+    event.kind === 'meal'
+      ? theme.primarySoft
+      : event.kind === 'workout'
+        ? theme.skySoft
+        : theme.backgroundElement;
   const canMove = Boolean(onMove);
 
   return (
@@ -225,7 +231,7 @@ function EventCard({
           height,
           left: `${(column / columns) * 100}%`,
           width: `${100 / columns}%`,
-          backgroundColor: isWorkout ? theme.primarySoft : theme.backgroundElement,
+          backgroundColor: background,
         },
         dragging && styles.dragging,
       ]}>

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DayTimeline } from '@/components/day-timeline';
 import { Chip, ErrorText, LinkButton } from '@/components/form';
+import { MealLogSection } from '@/components/meal-log-section';
 import { ProfileForm } from '@/components/profile-form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -22,7 +23,7 @@ export function MeScreen() {
   const [day, setDay] = useState(todayISO);
   const [error, setError] = useState<string | null>(null);
 
-  const { eventsOf, error: loadError, moveEvent } = useWeekEvents(mondayOf(day));
+  const { eventsOf, mealsOf, error: loadError, moveEvent, reload } = useWeekEvents(mondayOf(day));
   const dayEvents = eventsOf(day);
   const today = todayISO();
 
@@ -79,6 +80,7 @@ export function MeScreen() {
           {day !== today && <LinkButton centered title="Ir a hoy" onPress={() => setDay(today)} />}
           <ErrorText message={error ?? loadError} />
           <DayTimeline day={day} events={dayEvents} onPressEvent={onPressEvent} onMoveEvent={moveEvent} />
+          <MealLogSection day={day} logs={mealsOf(day)} onChanged={reload} />
           <WeighInCard day={day} />
         </>
       ) : (

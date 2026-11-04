@@ -130,6 +130,20 @@ export class FoodsService {
   }
 
   /**
+   * Devuelve los alimentos pedidos, comprobando que existen y son visibles para el usuario
+   * (catálogo base o suyos; los archivados valen). Lanza 400 si alguno no.
+   */
+  async findVisible(userId: string, ids: string[]): Promise<Food[]> {
+    const unique = [...new Set(ids)];
+    if (unique.some((id) => !isValidObjectId(id))) {
+      throw new BadRequestException("Identificador de alimento no válido");
+    }
+    const docs = await this.model.find({ _id: { $in: unique }, ownerId: { $in: [null, userId] } });
+    if (docs.length !== unique.length) throw new BadRequestException("Algún alimento no existe");
+    return docs.map(toFood);
+  }
+
+  /**
    * Comprueba que todos los alimentos existen y son visibles para el usuario (catálogo base o
    * suyos). Los archivados valen: las comidas ya guardadas pueden seguir apuntando a ellos.
    */

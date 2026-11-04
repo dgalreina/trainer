@@ -135,7 +135,7 @@ export function MealCard({
 }
 
 /** Busca un alimento del catálogo y pide la cantidad: en gramos o con una de sus porciones. */
-function FoodPicker({
+export function FoodPicker({
   foods,
   onPick,
   onCancel,
