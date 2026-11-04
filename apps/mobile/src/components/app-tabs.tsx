@@ -17,6 +17,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="sun.max" md="today" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="calendario">
+        <NativeTabs.Trigger.Label>Calendario</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="calendar" md="calendar_month" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="yo">
         <NativeTabs.Trigger.Label>Yo</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="person.crop.circle" md="person" />
@@ -28,13 +33,8 @@ export default function AppTabs() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="dieta">
-        <NativeTabs.Trigger.Label>Dieta</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Dietas</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="cuenta">
-        <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="gearshape" md="settings" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

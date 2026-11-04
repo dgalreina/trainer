@@ -11,13 +11,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
-import { AccountScreen } from '@/screens/account';
+import { CalendarScreen } from '@/screens/calendar';
 import { DietScreen } from '@/screens/diet';
 import { MeScreen } from '@/screens/me';
 import { TodayScreen } from '@/screens/today';
 import { TrainingsScreen } from '@/screens/trainings';
 
-const PAGES = [TodayScreen, MeScreen, TrainingsScreen, DietScreen, AccountScreen];
+const PAGES = [TodayScreen, CalendarScreen, MeScreen, TrainingsScreen, DietScreen];
 
 const SLIDE_MS = 380;
 /** Cuánto se mueve el dedo en horizontal antes de que el gesto cuente como arrastre. */
@@ -30,7 +30,7 @@ const FLICK_MS = 220;
 const EDGE_RESISTANCE = 0.25;
 
 /**
- * Las cuatro pestañas colocadas en fila y una al lado de la otra. Cambiar de pestaña
+ * Las cinco pestañas colocadas en fila y una al lado de la otra. Cambiar de pestaña
  * (tocando la barra o arrastrando el dedo) desplaza la fila: sale la de antes y entra la
  * nueva a la vez. Las ondas no forman parte de esto: están detrás y no se mueven.
  */

@@ -67,7 +67,7 @@ export function ExercisesScreen({ stacked }: { stacked?: boolean }) {
         stacked ? (
           <LinkButton
             title="Atrás"
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/cuenta'))}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/yo'))}
           />
         ) : undefined
       }>

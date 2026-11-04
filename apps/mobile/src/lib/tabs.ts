@@ -1,10 +1,10 @@
 /** Pestañas de la app, de izquierda a derecha. Fuente única para la barra y el paginador. */
 export const TABS = [
   { key: 'index', path: '/', label: 'Hoy' },
+  { key: 'calendario', path: '/calendario', label: 'Calendario' },
   { key: 'yo', path: '/yo', label: 'Yo' },
   { key: 'entrenamientos', path: '/entrenamientos', label: 'Entrenos' },
-  { key: 'dieta', path: '/dieta', label: 'Dieta' },
-  { key: 'cuenta', path: '/cuenta', label: 'Cuenta' },
+  { key: 'dieta', path: '/dieta', label: 'Dietas' },
 ] as const;
 
 /** Índice de la pestaña a la que corresponde la ruta, o -1 si no es una pestaña. */

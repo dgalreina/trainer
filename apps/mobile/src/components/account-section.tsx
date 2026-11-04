@@ -3,21 +3,21 @@ import { StyleSheet, Switch, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button } from '@/components/form';
-import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { useThemePreference } from '@/lib/theme-preference';
 
-export function AccountScreen() {
+/** Sesión, modo claro, catálogo de ejercicios y cerrar sesión: la parte «Mi cuenta» de «Yo». */
+export function AccountSection() {
   const router = useRouter();
   const theme = useTheme();
   const { email, signOut } = useAuth();
   const { forceLight, setForceLight } = useThemePreference();
 
   return (
-    <Screen title="Cuenta">
+    <>
       <Card>
         <ThemedText type="small" themeColor="textSecondary">
           Sesión iniciada con
@@ -53,7 +53,7 @@ export function AccountScreen() {
         onPress={() => router.push('/ejercicios')}
       />
       <Button title="Cerrar sesión" variant="secondary" onPress={signOut} />
-    </Screen>
+    </>
   );
 }
 

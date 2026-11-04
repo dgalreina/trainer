@@ -7,11 +7,11 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
 
-// Por debajo de este ancho las cuatro pestañas ocupan todo el espacio: sin nombre de marca.
+// Por debajo de este ancho las cinco pestañas ocupan todo el espacio: sin nombre de marca.
 const BRAND_MIN_WIDTH = 520;
 
 /**
- * Pestañas de la web: el paginador con las cuatro pantallas y la barra flotante encima.
+ * Pestañas de la web: el paginador con las cinco pantallas y la barra flotante encima.
  * No usan el navegador de pestañas de Expo porque este solo muestra una pantalla a la vez,
  * y aquí hacen falta todas juntas para poder deslizarlas.
  */
