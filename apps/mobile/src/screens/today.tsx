@@ -1,5 +1,6 @@
 import { dayLabel, routineTitle } from '@trainer/shared';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -10,6 +11,7 @@ import { TrainingBadge } from '@/components/training-badge';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useExercises } from '@/lib/exercises';
+import { useNewTraining } from '@/lib/new-training';
 import { routineSummary } from '@/lib/routine-summary';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
@@ -18,6 +20,8 @@ export function TodayScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { trainings, loading, error } = useTrainings();
+  const newTraining = useNewTraining();
+  const [createError, setCreateError] = useState<string | null>(null);
   const { activeTraining } = useSettings();
   const { byId } = useExercises();
 
@@ -43,7 +47,7 @@ export function TodayScreen() {
           />
         ) : undefined
       }>
-      <ErrorText message={error} />
+      <ErrorText message={error ?? createError} />
 
       {loading && trainings.length === 0 ? (
         <ActivityIndicator color={theme.primary} />
@@ -61,7 +65,10 @@ export function TodayScreen() {
             title={trainings.length === 0 ? 'Crear un entrenamiento' : 'Elegir entrenamiento'}
             onPress={() =>
               trainings.length === 0
-                ? router.push('/entrenamiento/nuevo')
+                ? newTraining().then(
+                    () => setCreateError(null),
+                    (err) => setCreateError(err instanceof Error ? err.message : 'No se ha podido crear'),
+                  )
                 : router.navigate('/entrenamientos')
             }
           />

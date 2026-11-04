@@ -1,5 +1,6 @@
 import { routineTitle, trainingProgress } from '@trainer/shared';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -8,6 +9,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { todayISO } from '@/lib/dates';
+import { useNewTraining } from '@/lib/new-training';
 import { useSettings } from '@/lib/settings';
 import { progressLabel } from '@/lib/training-progress';
 import { useTrainings } from '@/lib/trainings';
@@ -17,11 +19,21 @@ export function TrainingsScreen() {
   const { trainings, loading, error } = useTrainings();
   const { settings } = useSettings();
   const today = todayISO();
+  const newTraining = useNewTraining();
+  const [createError, setCreateError] = useState<string | null>(null);
 
   return (
     <Screen title="Entrenos" scroll>
-      <Button title="Nuevo entrenamiento" onPress={() => router.push('/entrenamiento/nuevo')} />
-      <ErrorText message={error} />
+      <Button
+        title="Nuevo entrenamiento"
+        onPress={() =>
+          newTraining().then(
+            () => setCreateError(null),
+            (err) => setCreateError(err instanceof Error ? err.message : 'No se ha podido crear'),
+          )
+        }
+      />
+      <ErrorText message={error ?? createError} />
 
       {!loading && trainings.length === 0 && !error && (
         <ThemedText themeColor="textSecondary">

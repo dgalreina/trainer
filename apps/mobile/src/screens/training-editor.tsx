@@ -24,17 +24,15 @@ export function TrainingEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
-  const { trainings, loading, create, update, remove, addRoutine, removeRoutine } = useTrainings();
+  const { trainings, loading, update, remove, addRoutine, removeRoutine } = useTrainings();
   const { settings, setActiveTraining } = useSettings();
   const { byId } = useExercises();
 
-  const isNew = id === 'nuevo';
-  const existing = isNew ? undefined : trainings.find((t) => t.id === id);
+  const existing = trainings.find((t) => t.id === id);
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(todayISO());
   const [weeks, setWeeks] = useState(String(DEFAULT_WEEKS));
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // El formulario se rellena una sola vez, cuando el entrenamiento está disponible.
@@ -56,7 +54,7 @@ export function TrainingEditorScreen() {
 
   // Un entrenamiento que ya existe se guarda solo: al dejar de tocar un campo válido, se envía el cambio.
   useEffect(() => {
-    if (isNew || !existing || !initialized.current) return;
+    if (!existing || !initialized.current) return;
     const trimmed = name.trim();
     if (!trimmed || !datesValid) return;
     if (
@@ -75,7 +73,7 @@ export function TrainingEditorScreen() {
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [isNew, existing, name, startDate, weeksNumber, datesValid, update]);
+  }, [existing, name, startDate, weeksNumber, datesValid, update]);
 
   /** Crea la siguiente rutina, vacía y sin nombre: «Día N» es su posición, el nombre y los ejercicios se ponen al abrirla. */
   async function onAddRoutine() {
@@ -96,27 +94,6 @@ export function TrainingEditorScreen() {
       await removeRoutine(existing.id, routineId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido borrar la rutina');
-    }
-  }
-
-  async function onCreate() {
-    const trimmed = name.trim();
-    if (!trimmed) return setError('Ponle un nombre al entrenamiento');
-    if (!isValidISODate(startDate)) return setError('Elige una fecha de inicio válida');
-    if (!(weeksNumber >= 1 && weeksNumber <= MAX_TRAINING_WEEKS)) {
-      return setError(`La duración va de 1 a ${MAX_TRAINING_WEEKS} semanas`);
-    }
-
-    setSaving(true);
-    setError(null);
-    try {
-      const created = await create({ name: trimmed, startDate, durationWeeks: weeksNumber });
-      // Recién creado está vacío: se pasa a su página para añadirle rutinas.
-      router.replace({ pathname: '/entrenamiento/[id]', params: { id: created.id } });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se ha podido guardar');
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -144,7 +121,7 @@ export function TrainingEditorScreen() {
     }
   }
 
-  if (!isNew && !existing) {
+  if (!existing) {
     return (
       <Screen title="Entrenamiento" stacked onBack={goBack}>
         {loading ? (
@@ -156,10 +133,10 @@ export function TrainingEditorScreen() {
     );
   }
 
-  const isActive = existing ? settings.activeTrainingId === existing.id : false;
+  const isActive = settings.activeTrainingId === existing.id;
 
   return (
-    <Screen title={isNew ? 'Nuevo entrenamiento' : existing!.name} stacked onBack={goBack}>
+    <Screen title={existing.name} stacked onBack={goBack}>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Fuerza, Definición…" />
       <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
       <View style={styles.weeks}>
@@ -177,7 +154,6 @@ export function TrainingEditorScreen() {
       </View>
 
       <ErrorText message={error} />
-      {isNew ? <Button title="Crear entrenamiento" onPress={onCreate} loading={saving} /> : null}
 
       {existing && (
         <>

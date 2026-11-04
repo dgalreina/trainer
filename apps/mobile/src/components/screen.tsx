@@ -50,9 +50,13 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, stacked
     <View style={styles.header}>
       <BackButton onPress={onBack} />
       <View style={[styles.headerText, styles.headerCentered]}>
-        {title ? <ThemedText type="subtitle" style={styles.centeredText}>{title}</ThemedText> : null}
+        {title ? (
+          <ThemedText type="subtitle" numberOfLines={1} style={styles.centeredText}>
+            {title}
+          </ThemedText>
+        ) : null}
         {subtitle ? (
-          <ThemedText themeColor="textSecondary" style={styles.centeredText}>
+          <ThemedText themeColor="textSecondary" numberOfLines={1} style={styles.centeredText}>
             {subtitle}
           </ThemedText>
         ) : null}
@@ -79,11 +83,13 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, stacked
     hasFixed ? styles.afterFixedTop : null,
     { paddingBottom: bottomInset },
   ];
+  // El hueco de arriba es para la barra de pestañas flotante: las pantallas apiladas no la tienen.
+  const fixedStyle = [styles.content, styles.fixedTop, stacked ? styles.stackedTop : null];
 
   const body = (
     <SafeAreaView style={styles.safe}>
       {hasFixed ? (
-        <View style={[styles.content, styles.fixedTop]}>
+        <View style={fixedStyle}>
           {header}
           {fixedTop}
         </View>
@@ -137,6 +143,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   fixedTop: { paddingBottom: Spacing.two },
+  stackedTop: { paddingTop: Spacing.three },
   afterFixedTop: { paddingTop: Spacing.two },
   header: {
     flexDirection: 'row',
