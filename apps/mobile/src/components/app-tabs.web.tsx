@@ -35,7 +35,7 @@ function TabBar() {
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         {width >= BRAND_MIN_WIDTH && (
           <ThemedText type="smallBold" style={styles.brandText}>
-            Trainer
+            Élite Trainer
           </ThemedText>
         )}
 

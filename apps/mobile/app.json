@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Trainer",
+    "name": "Élite Trainer",
     "slug": "trainer",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,10 +22,10 @@
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png",
-      "name": "Trainer",
-      "shortName": "Trainer",
+      "name": "Élite Trainer",
+      "shortName": "Élite",
       "backgroundColor": "#ffffff",
-      "themeColor": "#208AEF"
+      "themeColor": "#FF8F7E"
     },
     "plugins": [
       "expo-router",

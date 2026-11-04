@@ -1,4 +1,4 @@
-# Trainer
+# Élite Trainer
 
 Registro de entrenos con IA. Monorepo con npm workspaces.
 

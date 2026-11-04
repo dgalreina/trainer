@@ -1,11 +1,17 @@
-import { MAX_TRAINING_WEEKS, trainingProgress, type Training } from '@trainer/shared';
+import {
+  DEFAULT_REST_SECONDS,
+  MAX_TRAINING_WEEKS,
+  REST_SECONDS_OPTIONS,
+  trainingProgress,
+  type Training,
+} from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { DateField } from '@/components/date-field';
-import { Button, ErrorText, Field, LinkButton, NumberInput } from '@/components/form';
+import { Button, Chip, ErrorText, Field, LinkButton, NumberInput } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -34,6 +40,7 @@ export function TrainingEditorScreen() {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(todayISO());
   const [weeks, setWeeks] = useState(String(DEFAULT_WEEKS));
+  const [restSeconds, setRestSeconds] = useState<number>(DEFAULT_REST_SECONDS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +52,7 @@ export function TrainingEditorScreen() {
     setName(existing.name);
     setStartDate(existing.startDate);
     setWeeks(String(existing.durationWeeks));
+    setRestSeconds(existing.restSeconds);
   }, [existing]);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/entrenamientos'));
@@ -67,7 +75,7 @@ export function TrainingEditorScreen() {
     setSaving(true);
     setError(null);
     try {
-      const data = { name: trimmed, startDate, durationWeeks: weeksNumber };
+      const data = { name: trimmed, startDate, durationWeeks: weeksNumber, restSeconds };
       if (isNew) {
         const created = await create(data);
         // Recién creado está vacío: se pasa a su página para añadirle rutinas.
@@ -139,6 +147,25 @@ export function TrainingEditorScreen() {
         <NumberInput accessibilityLabel="Semanas de duración" value={weeks} onChangeText={setWeeks} />
       </View>
 
+      <View style={styles.restField}>
+        <ThemedText type="smallBold" themeColor="textSecondary">
+          Descanso entre series
+        </ThemedText>
+        <View style={styles.chips}>
+          {REST_SECONDS_OPTIONS.map((seconds) => (
+            <Chip
+              key={seconds}
+              label={seconds === 0 ? 'Sin' : `${seconds} s`}
+              active={restSeconds === seconds}
+              onPress={() => setRestSeconds(seconds)}
+            />
+          ))}
+        </View>
+        <ThemedText type="small" themeColor="textSecondary">
+          Es el mismo para todas las rutinas de este entrenamiento.
+        </ThemedText>
+      </View>
+
       <ErrorText message={error} />
       <Button title={isNew ? 'Crear entrenamiento' : 'Guardar cambios'} onPress={onSave} loading={saving} />
 
@@ -201,6 +228,8 @@ export function TrainingEditorScreen() {
 const styles = StyleSheet.create({
   weeks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
   weeksText: { flex: 1 },
+  restField: { gap: Spacing.two },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   section: { marginTop: Spacing.two },
   routine: { gap: Spacing.one },
 });

@@ -182,18 +182,6 @@ export function RoutineEditorScreen() {
                   {setIndex + 1}
                 </ThemedText>
                 <NumberInput
-                  accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
-                  placeholder="kg"
-                  value={set.weightKg}
-                  onChangeText={(text) =>
-                    updateSlot(slot.key, (s) => ({
-                      ...s,
-                      sets: s.sets.map((x, i) => (i === setIndex ? { ...x, weightKg: text } : x)),
-                    }))
-                  }
-                />
-                <ThemedText themeColor="textSecondary">×</ThemedText>
-                <NumberInput
                   accessibilityLabel={`Repeticiones de la serie ${setIndex + 1}`}
                   placeholder="reps"
                   value={set.reps}
@@ -201,6 +189,18 @@ export function RoutineEditorScreen() {
                     updateSlot(slot.key, (s) => ({
                       ...s,
                       sets: s.sets.map((x, i) => (i === setIndex ? { ...x, reps: text } : x)),
+                    }))
+                  }
+                />
+                <ThemedText themeColor="textSecondary">×</ThemedText>
+                <NumberInput
+                  accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
+                  placeholder="kg"
+                  value={set.weightKg}
+                  onChangeText={(text) =>
+                    updateSlot(slot.key, (s) => ({
+                      ...s,
+                      sets: s.sets.map((x, i) => (i === setIndex ? { ...x, weightKg: text } : x)),
                     }))
                   }
                 />

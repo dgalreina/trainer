@@ -58,6 +58,10 @@ export class TrainingDoc {
   @Prop({ type: Number, required: true })
   durationWeeks!: number;
 
+  // Descanso entre series de todo el entrenamiento, en segundos (0 = sin temporizador).
+  @Prop({ type: Number, default: 90 })
+  restSeconds!: number;
+
   @Prop({ type: [TrainingRoutineSchema], default: [] })
   routines!: TrainingRoutineDoc[];
 }

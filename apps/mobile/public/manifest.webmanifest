@@ -1,15 +1,32 @@
 {
-  "name": "Trainer",
-  "short_name": "Trainer",
-  "description": "Registro de entrenos con IA",
+  "name": "Élite Trainer",
+  "short_name": "Élite",
+  "description": "Tu entrenador personal",
   "lang": "es",
   "start_url": "/trainer/",
   "scope": "/trainer/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FFFFFF",
-  "theme_color": "#208AEF",
+  "theme_color": "#FF8F7E",
   "icons": [
-    { "src": "/trainer/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+    {
+      "src": "/trainer/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/trainer/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/trainer/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

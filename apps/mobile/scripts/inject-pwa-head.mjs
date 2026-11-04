@@ -11,12 +11,12 @@ const app = JSON.parse(readFileSync("app.json", "utf8"));
 const base = app.expo.experiments?.baseUrl ?? "";
 
 const tags = [
-  `<title>Trainer</title>`,
+  `<title>Élite Trainer</title>`,
   `<link rel="manifest" href="${base}/manifest.webmanifest"/>`,
-  `<link rel="apple-touch-icon" href="${base}/icon.png"/>`,
+  `<link rel="apple-touch-icon" href="${base}/apple-touch-icon.png"/>`,
   `<meta name="apple-mobile-web-app-capable" content="yes"/>`,
   `<meta name="mobile-web-app-capable" content="yes"/>`,
-  `<meta name="apple-mobile-web-app-title" content="Trainer"/>`,
+  `<meta name="apple-mobile-web-app-title" content="Élite"/>`,
   // "default": iOS adapta el texto de la barra de estado al modo claro u oscuro.
   `<meta name="apple-mobile-web-app-status-bar-style" content="default"/>`,
   `<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>`,

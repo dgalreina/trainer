@@ -6,6 +6,24 @@ const dateSchema = z.iso.date();
 
 export const MAX_TRAINING_WEEKS = 104;
 
+/** Descansos entre series que ofrece la app, en segundos. 0 = sin temporizador. */
+export const REST_SECONDS_OPTIONS = [0, 60, 90, 120, 180] as const;
+export const DEFAULT_REST_SECONDS = 90;
+export const MAX_REST_SECONDS = 600;
+
+const restSecondsSchema = z.number().int().min(0).max(MAX_REST_SECONDS);
+
+// Los campos de un entrenamiento, sin valores por defecto. Se comparten entre crear y editar:
+// en editar un campo ausente debe quedarse como está, y con un `.default()` dentro de un
+// `.partial()` Zod lo rellenaría y machacaría el valor guardado.
+const trainingFields = {
+  name: z.string().trim().min(1).max(100),
+  startDate: dateSchema,
+  durationWeeks: z.number().int().min(1).max(MAX_TRAINING_WEEKS),
+  /** Descanso entre series de todo el entrenamiento. Se fija aquí, no mientras se entrena. */
+  restSeconds: restSecondsSchema,
+};
+
 /**
  * Entrenamiento (por ejemplo "Fuerza"): un bloque con fecha de inicio y duración en
  * semanas que agrupa las rutinas de cada día ("Pecho + Espalda", "Pierna"...).
@@ -13,18 +31,19 @@ export const MAX_TRAINING_WEEKS = 104;
 export const trainingSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  name: z.string().trim().min(1).max(100),
-  startDate: dateSchema,
-  durationWeeks: z.number().int().min(1).max(MAX_TRAINING_WEEKS),
+  ...trainingFields,
   routines: z.array(routineSchema),
 });
 export type Training = z.infer<typeof trainingSchema>;
 
 /** Al crearlo no lleva rutinas: se añaden después, una a una. */
-export const createTrainingSchema = trainingSchema.omit({ id: true, userId: true, routines: true });
+export const createTrainingSchema = z.object({
+  ...trainingFields,
+  restSeconds: restSecondsSchema.default(DEFAULT_REST_SECONDS),
+});
 export type CreateTraining = z.input<typeof createTrainingSchema>;
 
-export const updateTrainingSchema = createTrainingSchema.partial();
+export const updateTrainingSchema = z.object(trainingFields).partial();
 export type UpdateTraining = z.input<typeof updateTrainingSchema>;
 
 export type TrainingStatus = "upcoming" | "active" | "finished";

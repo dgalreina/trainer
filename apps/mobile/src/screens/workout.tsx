@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Vibration, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { Button, Chip, ErrorText, LinkButton, NumberInput } from '@/components/form';
+import { Button, ErrorText, LinkButton, NumberInput } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -17,13 +17,10 @@ import { deleteItem, getItem, setItem } from '@/lib/storage';
 import { useTrainings } from '@/lib/trainings';
 import {
   buildDraft,
-  DEFAULT_REST_SECONDS,
   draftKey,
   formatClock,
   lastPerformed,
   parseDraft,
-  REST_OPTIONS,
-  REST_PREFERENCE_KEY,
   toSessionPayload,
   type WorkoutDraft,
   type WorkoutSummary,
@@ -56,6 +53,8 @@ export function WorkoutScreen() {
 
   const training = trainings.find((t) => t.id === id);
   const routine = training?.routines.find((r) => r.id === rid);
+  // El descanso se define en el entrenamiento, no mientras se entrena.
+  const restSeconds = training?.restSeconds ?? 0;
   const key = draftKey(id, rid);
 
   const [draft, setDraft] = useState<WorkoutDraft | null>(null);
@@ -83,12 +82,7 @@ export function WorkoutScreen() {
 
       const saved = parseDraft(await getItem(key));
       if (saved) return setDraft(saved);
-      // Sin preferencia guardada vale el descanso por defecto (ojo: Number(null) sería 0, «Sin»).
-      const stored = await getItem(REST_PREFERENCE_KEY);
-      const rest = stored === null ? NaN : Number(stored);
-      setDraft(
-        buildDraft(id, routine, last, (REST_OPTIONS as readonly number[]).includes(rest) ? rest : DEFAULT_REST_SECONDS),
-      );
+      setDraft(buildDraft(id, routine, last));
     })();
   }, [routine, id, key]);
 
@@ -136,11 +130,6 @@ export function WorkoutScreen() {
     patch((d) => (d.startedAt === null ? { ...d, startedAt: Date.now() } : d));
   }
 
-  function setRest(seconds: number) {
-    setItem(REST_PREFERENCE_KEY, String(seconds));
-    patch((d) => ({ ...d, restSeconds: seconds, restEndsAt: seconds === 0 ? null : d.restEndsAt }));
-  }
-
   function toggleDone(entryIndex: number, setIndex: number) {
     unlockAudio();
     patch((d) => {
@@ -159,7 +148,7 @@ export function WorkoutScreen() {
         startedAt: d.startedAt ?? (becomesDone ? at : null),
         // En una superserie no se descansa entre sus ejercicios, solo al acabar la ronda.
         restEndsAt:
-          becomesDone && d.restSeconds > 0 && !entry.linkedToNext ? at + d.restSeconds * 1000 : d.restEndsAt,
+          becomesDone && restSeconds > 0 && !entry.linkedToNext ? at + restSeconds * 1000 : d.restEndsAt,
       };
     });
   }
@@ -322,21 +311,11 @@ export function WorkoutScreen() {
         </Card>
       )}
 
-      <View style={styles.restSetting}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          Descanso entre series
-        </ThemedText>
-        <View style={styles.chips}>
-          {REST_OPTIONS.map((seconds) => (
-            <Chip
-              key={seconds}
-              label={seconds === 0 ? 'Sin' : `${seconds} s`}
-              active={draft.restSeconds === seconds}
-              onPress={() => setRest(seconds)}
-            />
-          ))}
-        </View>
-      </View>
+      <ThemedText type="small" themeColor="textSecondary">
+        {restSeconds > 0
+          ? `Descanso entre series: ${restSeconds} s`
+          : 'Sin descanso entre series'}
+      </ThemedText>
 
       {draft.entries.map((entry, entryIndex) => {
         const last = lastByExercise.get(entry.exerciseId);
@@ -352,7 +331,7 @@ export function WorkoutScreen() {
             )}
             {last && last.length > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
-                Última vez: {last.slice(0, 4).map((s) => `${s.weightKg} kg × ${s.reps}`).join(' · ')}
+                Última vez: {last.slice(0, 4).map((s) => `${s.reps} × ${s.weightKg} kg`).join(' · ')}
               </ThemedText>
             )}
 
@@ -369,17 +348,17 @@ export function WorkoutScreen() {
                   </ThemedText>
                 </Pressable>
                 <NumberInput
-                  accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
-                  placeholder="kg"
-                  value={set.weightKg}
-                  onChangeText={(text) => changeSet(entryIndex, setIndex, 'weightKg', text)}
-                />
-                <ThemedText themeColor="textSecondary">×</ThemedText>
-                <NumberInput
                   accessibilityLabel={`Repeticiones de la serie ${setIndex + 1}`}
                   placeholder="reps"
                   value={set.reps}
                   onChangeText={(text) => changeSet(entryIndex, setIndex, 'reps', text)}
+                />
+                <ThemedText themeColor="textSecondary">×</ThemedText>
+                <NumberInput
+                  accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
+                  placeholder="kg"
+                  value={set.weightKg}
+                  onChangeText={(text) => changeSet(entryIndex, setIndex, 'weightKg', text)}
                 />
                 <Pressable
                   accessibilityRole="button"
@@ -404,8 +383,6 @@ export function WorkoutScreen() {
 
 const styles = StyleSheet.create({
   clockCard: { gap: Spacing.half },
-  restSetting: { gap: Spacing.two },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   exercise: { gap: Spacing.two + 2 },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   check: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },

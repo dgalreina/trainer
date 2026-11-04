@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -43,12 +44,16 @@ export function NumberInput({
   accessibilityLabel: string;
 }) {
   const theme = useTheme();
+  // El texto de ayuda («kg», «reps») se quita en cuanto se pincha el campo.
+  const [focused, setFocused] = useState(false);
   return (
     <TextInput
       accessibilityLabel={accessibilityLabel}
       value={value}
       onChangeText={onChangeText}
-      placeholder={placeholder}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      placeholder={focused ? '' : placeholder}
       placeholderTextColor={theme.textSecondary}
       keyboardType="decimal-pad"
       selectTextOnFocus
@@ -96,9 +101,22 @@ export function Button({
   );
 }
 
-export function LinkButton({ title, onPress }: { title: string; onPress: () => void }) {
+export function LinkButton({
+  title,
+  onPress,
+  centered,
+}: {
+  title: string;
+  onPress: () => void;
+  /** Centrado en su fila; por defecto va a la izquierda. */
+  centered?: boolean;
+}) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={8}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={8}
+      style={centered ? { alignSelf: 'center' } : undefined}>
       <ThemedText type="linkPrimary">{title}</ThemedText>
     </Pressable>
   );

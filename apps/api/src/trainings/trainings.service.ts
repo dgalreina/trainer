@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type {
-  CreateRoutine,
-  CreateTraining,
-  Routine,
-  Training,
-  UpdateRoutine,
-  UpdateTraining,
+import {
+  DEFAULT_REST_SECONDS,
+  type CreateRoutine,
+  type CreateTraining,
+  type Routine,
+  type Training,
+  type UpdateRoutine,
+  type UpdateTraining,
 } from "@trainer/shared";
 import { isValidObjectId, type Model, type Types } from "mongoose";
 import { ExercisesService } from "../exercises/exercises.service.js";
@@ -36,6 +37,8 @@ function toTraining(doc: TrainingDocument): Training {
     name: doc.name,
     startDate: doc.startDate,
     durationWeeks: doc.durationWeeks,
+    // Los entrenamientos anteriores a este campo no lo tienen guardado.
+    restSeconds: doc.restSeconds ?? DEFAULT_REST_SECONDS,
     routines: doc.routines.map(toRoutine),
   };
 }
@@ -67,6 +70,7 @@ export class TrainingsService {
     if (dto.name !== undefined) doc.name = dto.name;
     if (dto.startDate !== undefined) doc.startDate = dto.startDate;
     if (dto.durationWeeks !== undefined) doc.durationWeeks = dto.durationWeeks;
+    if (dto.restSeconds !== undefined) doc.restSeconds = dto.restSeconds;
     return toTraining(await doc.save());
   }
 

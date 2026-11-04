@@ -85,8 +85,10 @@ export default function LoginScreen() {
           <ScrollView
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled">
-            <ThemedText type="subtitle">Trainer</ThemedText>
-            <ThemedText themeColor="textSecondary">{title}</ThemedText>
+            <ThemedText type="subtitle" style={styles.title}>
+              Élite Trainer
+            </ThemedText>
+            {mode !== 'signIn' && <ThemedText themeColor="textSecondary">{title}</ThemedText>}
 
             <Field
               label="Email"
@@ -134,15 +136,15 @@ export default function LoginScreen() {
             />
 
             {mode === 'signIn' && (
-              <LinkButton title="No tengo cuenta, crear una" onPress={() => go('signUp')} />
+              <LinkButton centered title="No tengo cuenta, crear una" onPress={() => go('signUp')} />
             )}
             {mode === 'signUp' && (
-              <LinkButton title="Ya tengo cuenta, entrar" onPress={() => go('signIn')} />
+              <LinkButton centered title="Ya tengo cuenta, entrar" onPress={() => go('signIn')} />
             )}
             {mode === 'confirm' && (
               <>
-                <LinkButton title="Reenviar código" onPress={resend} />
-                <LinkButton title="Volver" onPress={() => go('signIn')} />
+                <LinkButton centered title="Reenviar código" onPress={resend} />
+                <LinkButton centered title="Volver" onPress={() => go('signIn')} />
               </>
             )}
           </ScrollView>
@@ -156,6 +158,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center' },
   safeArea: { flex: 1, width: '100%', maxWidth: MaxContentWidth / 2 },
   flex: { flex: 1 },
+  // Solo el título va centrado; el resto del formulario sigue alineado a la izquierda.
+  title: { textAlign: 'center' },
   content: {
     flexGrow: 1,
     justifyContent: 'center',

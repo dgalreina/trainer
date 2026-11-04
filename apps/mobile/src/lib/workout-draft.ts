@@ -29,15 +29,9 @@ export interface WorkoutDraft {
   /** Momento (ms) en que se pulsó «Comenzar», o null si aún no. */
   startedAt: number | null;
   entries: DraftEntry[];
-  /** Descanso entre series, en segundos. 0 = sin temporizador. */
-  restSeconds: number;
   /** Momento (ms) en que acaba el descanso en curso. Es una hora, no una cuenta atrás: iOS suspende la web en segundo plano. */
   restEndsAt: number | null;
 }
-
-export const REST_OPTIONS = [0, 60, 90, 120, 180] as const;
-export const DEFAULT_REST_SECONDS = 90;
-export const REST_PREFERENCE_KEY = 'trainer.restSeconds';
 
 export const draftKey = (trainingId: string, routineId: string) =>
   `trainer.draft.${trainingId}.${routineId}`;
@@ -63,13 +57,11 @@ export function buildDraft(
   trainingId: string,
   routine: Routine,
   last: Map<string, PerformedSet[]>,
-  restSeconds: number,
 ): WorkoutDraft {
   return {
     trainingId,
     routineId: routine.id,
     startedAt: null,
-    restSeconds,
     restEndsAt: null,
     entries: routine.slots.map((slot) => {
       const previous = last.get(slot.exerciseId) ?? [];
