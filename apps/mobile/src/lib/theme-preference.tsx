@@ -52,8 +52,29 @@ export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
   }, [forceLight]);
 
   const setForceLight = useCallback((value: boolean) => {
-    setForceLightState(value);
     setItem(KEY, value ? '1' : '0');
+    // En la web, el cambio se funde con una transición de vista del navegador: foto de la pantalla
+    // antes y después, mezcladas con un solo fundido. Es mucho más uniforme que animar los colores
+    // uno a uno (los textos iban más lentos que el fondo). Si el navegador no la tiene, o se pide
+    // reducir el movimiento, queda el método de clases CSS de `_layout.tsx` o el cambio directo.
+    if (Platform.OS === 'web') {
+      const doc = globalThis.document as
+        | (Document & { startViewTransition?: (update: () => void) => { finished: Promise<unknown> } })
+        | undefined;
+      const reduceMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (doc?.startViewTransition && !reduceMotion) {
+        const root = doc.documentElement;
+        root.setAttribute('data-view-transition', '');
+        // `flushSync`: el DOM debe estar ya con los colores nuevos cuando acaba la función, que es
+        // cuando el navegador hace la segunda foto.
+        const { flushSync } = require('react-dom') as { flushSync: (update: () => void) => void };
+        doc
+          .startViewTransition(() => flushSync(() => setForceLightState(value)))
+          .finished.finally(() => root.removeAttribute('data-view-transition'));
+        return;
+      }
+    }
+    setForceLightState(value);
   }, []);
 
   const value = useMemo(() => ({ forceLight, setForceLight }), [forceLight, setForceLight]);

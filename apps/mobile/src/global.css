@@ -17,6 +17,33 @@ body {
   overscroll-behavior: none;
 }
 
+/* Al cambiar entre claro y oscuro (con el interruptor de Cuenta o porque el móvil cambie de modo) la
+   app añade `theme-transition` a <html> durante medio segundo: los colores se funden en vez de saltar.
+   Solo en ese rato, para no interferir con otras animaciones, y no si se pide reducir el movimiento. */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition:
+      background-color 400ms ease,
+      color 400ms ease,
+      border-color 400ms ease,
+      fill 400ms ease,
+      fill-opacity 400ms ease,
+      stroke 400ms ease,
+      stop-color 400ms ease,
+      stop-opacity 400ms ease !important;
+  }
+}
+
+/* Duración del fundido de la transición de vista (cambio claro/oscuro desde Cuenta). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 450ms;
+  animation-timing-function: ease;
+}
+
 @media (prefers-color-scheme: dark) {
   html,
   body {

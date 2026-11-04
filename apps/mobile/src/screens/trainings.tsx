@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { Button, ErrorText, LinkButton } from '@/components/form';
+import { Button, ErrorText } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -62,7 +62,6 @@ export function TrainingsScreen() {
         );
       })}
 
-      <LinkButton title="Catálogo de ejercicios" onPress={() => router.push('/ejercicios')} />
     </Screen>
   );
 }
