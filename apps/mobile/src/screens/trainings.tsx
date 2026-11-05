@@ -1,7 +1,7 @@
 import { routineTitle, trainingProgress } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
@@ -9,6 +9,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { todayISO } from '@/lib/dates';
+import { useTheme } from '@/hooks/use-theme';
 import { useNewTraining } from '@/lib/new-training';
 import { useSettings } from '@/lib/settings';
 import { progressLabel } from '@/lib/training-progress';
@@ -17,7 +18,8 @@ import { useTrainings } from '@/lib/trainings';
 export function TrainingsScreen() {
   const router = useRouter();
   const { trainings, loading, error } = useTrainings();
-  const { settings } = useSettings();
+  const { settings, setActiveTraining } = useSettings();
+  const theme = useTheme();
   const today = todayISO();
   const newTraining = useNewTraining();
   const [createError, setCreateError] = useState<string | null>(null);
@@ -57,11 +59,18 @@ export function TrainingsScreen() {
               <ThemedText type="smallBold" style={styles.name}>
                 {training.name}
               </ThemedText>
-              {isActive && (
-                <ThemedText type="small" themeColor="primaryText">
-                  Actual
-                </ThemedText>
-              )}
+              {/* El punto marca el entrenamiento actual; tocar fuera de él abre el entrenamiento. */}
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isActive }}
+                accessibilityLabel={`Usar ${training.name} como entrenamiento actual`}
+                hitSlop={8}
+                onPress={() => {
+                  if (!isActive) setActiveTraining(training.id).catch(() => {});
+                }}
+                style={styles.dotHit}>
+                <View style={[styles.dot, { borderColor: theme.primaryText }, isActive && { backgroundColor: theme.primary }]} />
+              </Pressable>
             </View>
             <ThemedText type="small" themeColor="textSecondary">
               {progressLabel(training, progress)} · {training.routines.length}{' '}
@@ -82,4 +91,6 @@ const styles = StyleSheet.create({
   card: { gap: Spacing.one },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   name: { flex: 1 },
+  dotHit: { padding: Spacing.one },
+  dot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
 });

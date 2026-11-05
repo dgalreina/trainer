@@ -47,7 +47,7 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, stacked
   const ownWaves = stacked || Platform.OS !== 'web';
 
   const header = onBack ? (
-    <View style={styles.header}>
+    <View style={[styles.header, !subtitle && styles.headerMiddle]}>
       <BackButton onPress={onBack} />
       <View style={[styles.headerText, styles.headerCentered]}>
         {title ? (
@@ -155,6 +155,8 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   headerPlain: { alignItems: 'flex-end' },
   headerCentered: { alignItems: 'center' },
+  // Sin subtítulo, la flecha y el título van a la misma altura.
+  headerMiddle: { alignItems: 'center' },
   centeredText: { textAlign: 'center' },
   // Un poco más pequeño que el título de pestaña: «Nuevo entrenamiento» cabe entre la flecha y el borde.
   centeredTitle: { fontSize: 21, lineHeight: 28 },

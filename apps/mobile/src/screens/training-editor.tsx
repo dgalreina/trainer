@@ -1,4 +1,4 @@
-import { dayLabel, MAX_TRAINING_WEEKS, trainingProgress, type Training } from '@trainer/shared';
+import { dayLabel, MAX_TRAINING_WEEKS, trainingProgress } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
@@ -13,23 +13,24 @@ import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
 import { formatDay, isValidISODate, todayISO } from '@/lib/dates';
 import { useExercises } from '@/lib/exercises';
+import { NEW_TRAINING_ID } from '@/lib/new-training';
 import { routineSummary } from '@/lib/routine-summary';
-import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
 
 const DEFAULT_WEEKS = 8;
 
 /** Entrenamiento: sus datos (nombre, inicio, semanas) y las rutinas que lleva dentro. */
 export function TrainingEditorScreen() {
-  const { id, nuevo } = useLocalSearchParams<{ id: string; nuevo?: string }>();
-  const isNew = nuevo === '1';
+  const { id } = useLocalSearchParams<{ id: string }>();
+  // «nuevo»: el formulario está en blanco y el entrenamiento no existe hasta que se escribe un nombre.
+  const isNew = id === NEW_TRAINING_ID;
   const router = useRouter();
   const theme = useTheme();
-  const { trainings, loading, update, remove, addRoutine, removeRoutine } = useTrainings();
-  const { settings, setActiveTraining } = useSettings();
+  const { trainings, loading, create, update, remove, addRoutine, removeRoutine } = useTrainings();
   const { byId } = useExercises();
 
-  const existing = trainings.find((t) => t.id === id);
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const existing = trainings.find((t) => t.id === (isNew ? createdId : id));
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(todayISO());
@@ -41,8 +42,9 @@ export function TrainingEditorScreen() {
   useEffect(() => {
     if (initialized.current || !existing) return;
     initialized.current = true;
-    // Recién creado: el nombre se deja vacío para escribirlo (hasta entonces se llama «Nuevo entrenamiento»).
-    setName(isNew ? '' : existing.name);
+    // Recién creado desde este formulario: los campos ya son los que ha escrito el usuario.
+    if (isNew) return;
+    setName(existing.name);
     setStartDate(existing.startDate);
     setWeeks(String(existing.durationWeeks));
   }, [existing, isNew]);
@@ -53,6 +55,26 @@ export function TrainingEditorScreen() {
   const preview = datesValid
     ? trainingProgress({ startDate, durationWeeks: weeksNumber }, todayISO())
     : null;
+
+  // El nombre es obligatorio: el entrenamiento nuevo se crea en cuanto lo tiene (y fechas válidas).
+  const creating = useRef(false);
+  useEffect(() => {
+    if (!isNew || createdId || creating.current) return;
+    if (!name.trim() || !datesValid) return;
+    const timer = setTimeout(async () => {
+      creating.current = true;
+      try {
+        const created = await create({ name: name.trim(), startDate, durationWeeks: weeksNumber });
+        setCreatedId(created.id);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se ha podido crear');
+      } finally {
+        creating.current = false;
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [isNew, createdId, name, startDate, weeksNumber, datesValid, create]);
 
   // Un entrenamiento que ya existe se guarda solo: al dejar de tocar un campo válido, se envía el cambio.
   useEffect(() => {
@@ -115,15 +137,7 @@ export function TrainingEditorScreen() {
     }
   }
 
-  async function onActivate(training: Training) {
-    try {
-      await setActiveTraining(training.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se ha podido activar');
-    }
-  }
-
-  if (!existing) {
+  if (!existing && !isNew) {
     return (
       <Screen title="Entrenamiento" stacked onBack={goBack}>
         {loading ? (
@@ -135,10 +149,8 @@ export function TrainingEditorScreen() {
     );
   }
 
-  const isActive = settings.activeTrainingId === existing.id;
-
   return (
-    <Screen title={isNew ? 'Nuevo entrenamiento' : existing.name} stacked onBack={goBack}>
+    <Screen title={isNew ? 'Nuevo entrenamiento' : (existing?.name ?? '')} stacked onBack={goBack}>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Fuerza, Definición…" />
       <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
       <View style={styles.weeks}>
@@ -152,10 +164,25 @@ export function TrainingEditorScreen() {
             </ThemedText>
           ) : null}
         </View>
-        <NumberInput accessibilityLabel="Semanas de duración" value={weeks} onChangeText={setWeeks} />
+        <View style={styles.stepper}>
+          <StepButton label="Menos semanas" glyph="−" disabled={!(weeksNumber > 1)} onPress={() => setWeeks(String(weeksNumber - 1))} />
+          <NumberInput accessibilityLabel="Semanas de duración" compact value={weeks} onChangeText={setWeeks} />
+          <StepButton
+            label="Más semanas"
+            glyph="+"
+            disabled={weeksNumber >= MAX_TRAINING_WEEKS}
+            onPress={() => setWeeks(String((Number.isFinite(weeksNumber) ? weeksNumber : 0) + 1))}
+          />
+        </View>
       </View>
 
       <ErrorText message={error} />
+
+      {!existing && (
+        <ThemedText themeColor="textSecondary">
+          Escribe un nombre para crear el entrenamiento y añadirle rutinas.
+        </ThemedText>
+      )}
 
       {existing && (
         <>
@@ -212,13 +239,6 @@ export function TrainingEditorScreen() {
               );
             })
           )}
-          {isActive ? (
-            <Card tone="primarySoft">
-              <ThemedText type="smallBold">Es tu entrenamiento actual</ThemedText>
-            </Card>
-          ) : (
-            <Button title="Usar como mi entrenamiento actual" onPress={() => onActivate(existing)} />
-          )}
           <Button variant="danger" title="Borrar entrenamiento" onPress={onDelete} />
         </>
       )}
@@ -226,7 +246,37 @@ export function TrainingEditorScreen() {
   );
 }
 
+function StepButton({
+  label,
+  glyph,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  glyph: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.step, { backgroundColor: theme.backgroundSelected }, disabled && styles.stepDisabled]}>
+      <ThemedText type="subtitle" style={styles.stepGlyph}>
+        {glyph}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  step: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  stepDisabled: { opacity: 0.35 },
+  stepGlyph: { fontSize: 24, lineHeight: 28 },
   weeks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
   weeksText: { flex: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.two },
