@@ -1,7 +1,9 @@
 import { type Exercise, type ExerciseCategory } from '@trainer/shared';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
+import { ExerciseMotion } from '@/components/exercise-motion';
+import { FadingScroll } from '@/components/fading-scroll';
 import { Field } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,7 +11,11 @@ import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { CATEGORIES, CATEGORY_LABELS } from '@/lib/categories';
 import { useExercises } from '@/lib/exercises';
+import { exerciseFrames } from '@/lib/exercise-images';
 import { searchExercises } from '@/lib/exercise-search';
+
+/** Cuántas ilustraciones se mueven a la vez en la cuadrícula. */
+const ANIMATED_TILES = 6;
 
 /**
  * Selector de ejercicio a pantalla completa para cuando no te sabes el nombre: los ejercicios
@@ -35,6 +41,17 @@ export function ExercisePicker({
     })).filter((g) => g.items.length > 0);
   }, [exercises, query]);
 
+  // Solo se mueven las primeras de la cuadrícula (las que tienen imagen), para no cargar el móvil.
+  const animated = useMemo(() => {
+    const ids = new Set<string>();
+    for (const group of groups) {
+      for (const e of group.items) {
+        if (ids.size < ANIMATED_TILES && exerciseFrames(e.name)) ids.add(e.id);
+      }
+    }
+    return ids;
+  }, [groups]);
+
   function pick(exercise: Exercise) {
     setQuery('');
     onSelect(exercise);
@@ -59,27 +76,31 @@ export function ExercisePicker({
             autoCapitalize="none"
           />
 
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}>
+          <FadingScroll keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}>
             {groups.length === 0 && (
               <ThemedText themeColor="textSecondary">No hay ejercicios con ese nombre.</ThemedText>
             )}
             {groups.map((group) => (
-              <Group key={group.category} category={group.category} items={group.items} onPick={pick} />
+              <Group key={group.category} category={group.category} items={group.items} animated={animated} onPick={pick} />
             ))}
-          </ScrollView>
+          </FadingScroll>
         </View>
       </ThemedView>
     </Modal>
   );
 }
 
+const frames = exerciseFrames;
+
 function Group({
   category,
   items,
+  animated,
   onPick,
 }: {
   category: ExerciseCategory;
   items: Exercise[];
+  animated: Set<string>;
   onPick: (exercise: Exercise) => void;
 }) {
   const theme = useTheme();
@@ -97,10 +118,12 @@ function Group({
             onPress={() => onPick(exercise)}
             style={({ pressed }) => [
               styles.tile,
-              { backgroundColor: theme.backgroundElement },
-              pressed && { backgroundColor: theme.backgroundSelected },
+              { backgroundColor: theme.background, borderColor: theme.primary },
+              pressed && { backgroundColor: theme.primarySoft },
             ]}>
-            {/* Aquí irá la imagen del ejercicio. */}
+            {frames(exercise.name) && (
+              <ExerciseMotion frames={frames(exercise.name)!} animate={animated.has(exercise.id)} style={styles.image} />
+            )}
             <ThemedText type="smallBold" numberOfLines={3}>
               {exercise.name}
             </ThemedText>
@@ -129,7 +152,10 @@ const styles = StyleSheet.create({
     width: '48.5%',
     minHeight: 84,
     borderRadius: Radius.control,
+    borderWidth: 1,
     padding: Spacing.three,
     justifyContent: 'flex-end',
+    gap: Spacing.two,
   },
+  image: { borderRadius: Radius.control },
 });
