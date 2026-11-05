@@ -91,6 +91,102 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/encogimientos-de-hombros-con-barra_0.webp'),
     require('../../assets/exercises/encogimientos-de-hombros-con-barra_1.webp'),
   ],
+  'encogimientos de hombros con mancuernas': [
+    require('../../assets/exercises/encogimientos-de-hombros-con-mancuernas_0.webp'),
+    require('../../assets/exercises/encogimientos-de-hombros-con-mancuernas_1.webp'),
+  ],
+  'face pull': [
+    require('../../assets/exercises/face-pull_0.webp'),
+    require('../../assets/exercises/face-pull_1.webp'),
+  ],
+  'hiperextensiones': [
+    require('../../assets/exercises/hiperextensiones_0.webp'),
+    require('../../assets/exercises/hiperextensiones_1.webp'),
+  ],
+  'jalon al pecho': [
+    require('../../assets/exercises/jalon-al-pecho_0.webp'),
+    require('../../assets/exercises/jalon-al-pecho_1.webp'),
+  ],
+  'jalon al pecho agarre cerrado': [
+    require('../../assets/exercises/jalon-al-pecho-agarre-cerrado_0.webp'),
+    require('../../assets/exercises/jalon-al-pecho-agarre-cerrado_1.webp'),
+  ],
+  'jalon tras nuca': [
+    require('../../assets/exercises/jalon-tras-nuca_0.webp'),
+    require('../../assets/exercises/jalon-tras-nuca_1.webp'),
+  ],
+  'peso muerto': [
+    require('../../assets/exercises/peso-muerto_0.webp'),
+    require('../../assets/exercises/peso-muerto_1.webp'),
+  ],
+  'peso muerto con trap bar': [
+    require('../../assets/exercises/peso-muerto-con-trap-bar_0.webp'),
+    require('../../assets/exercises/peso-muerto-con-trap-bar_1.webp'),
+  ],
+  'peso muerto rumano': [
+    require('../../assets/exercises/peso-muerto-rumano_0.webp'),
+    require('../../assets/exercises/peso-muerto-rumano_1.webp'),
+  ],
+  'peso muerto sumo': [
+    require('../../assets/exercises/peso-muerto-sumo_0.webp'),
+    require('../../assets/exercises/peso-muerto-sumo_1.webp'),
+  ],
+  'pull-over en polea': [
+    require('../../assets/exercises/pull-over-en-polea_0.webp'),
+    require('../../assets/exercises/pull-over-en-polea_1.webp'),
+  ],
+  'remo con barra': [
+    require('../../assets/exercises/remo-con-barra_0.webp'),
+    require('../../assets/exercises/remo-con-barra_1.webp'),
+  ],
+  'remo con mancuerna a una mano': [
+    require('../../assets/exercises/remo-con-mancuerna-a-una-mano_0.webp'),
+    require('../../assets/exercises/remo-con-mancuerna-a-una-mano_1.webp'),
+  ],
+  'remo en maquina': [
+    require('../../assets/exercises/remo-en-maquina_0.webp'),
+    require('../../assets/exercises/remo-en-maquina_1.webp'),
+  ],
+  'remo en polea baja (sentado)': [
+    require('../../assets/exercises/remo-en-polea-baja-sentado_0.webp'),
+    require('../../assets/exercises/remo-en-polea-baja-sentado_1.webp'),
+  ],
+  'remo en t': [
+    require('../../assets/exercises/remo-en-t_0.webp'),
+    require('../../assets/exercises/remo-en-t_1.webp'),
+  ],
+  'remo invertido (australiano)': [
+    require('../../assets/exercises/remo-invertido-australiano_0.webp'),
+    require('../../assets/exercises/remo-invertido-australiano_1.webp'),
+  ],
+  'remo renegado': [
+    require('../../assets/exercises/remo-renegado_0.webp'),
+    require('../../assets/exercises/remo-renegado_1.webp'),
+  ],
+  'elevacion posterior en maquina': [
+    require('../../assets/exercises/elevacion-posterior-en-maquina_0.webp'),
+    require('../../assets/exercises/elevacion-posterior-en-maquina_1.webp'),
+  ],
+  'elevaciones frontales con mancuernas': [
+    require('../../assets/exercises/elevaciones-frontales-con-mancuernas_0.webp'),
+    require('../../assets/exercises/elevaciones-frontales-con-mancuernas_1.webp'),
+  ],
+  'elevaciones laterales con mancuernas': [
+    require('../../assets/exercises/elevaciones-laterales-con-mancuernas_0.webp'),
+    require('../../assets/exercises/elevaciones-laterales-con-mancuernas_1.webp'),
+  ],
+  'elevaciones laterales en polea': [
+    require('../../assets/exercises/elevaciones-laterales-en-polea_0.webp'),
+    require('../../assets/exercises/elevaciones-laterales-en-polea_1.webp'),
+  ],
+  'pajaros (elevacion posterior)': [
+    require('../../assets/exercises/pajaros-elevacion-posterior_0.webp'),
+    require('../../assets/exercises/pajaros-elevacion-posterior_1.webp'),
+  ],
+  'press arnold': [
+    require('../../assets/exercises/press-arnold_0.webp'),
+    require('../../assets/exercises/press-arnold_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
