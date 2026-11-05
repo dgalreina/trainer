@@ -11,6 +11,18 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/press-de-banca-con-barra_0.webp'),
     require('../../assets/exercises/press-de-banca-con-barra_1.webp'),
   ],
+  'press de banca con mancuernas': [
+    require('../../assets/exercises/press-de-banca-con-mancuernas_0.webp'),
+    require('../../assets/exercises/press-de-banca-con-mancuernas_1.webp'),
+  ],
+  'fondos en paralelas': [
+    require('../../assets/exercises/fondos-en-paralelas_0.webp'),
+    require('../../assets/exercises/fondos-en-paralelas_1.webp'),
+  ],
+  'press de banca con agarre cerrado': [
+    require('../../assets/exercises/press-de-banca-con-agarre-cerrado_0.webp'),
+    require('../../assets/exercises/press-de-banca-con-agarre-cerrado_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
