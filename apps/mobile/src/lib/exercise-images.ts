@@ -43,6 +43,54 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/flexiones-de-brazos_0.webp'),
     require('../../assets/exercises/flexiones-de-brazos_1.webp'),
   ],
+  'flexiones diamante': [
+    require('../../assets/exercises/flexiones-diamante_0.webp'),
+    require('../../assets/exercises/flexiones-diamante_1.webp'),
+  ],
+  'press de banca declinado con barra': [
+    require('../../assets/exercises/press-de-banca-declinado-con-barra_0.webp'),
+    require('../../assets/exercises/press-de-banca-declinado-con-barra_1.webp'),
+  ],
+  'press de banca declinado con mancuernas': [
+    require('../../assets/exercises/press-de-banca-declinado-con-mancuernas_0.webp'),
+    require('../../assets/exercises/press-de-banca-declinado-con-mancuernas_1.webp'),
+  ],
+  'press de banca en maquina smith': [
+    require('../../assets/exercises/press-de-banca-en-maquina-smith_0.webp'),
+    require('../../assets/exercises/press-de-banca-en-maquina-smith_1.webp'),
+  ],
+  'press de banca inclinado con barra': [
+    require('../../assets/exercises/press-de-banca-inclinado-con-barra_0.webp'),
+    require('../../assets/exercises/press-de-banca-inclinado-con-barra_1.webp'),
+  ],
+  'press de banca inclinado con mancuernas': [
+    require('../../assets/exercises/press-de-banca-inclinado-con-mancuernas_0.webp'),
+    require('../../assets/exercises/press-de-banca-inclinado-con-mancuernas_1.webp'),
+  ],
+  'press en maquina': [
+    require('../../assets/exercises/press-en-maquina_0.webp'),
+    require('../../assets/exercises/press-en-maquina_1.webp'),
+  ],
+  'pullover con mancuerna': [
+    require('../../assets/exercises/pullover-con-mancuerna_0.webp'),
+    require('../../assets/exercises/pullover-con-mancuerna_1.webp'),
+  ],
+  'buenos dias': [
+    require('../../assets/exercises/buenos-dias_0.webp'),
+    require('../../assets/exercises/buenos-dias_1.webp'),
+  ],
+  'dominadas': [
+    require('../../assets/exercises/dominadas_0.webp'),
+    require('../../assets/exercises/dominadas_1.webp'),
+  ],
+  'dominadas supinas': [
+    require('../../assets/exercises/dominadas-supinas_0.webp'),
+    require('../../assets/exercises/dominadas-supinas_1.webp'),
+  ],
+  'encogimientos de hombros con barra': [
+    require('../../assets/exercises/encogimientos-de-hombros-con-barra_0.webp'),
+    require('../../assets/exercises/encogimientos-de-hombros-con-barra_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
