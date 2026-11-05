@@ -37,11 +37,14 @@ export function NumberInput({
   onChangeText,
   placeholder,
   accessibilityLabel,
+  compact,
 }: {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   accessibilityLabel: string;
+  /** Estrecho (una columna de serie): varias caben en una fila. */
+  compact?: boolean;
 }) {
   const theme = useTheme();
   // El texto de ayuda («kg», «reps») se quita en cuanto se pincha el campo.
@@ -57,7 +60,7 @@ export function NumberInput({
       placeholderTextColor={theme.textSecondary}
       keyboardType="decimal-pad"
       selectTextOnFocus
-      style={[styles.number, { backgroundColor: theme.backgroundSelected, color: theme.text }]}
+      style={[styles.number, compact && styles.numberCompact, { backgroundColor: theme.backgroundSelected, color: theme.text }]}
     />
   );
 }
@@ -163,6 +166,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three - 2,
     fontSize: 16,
   },
+  numberCompact: { width: 56, minWidth: 0 },
   number: {
     borderRadius: Radius.control,
     minWidth: 64,

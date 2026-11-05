@@ -51,7 +51,7 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, stacked
       <BackButton onPress={onBack} />
       <View style={[styles.headerText, styles.headerCentered]}>
         {title ? (
-          <ThemedText type="subtitle" numberOfLines={1} style={styles.centeredText}>
+          <ThemedText type="subtitle" numberOfLines={1} style={[styles.centeredText, styles.centeredTitle]}>
             {title}
           </ThemedText>
         ) : null}
@@ -156,4 +156,6 @@ const styles = StyleSheet.create({
   headerPlain: { alignItems: 'flex-end' },
   headerCentered: { alignItems: 'center' },
   centeredText: { textAlign: 'center' },
+  // Un poco más pequeño que el título de pestaña: «Nuevo entrenamiento» cabe entre la flecha y el borde.
+  centeredTitle: { fontSize: 21, lineHeight: 28 },
 });

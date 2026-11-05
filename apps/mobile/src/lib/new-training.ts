@@ -20,6 +20,6 @@ export function useNewTraining() {
       startDate: todayISO(),
       durationWeeks: NEW_TRAINING_WEEKS,
     });
-    router.push({ pathname: '/entrenamiento/[id]', params: { id: created.id } });
+    router.push({ pathname: '/entrenamiento/[id]', params: { id: created.id, nuevo: '1' } });
   }, [create, router]);
 }

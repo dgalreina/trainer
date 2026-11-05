@@ -21,7 +21,8 @@ const DEFAULT_WEEKS = 8;
 
 /** Entrenamiento: sus datos (nombre, inicio, semanas) y las rutinas que lleva dentro. */
 export function TrainingEditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, nuevo } = useLocalSearchParams<{ id: string; nuevo?: string }>();
+  const isNew = nuevo === '1';
   const router = useRouter();
   const theme = useTheme();
   const { trainings, loading, update, remove, addRoutine, removeRoutine } = useTrainings();
@@ -40,10 +41,11 @@ export function TrainingEditorScreen() {
   useEffect(() => {
     if (initialized.current || !existing) return;
     initialized.current = true;
-    setName(existing.name);
+    // Recién creado: el nombre se deja vacío para escribirlo (hasta entonces se llama «Nuevo entrenamiento»).
+    setName(isNew ? '' : existing.name);
     setStartDate(existing.startDate);
     setWeeks(String(existing.durationWeeks));
-  }, [existing]);
+  }, [existing, isNew]);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/entrenamientos'));
   const weeksNumber = Number.parseInt(weeks, 10);
@@ -136,7 +138,7 @@ export function TrainingEditorScreen() {
   const isActive = settings.activeTrainingId === existing.id;
 
   return (
-    <Screen title={existing.name} stacked onBack={goBack}>
+    <Screen title={isNew ? 'Nuevo entrenamiento' : existing.name} stacked onBack={goBack}>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Fuerza, Definición…" />
       <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
       <View style={styles.weeks}>

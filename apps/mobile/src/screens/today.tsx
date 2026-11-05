@@ -30,8 +30,8 @@ export function TodayScreen() {
 
   const newRoutine = (trainingId: string) =>
     router.push({
-      pathname: '/entrenamiento/[id]/rutina/[rid]',
-      params: { id: trainingId, rid: 'nueva' },
+      pathname: '/entrenamiento/[id]',
+      params: { id: trainingId },
     });
 
   return (

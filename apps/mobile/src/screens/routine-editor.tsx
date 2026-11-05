@@ -1,153 +1,61 @@
-import {
-  dayLabel,
-  DEFAULT_REST_SECONDS,
-  REST_SECONDS_OPTIONS,
-  type CreateRoutine,
-  type Routine,
-} from '@trainer/shared';
+import { dayLabel, type UpdateRoutine } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator } from 'react-native';
 
-import { Card } from '@/components/card';
-import { Button, Chip, ErrorText, Field, LinkButton, NumberInput } from '@/components/form';
-import { ExercisePicker } from '@/components/exercise-picker';
+import { Button, ErrorText } from '@/components/form';
+import { RoutineForm } from '@/components/routine-form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
-import { useExercises } from '@/lib/exercises';
 import { useTrainings } from '@/lib/trainings';
 
-// El editor trabaja con texto en los campos numéricos y lo convierte al guardar.
-interface EditorSet {
-  reps: string;
-  weightKg: string;
-}
-interface EditorSlot {
-  key: string;
-  exerciseId: string;
-  sets: EditorSet[];
-  linkedToNext: boolean;
-  restPause: boolean;
-}
-
-let keyCounter = 0;
-const newKey = () => `slot-${keyCounter++}`;
-
-const DEFAULT_SETS = 3;
-const DEFAULT_REPS = '10';
-
-const toText = (n?: number) => (n === undefined ? '' : String(n));
-
-function toNumber(text: string): number | undefined {
-  const value = Number.parseFloat(text.replace(',', '.'));
-  return Number.isFinite(value) && value >= 0 ? value : undefined;
-}
-
-function fromRoutine(routine: Routine): EditorSlot[] {
-  return routine.slots.map((slot) => ({
-    key: newKey(),
-    exerciseId: slot.exerciseId,
-    sets: slot.sets.map((s) => ({ reps: toText(s.reps), weightKg: toText(s.weightKg) })),
-    linkedToNext: slot.linkedToNext,
-    restPause: slot.restPause,
-  }));
-}
-
-/** Rutina de un entrenamiento: crear una nueva (rid = 'nueva') o editar una existente. */
+/** Editar una rutina de un entrenamiento: nombre, ejercicios, series y descanso, todo en esta página. */
 export function RoutineEditorScreen() {
   const { id, rid } = useLocalSearchParams<{ id: string; rid: string }>();
   const router = useRouter();
   const theme = useTheme();
-  const { trainings, loading, addRoutine, updateRoutine, removeRoutine } = useTrainings();
-  const { byId } = useExercises();
-
-  const isNew = rid === 'nueva';
-  const training = trainings.find((t) => t.id === id);
-  const existing = isNew ? undefined : training?.routines.find((r) => r.id === rid);
-
-  const [name, setName] = useState('');
-  const [slots, setSlots] = useState<EditorSlot[]>([]);
-  const [restSeconds, setRestSeconds] = useState<number>(DEFAULT_REST_SECONDS);
-  const [picking, setPicking] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { trainings, loading, updateRoutine, removeRoutine } = useTrainings();
   const [error, setError] = useState<string | null>(null);
 
-  // El formulario se rellena una sola vez, cuando la rutina está disponible.
-  const initialized = useRef(false);
-  useEffect(() => {
-    if (initialized.current || !existing) return;
-    initialized.current = true;
-    setName(existing.name);
-    setSlots(fromRoutine(existing));
-    setRestSeconds(existing.restSeconds);
-  }, [existing]);
+  const training = trainings.find((t) => t.id === id);
+  const index = training?.routines.findIndex((r) => r.id === rid) ?? -1;
+  const routine = index >= 0 ? training?.routines[index] : undefined;
 
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace({ pathname: '/entrenamiento/[id]', params: { id } });
 
-  const updateSlot = (key: string, change: (slot: EditorSlot) => EditorSlot) =>
-    setSlots((prev) => prev.map((s) => (s.key === key ? change(s) : s)));
-
-  const moveSlot = (index: number, delta: -1 | 1) =>
-    setSlots((prev) => {
-      const target = index + delta;
-      if (target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-
-  async function onSave() {
-    const trimmed = name.trim();
-
-    const payload: CreateRoutine = {
-      name: trimmed,
-      restSeconds,
-      slots: slots.map((slot, index) => ({
-        exerciseId: slot.exerciseId,
-        sets: slot.sets.map((s) => {
-          const reps = toNumber(s.reps);
-          return { reps: reps === undefined ? undefined : Math.round(reps), weightKg: toNumber(s.weightKg) };
-        }),
-        // El último no puede ir encadenado con "el siguiente".
-        linkedToNext: index < slots.length - 1 && slot.linkedToNext,
-        restPause: slot.restPause,
-      })),
-    };
-
-    setSaving(true);
-    setError(null);
-    try {
-      if (isNew) await addRoutine(id, payload);
-      else await updateRoutine(id, rid, payload);
-      goBack();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se ha podido guardar');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const onSave = useCallback(
+    async (changes: UpdateRoutine) => {
+      try {
+        await updateRoutine(id, rid, changes);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se ha podido guardar');
+        throw err;
+      }
+    },
+    [updateRoutine, id, rid],
+  );
 
   async function onDelete() {
-    if (!existing) return;
+    if (!routine) return;
     const ok = await confirmAction(
       'Borrar rutina',
-      `Se borrará «${existing.name}» de este entrenamiento. Los entrenos ya registrados no se tocan.`,
+      `Se borrará ${routine.name || dayLabel(index)} de este entrenamiento. Los entrenos ya registrados no se tocan.`,
       'Borrar',
     );
     if (!ok) return;
     try {
-      await removeRoutine(id, existing.id);
+      await removeRoutine(id, routine.id);
       goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido borrar');
     }
   }
 
-  if (!training || (!isNew && !existing)) {
+  if (!training || !routine) {
     return (
       <Screen title="Rutina" stacked onBack={goBack}>
         {loading ? (
@@ -160,171 +68,10 @@ export function RoutineEditorScreen() {
   }
 
   return (
-    <Screen title={isNew ? 'Nueva rutina' : 'Editar rutina'} subtitle={existing ? `${dayLabel(training.routines.indexOf(existing))} · ${training.name}` : training.name} stacked onBack={goBack}>
-      <Field label="Nombre (opcional)" value={name} onChangeText={setName} placeholder="Pecho + Espalda, Pierna…" />
-
-      <View style={styles.restField}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          Descanso entre series
-        </ThemedText>
-        <View style={styles.restChips}>
-          {REST_SECONDS_OPTIONS.map((seconds) => (
-            <Chip
-              key={seconds}
-              label={seconds === 0 ? 'Sin' : `${seconds} s`}
-              active={restSeconds === seconds}
-              onPress={() => setRestSeconds(seconds)}
-            />
-          ))}
-        </View>
-      </View>
-
-      {slots.map((slot, index) => {
-        const exercise = byId.get(slot.exerciseId);
-        const isLast = index === slots.length - 1;
-        return (
-          <Card key={slot.key} style={styles.slot}>
-            <View style={styles.slotHeader}>
-              <ThemedText type="smallBold" style={styles.slotName}>
-                {exercise?.name ?? 'Ejercicio eliminado'}
-              </ThemedText>
-              <IconAction label="Subir" glyph="↑" onPress={() => moveSlot(index, -1)} disabled={index === 0} />
-              <IconAction label="Bajar" glyph="↓" onPress={() => moveSlot(index, 1)} disabled={isLast} />
-              <IconAction
-                label="Quitar ejercicio"
-                glyph="✕"
-                onPress={() => setSlots((prev) => prev.filter((s) => s.key !== slot.key))}
-              />
-            </View>
-
-            {slot.sets.map((set, setIndex) => (
-              <View key={setIndex} style={styles.setRow}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.setLabel}>
-                  {setIndex + 1}
-                </ThemedText>
-                <NumberInput
-                  accessibilityLabel={`Repeticiones de la serie ${setIndex + 1}`}
-                  placeholder="reps"
-                  value={set.reps}
-                  onChangeText={(text) =>
-                    updateSlot(slot.key, (s) => ({
-                      ...s,
-                      sets: s.sets.map((x, i) => (i === setIndex ? { ...x, reps: text } : x)),
-                    }))
-                  }
-                />
-                <ThemedText themeColor="textSecondary">×</ThemedText>
-                <NumberInput
-                  accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
-                  placeholder="kg"
-                  value={set.weightKg}
-                  onChangeText={(text) =>
-                    updateSlot(slot.key, (s) => ({
-                      ...s,
-                      sets: s.sets.map((x, i) => (i === setIndex ? { ...x, weightKg: text } : x)),
-                    }))
-                  }
-                />
-                <IconAction
-                  label={`Quitar serie ${setIndex + 1}`}
-                  glyph="✕"
-                  disabled={slot.sets.length === 1}
-                  onPress={() =>
-                    updateSlot(slot.key, (s) => ({ ...s, sets: s.sets.filter((_, i) => i !== setIndex) }))
-                  }
-                />
-              </View>
-            ))}
-
-            <LinkButton
-              title="+ Serie"
-              onPress={() =>
-                // La serie nueva copia la anterior: casi siempre se repite el peso.
-                updateSlot(slot.key, (s) => ({
-                  ...s,
-                  sets: [...s.sets, { ...(s.sets[s.sets.length - 1] ?? { reps: DEFAULT_REPS, weightKg: '' }) }],
-                }))
-              }
-            />
-
-            <View style={styles.chips}>
-              {!isLast && (
-                <Chip
-                  label="Superserie con el siguiente"
-                  active={slot.linkedToNext}
-                  onPress={() => updateSlot(slot.key, (s) => ({ ...s, linkedToNext: !s.linkedToNext }))}
-                />
-              )}
-              <Chip
-                label="Rest-pause"
-                active={slot.restPause}
-                onPress={() => updateSlot(slot.key, (s) => ({ ...s, restPause: !s.restPause }))}
-              />
-            </View>
-          </Card>
-        );
-      })}
-
-      <Button variant="secondary" title="Añadir ejercicio" onPress={() => setPicking(true)} />
+    <Screen title="Editar rutina" subtitle={`${dayLabel(index)} · ${training.name}`} stacked onBack={goBack}>
+      <RoutineForm routine={routine} onSave={onSave} />
       <ErrorText message={error} />
-      <Button title="Guardar rutina" onPress={onSave} loading={saving} />
-      {!isNew && <Button variant="danger" title="Borrar rutina" onPress={onDelete} />}
-
-      <ExercisePicker
-        visible={picking}
-        onClose={() => setPicking(false)}
-        onSelect={(exercise) => {
-          setPicking(false);
-          setSlots((prev) => [
-            ...prev,
-            {
-              key: newKey(),
-              exerciseId: exercise.id,
-              sets: Array.from({ length: DEFAULT_SETS }, () => ({ reps: DEFAULT_REPS, weightKg: '' })),
-              linkedToNext: false,
-              restPause: false,
-            },
-          ]);
-        }}
-      />
+      <Button variant="danger" title="Borrar rutina" onPress={onDelete} />
     </Screen>
   );
 }
-
-function IconAction({
-  label,
-  glyph,
-  onPress,
-  disabled,
-}: {
-  label: string;
-  glyph: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={8}
-      style={[styles.icon, disabled && styles.iconDisabled]}>
-      <ThemedText type={glyph === "✕" ? "small" : "default"} style={{ color: theme.textSecondary }}>{glyph}</ThemedText>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  restField: { gap: Spacing.two },
-  restChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  slot: { gap: Spacing.two + 2 },
-  slotHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  slotName: { flex: 1 },
-  setRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  setLabel: { width: 24, textAlign: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  icon: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one },
-  iconDisabled: { opacity: 0.3 },
-});
