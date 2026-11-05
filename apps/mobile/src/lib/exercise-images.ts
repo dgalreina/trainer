@@ -83,6 +83,10 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/dominadas_0.webp'),
     require('../../assets/exercises/dominadas_1.webp'),
   ],
+  'dominadas asistidas en maquina': [
+    require('../../assets/exercises/dominadas-asistidas-en-maquina_0.webp'),
+    require('../../assets/exercises/dominadas-asistidas-en-maquina_1.webp'),
+  ],
   'dominadas supinas': [
     require('../../assets/exercises/dominadas-supinas_0.webp'),
     require('../../assets/exercises/dominadas-supinas_1.webp'),
