@@ -343,10 +343,10 @@ function SlotRow({
 
         {hasExercise ? (
           <View style={[styles.chosen, { backgroundColor: theme.primarySoft }]}>
+            <GridButton label="Cambiar ejercicio" onPress={() => setPicking(true)} />
             <ThemedText type="smallBold" style={styles.chosenName} numberOfLines={2}>
               {exerciseName}
             </ThemedText>
-            <GridButton label="Cambiar ejercicio" onPress={() => setPicking(true)} />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Quitar ${exerciseName}`}
@@ -359,6 +359,7 @@ function SlotRow({
           </View>
         ) : (
           <View style={[styles.searchBox, { backgroundColor: theme.backgroundSelected }]}>
+            <GridButton label="Ver todos los ejercicios por grupo muscular" onPress={() => setPicking(true)} />
             <TextInput
               accessibilityLabel="Buscar ejercicio"
               value={query}
@@ -369,7 +370,6 @@ function SlotRow({
               autoCapitalize="none"
               style={[styles.search, { color: theme.text }]}
             />
-            <GridButton label="Ver todos los ejercicios por grupo muscular" onPress={() => setPicking(true)} />
           </View>
         )}
 
@@ -506,8 +506,8 @@ const styles = StyleSheet.create({
   slot: { gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.three },
   slotHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   number: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingRight: Spacing.three },
-  search: { flex: 1, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingLeft: Spacing.three },
+  search: { flex: 1, paddingRight: Spacing.three, paddingVertical: Spacing.two, fontSize: 16, paddingLeft: 0 },
   gridButton: { width: 21, height: 21, flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
   gridDot: { width: 9, height: 9, borderRadius: 2.5 },
   chosen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
