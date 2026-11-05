@@ -5,8 +5,8 @@ import {
   type Routine,
   type UpdateRoutine,
 } from '@trainer/shared';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Chip, NumberInput } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
@@ -138,14 +138,40 @@ export function RoutineForm({
       return withTrailingEmpty(next);
     });
 
-  const moveSlot = (at: number, delta: -1 | 1) =>
+  // Arrastre vertical: la posición y la altura de cada ejercicio se miden con onLayout, y mientras se
+  // arrastra el asa solo se mueve la tarjeta del dedo (los demás se apartan como vista previa).
+  const layouts = useRef(new Map<string, { y: number; h: number }>());
+  const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
+
+  /** Hacia qué posición iría el ejercicio arrastrado si se soltara ahora (solo entre los rellenos). */
+  const dropIndex = (key: string, dy: number) => {
+    const from = slots.findIndex((s) => s.key === key);
+    const box = layouts.current.get(key);
+    if (from < 0 || !box) return from;
+    const center = box.y + box.h / 2 + dy;
+    const lastFilled = slots.reduce((last, s, i) => (s.exerciseId !== null ? i : last), 0);
+    let target = 0;
+    for (let i = 0; i <= lastFilled; i++) {
+      const other = layouts.current.get(slots[i].key);
+      if (other && center >= other.y + other.h / 2) target = i;
+    }
+    return target;
+  };
+
+  const dropSlot = (key: string, dy: number) => {
+    const to = dropIndex(key, dy);
+    setDrag(null);
     setSlots((prev) => {
-      const target = at + delta;
-      if (target < 0 || target >= prev.length || prev[target].exerciseId === null) return prev;
+      const from = prev.findIndex((s) => s.key === key);
+      if (from < 0 || from === to) return prev;
       const next = [...prev];
-      [next[at], next[target]] = [next[target], next[at]];
-      return next;
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      // Las superseries dependen de quién queda a continuación: se sueltan las que tocan el movimiento.
+      const touched = new Set([key, prev[from - 1]?.key, next[to - 1]?.key]);
+      return next.map((s) => (touched.has(s.key) && s.linkedToNext ? { ...s, linkedToNext: false } : s));
     });
+  };
 
   // «SS»: encadena con el siguiente y deja un hueco justo detrás para continuar la cadena.
   const toggleSuperset = (key: string) =>
@@ -162,8 +188,6 @@ export function RoutineForm({
       return withTrailingEmpty(next);
     });
 
-  const filledCount = slots.filter((s) => s.exerciseId !== null).length;
-
   return (
     <View style={styles.form}>
       <ThemedText type="smallBold" themeColor="textSecondary">
@@ -178,21 +202,42 @@ export function RoutineForm({
         style={[styles.nameInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
       />
 
-      {slots.map((slot, at) => (
-        <SlotRow
-          key={slot.key}
-          slot={slot}
-          label={String(at + 1)}
-          isFirst={at === 0}
-          isLastFilled={at >= filledCount - 1}
-          onChange={(change) => updateSlot(slot.key, change)}
-          onPick={(exercise) => updateSlot(slot.key, (s) => ({ ...s, exerciseId: exercise.id }))}
-          onRemove={() => removeSlot(slot.key)}
-          onMove={(delta) => moveSlot(at, delta)}
-          onToggleSuperset={() => toggleSuperset(slot.key)}
-          exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
-        />
-      ))}
+      {slots.map((slot, at) => {
+        // Vista previa mientras se arrastra: los que quedan entre origen y destino se apartan.
+        let shift = 0;
+        let dragging = false;
+        if (drag) {
+          const from = slots.findIndex((s) => s.key === drag.key);
+          const to = dropIndex(drag.key, drag.dy);
+          const moved = layouts.current.get(drag.key);
+          if (slot.key === drag.key) {
+            dragging = true;
+            shift = drag.dy;
+          } else if (moved) {
+            if (from < to && at > from && at <= to) shift = -moved.h;
+            else if (from > to && at >= to && at < from) shift = moved.h;
+          }
+        }
+        return (
+          <View
+            key={slot.key}
+            onLayout={(e) => layouts.current.set(slot.key, { y: e.nativeEvent.layout.y, h: e.nativeEvent.layout.height })}
+            style={[styles.slotWrap, dragging && styles.slotDragging, { transform: [{ translateY: shift }] }]}>
+            <SlotRow
+              slot={slot}
+              label={String(at + 1)}
+              onChange={(change) => updateSlot(slot.key, change)}
+              onPick={(exercise) => updateSlot(slot.key, (s) => ({ ...s, exerciseId: exercise.id }))}
+              onRemove={() => removeSlot(slot.key)}
+              onDragStart={() => setDrag({ key: slot.key, dy: 0 })}
+              onDragMove={(dy) => setDrag({ key: slot.key, dy })}
+              onDragEnd={(dy) => dropSlot(slot.key, dy)}
+              onToggleSuperset={() => toggleSuperset(slot.key)}
+              exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
+            />
+          </View>
+        );
+      })}
 
       <View style={styles.rest}>
         <ThemedText type="small" themeColor="textSecondary">
@@ -217,29 +262,47 @@ function SlotRow({
   slot,
   label,
   exerciseName,
-  isFirst,
-  isLastFilled,
   onChange,
   onPick,
   onRemove,
-  onMove,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
   onToggleSuperset,
 }: {
   slot: EditorSlot;
   label: string;
   exerciseName: string;
-  isFirst: boolean;
-  isLastFilled: boolean;
   onChange: (change: (slot: EditorSlot) => EditorSlot) => void;
   onPick: (exercise: Exercise) => void;
   onRemove: () => void;
-  onMove: (delta: -1 | 1) => void;
+  onDragStart: () => void;
+  onDragMove: (dy: number) => void;
+  onDragEnd: (dy: number) => void;
   onToggleSuperset: () => void;
 }) {
   const theme = useTheme();
   const { exercises, create } = useExercises();
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Los callbacks cambian en cada render: el gesto usa siempre los últimos.
+  const dragCallbacks = useRef({ onDragStart, onDragMove, onDragEnd });
+  dragCallbacks.current = { onDragStart, onDragMove, onDragEnd };
+  const handlePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        // Una vez agarrada el asa, el scroll de la página no se la puede quitar.
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => dragCallbacks.current.onDragStart(),
+        onPanResponderMove: (_e, g) => dragCallbacks.current.onDragMove(g.dy),
+        onPanResponderRelease: (_e, g) => dragCallbacks.current.onDragEnd(g.dy),
+        onPanResponderTerminate: () => dragCallbacks.current.onDragEnd(0),
+      }),
+    [],
+  );
 
   const key = exerciseNameKey(query);
   const suggestions = key.length >= MIN_QUERY ? searchExercises(exercises, query, MAX_SUGGESTIONS) : [];
@@ -303,14 +366,15 @@ function SlotRow({
         )}
 
         {hasExercise && (
-          <>
-            <Pressable accessibilityRole="button" accessibilityLabel="Subir" hitSlop={6} disabled={isFirst} onPress={() => onMove(-1)} style={isFirst && styles.dim}>
-              <ThemedText style={{ color: theme.textSecondary }}>↑</ThemedText>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Bajar" hitSlop={6} disabled={isLastFilled} onPress={() => onMove(1)} style={isLastFilled && styles.dim}>
-              <ThemedText style={{ color: theme.textSecondary }}>↓</ThemedText>
-            </Pressable>
-          </>
+          // Asa de tres rayas: se arrastra en vertical para cambiar el orden.
+          <View
+            accessibilityLabel="Arrastrar para reordenar"
+            {...handlePan.panHandlers}
+            style={[styles.handle, { touchAction: 'none' } as object]}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[styles.handleBar, { backgroundColor: theme.textSecondary }]} />
+            ))}
+          </View>
         )}
       </View>
 
@@ -417,7 +481,10 @@ const styles = StyleSheet.create({
   search: { flex: 1, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
   chosen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   chosenName: { flex: 1 },
-  dim: { opacity: 0.3 },
+  slotWrap: { zIndex: 0 },
+  slotDragging: { zIndex: 10, opacity: 0.92, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  handle: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  handleBar: { width: 18, height: 2, borderRadius: 1 },
   suggestions: { marginLeft: 36 },
   suggestion: { paddingVertical: Spacing.two },
   gridRow: { flexDirection: 'row', alignItems: 'flex-start', paddingLeft: 36 },
