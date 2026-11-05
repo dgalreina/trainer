@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useExercises } from '@/lib/exercises';
+import { searchExercises } from '@/lib/exercise-search';
 
 // El editor trabaja con texto en los campos numéricos y lo convierte al guardar.
 interface EditorSet {
@@ -181,7 +182,7 @@ export function RoutineForm({
         <SlotRow
           key={slot.key}
           slot={slot}
-          label={slot.exerciseId === null ? '+' : String(slots.slice(0, at + 1).filter((s) => s.exerciseId !== null).length)}
+          label={String(at + 1)}
           isFirst={at === 0}
           isLastFilled={at >= filledCount - 1}
           onChange={(change) => updateSlot(slot.key, change)}
@@ -241,10 +242,7 @@ function SlotRow({
   const [creating, setCreating] = useState(false);
 
   const key = exerciseNameKey(query);
-  const suggestions =
-    key.length >= MIN_QUERY
-      ? exercises.filter((e) => exerciseNameKey(e.name).includes(key)).slice(0, MAX_SUGGESTIONS)
-      : [];
+  const suggestions = key.length >= MIN_QUERY ? searchExercises(exercises, query, MAX_SUGGESTIONS) : [];
   const exact = suggestions.some((e) => exerciseNameKey(e.name) === key);
 
   function pick(exercise: Exercise) {
@@ -405,11 +403,11 @@ function SlotRow({
 
 const styles = StyleSheet.create({
   form: { gap: Spacing.three },
-  nameInput: { borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 15 },
+  nameInput: { borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
   slot: { gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.three },
   slotHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   number: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  search: { flex: 1, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 15 },
+  search: { flex: 1, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
   chosen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   chosenName: { flex: 1 },
   dim: { opacity: 0.3 },
