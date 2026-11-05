@@ -65,3 +65,11 @@ textarea:focus-visible {
     background-color: #150F12;
   }
 }
+
+/* Las imágenes no se pueden seleccionar ni abrir con el menú de iOS al mantener pulsado. */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}

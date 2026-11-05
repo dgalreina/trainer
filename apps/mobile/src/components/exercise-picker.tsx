@@ -193,7 +193,7 @@ function Group({
             onPress={() => onPick(exercise)}
             style={({ pressed }) => [
               styles.tile,
-              { backgroundColor: theme.background, borderColor: theme.primary },
+              { backgroundColor: theme.background, borderColor: theme.primary, WebkitTapHighlightColor: 'transparent', WebkitTouchCallout: 'none', userSelect: 'none' } as object,
               pressed && { backgroundColor: theme.primarySoft },
             ]}>
             {frames(exercise.name) && (

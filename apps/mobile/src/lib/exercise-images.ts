@@ -23,6 +23,26 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/press-de-banca-con-agarre-cerrado_0.webp'),
     require('../../assets/exercises/press-de-banca-con-agarre-cerrado_1.webp'),
   ],
+  'aperturas con mancuernas': [
+    require('../../assets/exercises/aperturas-con-mancuernas_0.webp'),
+    require('../../assets/exercises/aperturas-con-mancuernas_1.webp'),
+  ],
+  'aperturas inclinadas con mancuernas': [
+    require('../../assets/exercises/aperturas-inclinadas-con-mancuernas_0.webp'),
+    require('../../assets/exercises/aperturas-inclinadas-con-mancuernas_1.webp'),
+  ],
+  'contractora (pec deck)': [
+    require('../../assets/exercises/contractora-pec-deck_0.webp'),
+    require('../../assets/exercises/contractora-pec-deck_1.webp'),
+  ],
+  'cruces en polea (cable crossover)': [
+    require('../../assets/exercises/cruces-en-polea-cable-crossover_0.webp'),
+    require('../../assets/exercises/cruces-en-polea-cable-crossover_1.webp'),
+  ],
+  'flexiones de brazos': [
+    require('../../assets/exercises/flexiones-de-brazos_0.webp'),
+    require('../../assets/exercises/flexiones-de-brazos_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */

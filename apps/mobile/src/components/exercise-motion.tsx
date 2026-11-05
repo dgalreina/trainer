@@ -50,6 +50,7 @@ export function ExerciseMotion({
 
 const styles = StyleSheet.create({
   box: { aspectRatio: 1, width: '100%', overflow: 'hidden' },
-  image: { width: '100%', height: '100%' },
+  // Sin eventos, sin selección y sin el menú de iOS al mantener pulsado (copiar/guardar la imagen).
+  image: { width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as object,
   top: { position: 'absolute', top: 0, left: 0 },
 });
