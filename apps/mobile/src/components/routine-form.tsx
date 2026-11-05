@@ -8,6 +8,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { ExercisePicker } from '@/components/exercise-picker';
 import { Chip, NumberInput } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -223,6 +224,8 @@ export function RoutineForm({
             key={slot.key}
             onLayout={(e) => layouts.current.set(slot.key, { y: e.nativeEvent.layout.y, h: e.nativeEvent.layout.height })}
             style={[styles.slotWrap, dragging && styles.slotDragging, { transform: [{ translateY: shift }] }]}>
+            {/* Al arrastrar, la tarjeta lleva un fondo sólido y redondeado que tapa lo de debajo. */}
+            {dragging && <View pointerEvents="none" style={[styles.dragCard, { backgroundColor: theme.background }]} />}
             <SlotRow
               slot={slot}
               label={String(at + 1)}
@@ -285,6 +288,7 @@ function SlotRow({
   const { exercises, create } = useExercises();
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   // Los callbacks cambian en cada render: el gesto usa siempre los últimos.
   const dragCallbacks = useRef({ onDragStart, onDragMove, onDragEnd });
@@ -342,6 +346,7 @@ function SlotRow({
             <ThemedText type="smallBold" style={styles.chosenName} numberOfLines={2}>
               {exerciseName}
             </ThemedText>
+            <GridButton label="Cambiar ejercicio" onPress={() => setPicking(true)} />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Quitar ${exerciseName}`}
@@ -353,16 +358,19 @@ function SlotRow({
             </Pressable>
           </View>
         ) : (
-          <TextInput
-            accessibilityLabel="Buscar ejercicio"
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={() => (suggestions[0] ? pick(suggestions[0]) : createTyped())}
-            placeholder="Escribe para buscar un ejercicio…"
-            placeholderTextColor={theme.textSecondary}
-            autoCapitalize="none"
-            style={[styles.search, { backgroundColor: theme.backgroundSelected, color: theme.text }]}
-          />
+          <View style={[styles.searchBox, { backgroundColor: theme.backgroundSelected }]}>
+            <TextInput
+              accessibilityLabel="Buscar ejercicio"
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={() => (suggestions[0] ? pick(suggestions[0]) : createTyped())}
+              placeholder="Escribe para buscar un ejercicio…"
+              placeholderTextColor={theme.textSecondary}
+              autoCapitalize="none"
+              style={[styles.search, { color: theme.text }]}
+            />
+            <GridButton label="Ver todos los ejercicios por grupo muscular" onPress={() => setPicking(true)} />
+          </View>
         )}
 
         {hasExercise && (
@@ -468,7 +476,27 @@ function SlotRow({
           </View>
         </>
       )}
+      <ExercisePicker
+        visible={picking}
+        onClose={() => setPicking(false)}
+        onSelect={(exercise) => {
+          setPicking(false);
+          pick(exercise);
+        }}
+      />
     </View>
+  );
+}
+
+/** Botón de cuatro cuadraditos: abre el selector con los ejercicios por grupo muscular. */
+function GridButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={8} onPress={onPress} style={styles.gridButton}>
+      {[0, 1, 2, 3].map((n) => (
+        <View key={n} style={[styles.gridDot, { backgroundColor: theme.textSecondary }]} />
+      ))}
+    </Pressable>
   );
 }
 
@@ -478,11 +506,15 @@ const styles = StyleSheet.create({
   slot: { gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.three },
   slotHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   number: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  search: { flex: 1, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingRight: Spacing.three },
+  search: { flex: 1, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
+  gridButton: { width: 21, height: 21, flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
+  gridDot: { width: 9, height: 9, borderRadius: 2.5 },
   chosen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   chosenName: { flex: 1 },
   slotWrap: { zIndex: 0 },
-  slotDragging: { zIndex: 10, opacity: 0.92, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  slotDragging: { zIndex: 10 },
+  dragCard: { position: 'absolute', top: -8, bottom: -8, left: -12, right: -12, borderRadius: Radius.card, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   handle: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
   handleBar: { width: 18, height: 2, borderRadius: 1 },
   suggestions: { marginLeft: 36 },
