@@ -333,7 +333,8 @@ function SlotRow({
 
       {hasExercise && (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.grid}>
+          <View style={styles.gridRow}>
+            {/* Las etiquetas quedan fijas; solo las series se desplazan en horizontal. */}
             <View style={styles.gridLabels}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.gridLabel}>
                 REPS
@@ -342,6 +343,11 @@ function SlotRow({
                 KG
               </ThemedText>
             </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.gridScroll}
+              contentContainerStyle={styles.grid}>
             {slot.sets.map((set, i) => (
               <View key={i} style={styles.gridCol}>
                 <NumberInput
@@ -386,6 +392,7 @@ function SlotRow({
               </Pressable>
             )}
           </ScrollView>
+          </View>
 
           <View style={styles.chips}>
             <Chip label="SS" active={slot.linkedToNext} onPress={onToggleSuperset} />
@@ -413,8 +420,11 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.3 },
   suggestions: { marginLeft: 36 },
   suggestion: { paddingVertical: Spacing.two },
-  grid: { alignItems: 'flex-start', gap: Spacing.two, paddingLeft: 36 },
-  gridLabels: { gap: Spacing.two },
+  gridRow: { flexDirection: 'row', alignItems: 'flex-start', paddingLeft: 36 },
+  gridScroll: { flex: 1 },
+  // Aire alrededor: el scroll recorta lo que sobresale, y el borde del campo enfocado se cortaba.
+  grid: { alignItems: 'flex-start', gap: Spacing.two, padding: 4 },
+  gridLabels: { gap: Spacing.two, paddingVertical: 4, width: 52 },
   gridLabel: { height: 42, lineHeight: 42 },
   gridCol: { gap: Spacing.two },
   addSet: { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
