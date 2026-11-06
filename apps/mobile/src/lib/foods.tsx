@@ -1,13 +1,32 @@
 import { foodNameKey, type CreateFood, type Food } from '@trainer/shared';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 const byName = (a: Food, b: Food) => foodNameKey(a.name).localeCompare(foodNameKey(b.name));
 
-/** Catálogo de alimentos (base + propios) y sus altas y bajas. */
-export function useFoods() {
+interface FoodsValue {
+  foods: Food[];
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+  create: (food: CreateFood) => Promise<Food>;
+  archive: (food: Food) => Promise<void>;
+}
+
+const FoodsContext = createContext<FoodsValue | null>(null);
+
+/** Catálogo de alimentos (base + propios) cargado una vez y compartido por todas las pantallas. */
+export function FoodsProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const [foods, setFoods] = useState<Food[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,5 +60,16 @@ export function useFoods() {
     setFoods((prev) => prev.filter((f) => f.id !== food.id));
   }, []);
 
-  return { foods, loading, error, reload, create, archive };
+  const value = useMemo<FoodsValue>(
+    () => ({ foods, loading, error, reload, create, archive }),
+    [foods, loading, error, reload, create, archive],
+  );
+
+  return <FoodsContext.Provider value={value}>{children}</FoodsContext.Provider>;
+}
+
+export function useFoods(): FoodsValue {
+  const ctx = useContext(FoodsContext);
+  if (!ctx) throw new Error('useFoods debe usarse dentro de FoodsProvider');
+  return ctx;
 }

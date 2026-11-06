@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { DietsProvider } from '@/lib/diets';
 import { ExercisesProvider } from '@/lib/exercises';
+import { FoodsProvider } from '@/lib/foods';
 import { MeProvider } from '@/lib/me';
 import { SettingsProvider } from '@/lib/settings';
 import { ThemePreferenceProvider, useThemePreference } from '@/lib/theme-preference';
@@ -91,6 +92,7 @@ function ThemedApp() {
     <ThemeProvider value={navTheme}>
       <AuthProvider>
         <ExercisesProvider>
+          <FoodsProvider>
           <TrainingsProvider>
             <DietsProvider>
               <MeProvider>
@@ -101,6 +103,7 @@ function ThemedApp() {
               </MeProvider>
             </DietsProvider>
           </TrainingsProvider>
+          </FoodsProvider>
         </ExercisesProvider>
       </AuthProvider>
     </ThemeProvider>

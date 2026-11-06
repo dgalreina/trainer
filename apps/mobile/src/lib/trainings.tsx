@@ -11,6 +11,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -42,25 +43,34 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Una sola petición de la lista a la vez: si ya hay una en vuelo, quien la pida espera a esa.
+  const inflight = useRef<Promise<Training[]> | null>(null);
+  const fetchAll = useCallback(() => {
+    inflight.current ??= api.get<Training[]>('/trainings').finally(() => {
+      inflight.current = null;
+    });
+    return inflight.current;
+  }, []);
+
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setTrainings(await api.get<Training[]>('/trainings'));
+      setTrainings(await fetchAll());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se han podido cargar los entrenamientos');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchAll]);
 
   const refresh = useCallback(async () => {
     try {
-      setTrainings(await api.get<Training[]>('/trainings'));
+      setTrainings(await fetchAll());
     } catch {
       // Se queda con lo que ya hay; no es un error que mostrar.
     }
-  }, []);
+  }, [fetchAll]);
 
   useEffect(() => {
     if (status === 'signedIn') reload();
