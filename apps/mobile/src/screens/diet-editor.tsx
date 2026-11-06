@@ -1,17 +1,11 @@
-import {
-  GOALS,
-  calculateTargets,
-  dietMacros,
-  missingTargetData,
-  type Goal,
-} from '@trainer/shared';
+import { calculateTargets, dietMacros, missingTargetData } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { DateField } from '@/components/date-field';
-import { Button, Chip, ErrorText, Field, LinkButton } from '@/components/form';
+import { Button, ErrorText, Field, LinkButton } from '@/components/form';
 import { MealCard } from '@/components/meal-card';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -23,8 +17,6 @@ import { isValidISODate, todayISO } from '@/lib/dates';
 import { useDiets } from '@/lib/diets';
 import { useFoods } from '@/lib/foods';
 import { useMe } from '@/lib/me';
-import { GOAL_LABELS } from '@/lib/profile-labels';
-import { useSettings } from '@/lib/settings';
 
 /** Dieta: sus datos, el objetivo diario calculado y las comidas del día con sus alimentos. */
 export function DietEditorScreen() {
@@ -32,7 +24,6 @@ export function DietEditorScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { diets, loading, create, update, remove, addMeal, updateMeal, removeMeal } = useDiets();
-  const { settings, setActiveDiet } = useSettings();
   const { profile, latestWeight } = useMe();
   const { foods } = useFoods();
   const byId = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
@@ -41,8 +32,6 @@ export function DietEditorScreen() {
   const existing = isNew ? undefined : diets.find((d) => d.id === id);
 
   const [name, setName] = useState('');
-  const [goal, setGoal] = useState<Goal>(profile.goal ?? 'mantener');
-  const [goalTouched, setGoalTouched] = useState(false);
   const [startDate, setStartDate] = useState(todayISO());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,14 +46,22 @@ export function DietEditorScreen() {
     if (initialized.current || !existing) return;
     initialized.current = true;
     setName(existing.name);
-    setGoal(existing.goal);
     setStartDate(existing.startDate);
   }, [existing]);
 
-  // En una dieta nueva el objetivo parte del del perfil, que puede llegar después de abrir la pantalla.
+  // Una dieta que ya existe se guarda sola: al dejar de tocar un campo válido, se envía el cambio.
   useEffect(() => {
-    if (isNew && !goalTouched && profile.goal) setGoal(profile.goal);
-  }, [isNew, goalTouched, profile.goal]);
+    if (!existing || !initialized.current) return;
+    const trimmed = name.trim();
+    if (!trimmed || !isValidISODate(startDate)) return;
+    if (trimmed === existing.name && startDate === existing.startDate) return;
+    const timer = setTimeout(() => {
+      update(existing.id, { name: trimmed, startDate })
+        .then(() => setError(null))
+        .catch((err) => setError(err instanceof Error ? err.message : 'No se ha podido guardar'));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [existing, name, startDate, update]);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/dieta'));
   async function onSave() {
@@ -75,15 +72,10 @@ export function DietEditorScreen() {
     setSaving(true);
     setError(null);
     try {
-      const data = { name: trimmed, goal, startDate };
-      if (isNew) {
-        const created = await create(data);
-        // Recién creada está vacía: se pasa a su página para añadirle comidas.
-        router.replace({ pathname: '/mi-dieta/[id]', params: { id: created.id } });
-      } else {
-        await update(id, data);
-        goBack();
-      }
+      // El objetivo no se pregunta aquí: parte del de «Yo» y los cálculos usan siempre el actual.
+      const created = await create({ name: trimmed, goal: profile.goal ?? 'mantener', startDate });
+      // Recién creada está vacía: se pasa a su página para añadirle comidas.
+      router.replace({ pathname: '/mi-dieta/[id]', params: { id: created.id } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar');
     } finally {
@@ -104,14 +96,6 @@ export function DietEditorScreen() {
       goBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido borrar');
-    }
-  }
-
-  async function onActivate() {
-    try {
-      await setActiveDiet(existing!.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se ha podido activar');
     }
   }
 
@@ -143,11 +127,10 @@ export function DietEditorScreen() {
   const weightKg = latestWeight?.weightKg ?? null;
   const targetInput = { ...profile, weightKg };
   const targets = existing
-    ? calculateTargets({ ...targetInput, goal: existing.goal, today: todayISO() })
+    ? calculateTargets({ ...targetInput, goal: profile.goal ?? existing.goal, today: todayISO() })
     : null;
   const missing = missingTargetData(targetInput);
   const total = existing ? dietMacros(existing, byId) : null;
-  const isActive = existing ? settings.activeDietId === existing.id : false;
 
   return (
     <Screen title={isNew ? 'Nueva dieta' : existing!.name} stacked onBack={goBack}>
@@ -158,65 +141,13 @@ export function DietEditorScreen() {
         onChangeText={setName}
         placeholder="Definición, Volumen…"
       />
-      <View style={styles.goals}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          Objetivo
-        </ThemedText>
-        <View style={styles.chips}>
-          {GOALS.map((g) => (
-            <Chip key={g} label={GOAL_LABELS[g]} active={goal === g} onPress={() => {
-                setGoal(g);
-                setGoalTouched(true);
-              }}
-            />
-          ))}
-        </View>
-      </View>
       <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
 
       <ErrorText message={error} />
-      <Button title={isNew ? 'Crear dieta' : 'Guardar cambios'} onPress={onSave} loading={saving} />
+      {isNew && <Button title="Crear dieta" onPress={onSave} loading={saving} />}
 
       {existing && total && (
         <>
-          <Card tone="primarySoft" style={styles.targets}>
-            <ThemedText type="smallBold">Tu día en esta dieta</ThemedText>
-            <ThemedText>
-              {total.kcal} kcal · P {total.protein} · H {total.carbs} · G {total.fat}
-            </ThemedText>
-            {targets ? (
-              <>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Objetivo calculado: {targets.kcal} kcal · P {targets.protein} · H {targets.carbs} · G{' '}
-                  {targets.fat}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {total.kcal === 0
-                    ? 'Añade comidas para ir llenando el día.'
-                    : total.kcal === targets.kcal
-                      ? 'Justo en el objetivo.'
-                      : total.kcal < targets.kcal
-                        ? `Te faltan ${targets.kcal - total.kcal} kcal para el objetivo.`
-                        : `Te pasas ${total.kcal - targets.kcal} kcal del objetivo.`}
-                </ThemedText>
-                {targets.raisedToSafeMinimum && (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    El objetivo se ha subido al mínimo seguro: no se recomiendan menos calorías.
-                  </ThemedText>
-                )}
-                <ThemedText type="small" themeColor="textSecondary">
-                  Con tu metabolismo basal ({targets.bmr} kcal), tu actividad y tu peso de{' '}
-                  {weightKg} kg. Es una estimación orientativa y no sustituye a un profesional
-                  sanitario.
-                </ThemedText>
-              </>
-            ) : (
-              <ThemedText type="small" themeColor="textSecondary">
-                Para calcular tu objetivo diario faltan en «Yo»: {missing.join(', ')}.
-              </ThemedText>
-            )}
-          </Card>
-
           <ThemedText type="smallBold" style={styles.section}>
             Comidas
           </ThemedText>
@@ -259,13 +190,44 @@ export function DietEditorScreen() {
             <Button variant="secondary" title="+ Añadir comida" onPress={() => setAddingMeal(true)} />
           )}
 
-          {isActive ? (
-            <Card tone="primarySoft">
-              <ThemedText type="smallBold">Es tu dieta actual</ThemedText>
-            </Card>
-          ) : (
-            <Button title="Usar como mi dieta actual" onPress={onActivate} />
-          )}
+          <Card tone="primarySoft" style={styles.targets}>
+            <ThemedText type="smallBold">Tu día en esta dieta</ThemedText>
+            <ThemedText>
+              {total.kcal} kcal · P {total.protein} · H {total.carbs} · G {total.fat}
+            </ThemedText>
+            {targets ? (
+              <>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Objetivo calculado: {targets.kcal} kcal · P {targets.protein} · H {targets.carbs} · G{' '}
+                  {targets.fat}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {total.kcal === 0
+                    ? 'Añade comidas para ir llenando el día.'
+                    : total.kcal === targets.kcal
+                      ? 'Justo en el objetivo.'
+                      : total.kcal < targets.kcal
+                        ? `Te faltan ${targets.kcal - total.kcal} kcal para el objetivo.`
+                        : `Te pasas ${total.kcal - targets.kcal} kcal del objetivo.`}
+                </ThemedText>
+                {targets.raisedToSafeMinimum && (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    El objetivo se ha subido al mínimo seguro: no se recomiendan menos calorías.
+                  </ThemedText>
+                )}
+                <ThemedText type="small" themeColor="textSecondary">
+                  Con tu metabolismo basal ({targets.bmr} kcal), tu actividad y tu peso de{' '}
+                  {weightKg} kg. Es una estimación orientativa y no sustituye a un profesional
+                  sanitario.
+                </ThemedText>
+              </>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                Para calcular tu objetivo diario faltan en «Yo»: {missing.join(', ')}.
+              </ThemedText>
+            )}
+          </Card>
+
           <Button variant="danger" title="Borrar dieta" onPress={onDelete} />
         </>
       )}
@@ -274,8 +236,6 @@ export function DietEditorScreen() {
 }
 
 const styles = StyleSheet.create({
-  goals: { gap: Spacing.two },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   targets: { gap: Spacing.one },
   section: { marginTop: Spacing.two },
   newMeal: { gap: Spacing.two },

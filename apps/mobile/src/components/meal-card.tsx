@@ -6,8 +6,9 @@ import {
   type Meal,
   type UpdateMeal,
 } from '@trainer/shared';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
 import { Button, Chip, ErrorText, Field, LinkButton } from '@/components/form';
@@ -53,20 +54,22 @@ export function MealCard({
     }
   }
 
-  async function saveHeader() {
-    if (!name.trim()) return setError('Ponle un nombre a la comida');
-    try {
-      await run({ name: name.trim(), time });
-      setEditing(false);
-    } catch {
-      // El error ya se ha mostrado.
-    }
-  }
+  // Nombre y hora se guardan solos al dejar de tocarlos, sin botón.
+  useEffect(() => {
+    const trimmed = name.trim();
+    if (!editing || !trimmed || !/^\d{2}:\d{2}$/.test(time)) return;
+    if (trimmed === meal.name && time === meal.time) return;
+    const timer = setTimeout(() => {
+      run({ name: trimmed, time }).catch(() => {});
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, name, time, meal.name, meal.time]);
 
   return (
-    <Card style={styles.card}>
+    <Card tone="background" style={[styles.card, { borderWidth: 1, borderColor: theme.primary }]}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
+        <View style={styles.titles}>
           <ThemedText type="smallBold">
             {meal.time} · {meal.name}
           </ThemedText>
@@ -74,15 +77,44 @@ export function MealCard({
             {total.kcal} kcal · P {total.protein} · H {total.carbs} · G {total.fat}
           </ThemedText>
         </View>
-        <LinkButton title={editing ? 'Cerrar' : 'Editar'} onPress={() => setEditing((v) => !v)} />
+        {/* El lápiz abre la edición de nombre y hora; con la edición abierta se cierra con ✓. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={editing ? 'Cerrar edición' : 'Editar comida'}
+          onPress={() => setEditing((v) => !v)}
+          hitSlop={10}
+          style={styles.edit}>
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={theme.primaryText} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            {editing ? (
+              <Path d="M5 13l4 4L19 7" />
+            ) : (
+              <>
+                <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+                <Path d="M13.5 6.5l4 4" />
+              </>
+            )}
+          </Svg>
+        </Pressable>
       </View>
+      <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
 
       {editing && (
         <View style={styles.block}>
-          <Field label="Nombre" accessibilityLabel="Nombre de la comida" value={name} onChangeText={setName} />
-          <TimeField label="Hora" value={time} onChange={setTime} />
-          <Button title="Guardar comida" onPress={saveHeader} />
-          <Button variant="danger" title="Borrar comida" onPress={onRemove} />
+          <View style={styles.editRow}>
+            <View style={styles.editName}>
+              <Field
+                label="Nombre"
+                accessibilityLabel="Nombre de la comida"
+                value={name}
+                onChangeText={setName}
+                style={{ backgroundColor: theme.backgroundSelected }}
+              />
+            </View>
+            <View style={styles.editTime}>
+              <TimeField label="Hora" value={time} onChange={setTime} background={theme.backgroundSelected} />
+            </View>
+          </View>
+          <LinkButton title="Borrar comida" onPress={onRemove} />
         </View>
       )}
 
@@ -251,9 +283,15 @@ export function FoodPicker({
 
 const styles = StyleSheet.create({
   card: { gap: Spacing.two },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  header: { justifyContent: 'center', minHeight: 44 },
+  titles: { alignItems: 'center', paddingHorizontal: 36 },
+  edit: { position: 'absolute', right: 0, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: Spacing.one },
+  divider: { height: 2, borderRadius: 1, marginBottom: Spacing.one },
   headerText: { flex: 1 },
-  block: { gap: Spacing.two },
+  block: { gap: Spacing.three },
+  editRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },
+  editName: { flex: 1, gap: Spacing.one },
+  editTime: { width: 130, gap: Spacing.one },
   item: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   picker: { gap: Spacing.two, padding: Spacing.three, borderRadius: 16 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },

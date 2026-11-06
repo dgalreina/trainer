@@ -13,13 +13,16 @@ export function TimeField({
   label,
   value,
   onChange,
+  background,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** Fondo del campo cuando va sobre una tarjeta del mismo tono que el de por defecto. */
+  background?: string;
 }) {
   const theme = useTheme();
-  const box = { backgroundColor: theme.backgroundElement, color: theme.text };
+  const box = { backgroundColor: background ?? theme.backgroundElement, color: theme.text };
 
   return (
     <>

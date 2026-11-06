@@ -1,22 +1,23 @@
 import { dietMacros } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useDiets } from '@/lib/diets';
 import { useFoods } from '@/lib/foods';
-import { GOAL_LABELS } from '@/lib/profile-labels';
 import { useSettings } from '@/lib/settings';
 
 export function DietScreen() {
   const router = useRouter();
   const { diets, loading, error } = useDiets();
-  const { settings } = useSettings();
+  const { settings, setActiveDiet } = useSettings();
+  const theme = useTheme();
   const { foods } = useFoods();
   const byId = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
 
@@ -45,14 +46,21 @@ export function DietScreen() {
               <ThemedText type="smallBold" style={styles.name}>
                 {diet.name}
               </ThemedText>
-              {isActive && (
-                <ThemedText type="small" themeColor="primaryText">
-                  Actual
-                </ThemedText>
-              )}
+              {/* El punto marca la dieta actual; tocar fuera de él abre la dieta. */}
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isActive }}
+                accessibilityLabel={`Usar ${diet.name} como dieta actual`}
+                hitSlop={8}
+                onPress={() => {
+                  if (!isActive) setActiveDiet(diet.id).catch(() => {});
+                }}
+                style={styles.dotHit}>
+                <View style={[styles.dot, { borderColor: theme.primaryText }, isActive && { backgroundColor: theme.primary }]} />
+              </Pressable>
             </View>
             <ThemedText type="small" themeColor="textSecondary">
-              {GOAL_LABELS[diet.goal]} · {diet.meals.length}{' '}
+              {diet.meals.length}{' '}
               {diet.meals.length === 1 ? 'comida' : 'comidas'}
               {total.kcal > 0 ? ` · ${total.kcal} kcal` : ''}
             </ThemedText>
@@ -78,4 +86,6 @@ const styles = StyleSheet.create({
   card: { gap: Spacing.one },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   name: { flex: 1 },
+  dotHit: { padding: Spacing.one },
+  dot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
 });
