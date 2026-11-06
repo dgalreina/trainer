@@ -1,5 +1,5 @@
 import { type Exercise, type ExerciseCategory } from '@trainer/shared';
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -28,7 +28,7 @@ const ANIMATED_TILES = 4;
 
 /**
  * Selector de ejercicio a pantalla completa para cuando no te sabes el nombre: los ejercicios
- * separados por grupo muscular, en cuadrícula (más adelante, cada recuadro llevará su imagen).
+ * separados por grupo muscular, en cuadrícula con su ilustración.
  */
 export function ExercisePicker({
   visible,
@@ -38,6 +38,41 @@ export function ExercisePicker({
   visible: boolean;
   onSelect: (exercise: Exercise) => void;
   onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <ThemedView style={styles.root}>
+        <View style={styles.sheet}>
+          <View style={styles.header}>
+            <ThemedText type="subtitle">Elegir ejercicio</ThemedText>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} hitSlop={10}>
+              <ThemedText type="linkPrimary">Cerrar</ThemedText>
+            </Pressable>
+          </View>
+          <ExerciseBrowser active={visible} onPick={onSelect} />
+        </View>
+      </ThemedView>
+    </Modal>
+  );
+}
+
+/**
+ * Buscador + botones por grupo + cuadrícula de ejercicios con ilustración. Lo usan el selector
+ * (`onPick`) y el catálogo (`onRemove`: una ✕ en los ejercicios creados a mano).
+ */
+export function ExerciseBrowser({
+  active = true,
+  onPick,
+  onRemove,
+  placeholder = 'Press banca, sentadilla…',
+  extra,
+}: {
+  active?: boolean;
+  onPick?: (exercise: Exercise) => void;
+  onRemove?: (exercise: Exercise) => void;
+  placeholder?: string;
+  /** Contenido entre los botones de grupo y la lista (por ejemplo, «Crear…»). */
+  extra?: (query: string) => ReactNode;
 }) {
   const { exercises } = useExercises();
   const [query, setQuery] = useState('');
@@ -90,7 +125,7 @@ export function ExercisePicker({
     return () => {
       if (pending.current) clearTimeout(pending.current);
     };
-  }, [schedule, visible]);
+  }, [schedule, active]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     scroll.current.y = e.nativeEvent.contentOffset.y;
@@ -127,65 +162,56 @@ export function ExercisePicker({
 
   function pick(exercise: Exercise) {
     setQuery('');
-    onSelect(exercise);
+    onPick?.(exercise);
   }
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <ThemedView style={styles.root}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <ThemedText type="subtitle">Elegir ejercicio</ThemedText>
-            <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} hitSlop={10}>
-              <ThemedText type="linkPrimary">Cerrar</ThemedText>
-            </Pressable>
-          </View>
+    <>
+      <Field
+        accessibilityLabel="Buscar ejercicio"
+        value={query}
+        onChangeText={setQuery}
+        placeholder={placeholder}
+        autoCapitalize="none"
+      />
 
-          <Field
-            accessibilityLabel="Buscar ejercicio"
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Press banca, sentadilla…"
-            autoCapitalize="none"
-          />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.chipsScroll}
+        contentContainerStyle={styles.chips}>
+        {groups.map((group) => (
+          <Pressable
+            key={group.category}
+            accessibilityRole="button"
+            accessibilityLabel={`Ir a ${CATEGORY_LABELS[group.category]}`}
+            onPress={() => goTo(group.category)}
+            style={({ pressed }) => [
+              styles.chip,
+              { borderColor: theme.primary, backgroundColor: pressed ? theme.primarySoft : theme.background, WebkitTapHighlightColor: 'transparent' } as object,
+            ]}>
+            <ThemedText type="smallBold">{CATEGORY_LABELS[group.category]}</ThemedText>
+          </Pressable>
+        ))}
+      </ScrollView>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            style={styles.chipsScroll}
-            contentContainerStyle={styles.chips}>
-            {groups.map((group) => (
-              <Pressable
-                key={group.category}
-                accessibilityRole="button"
-                accessibilityLabel={`Ir a ${CATEGORY_LABELS[group.category]}`}
-                onPress={() => goTo(group.category)}
-                style={({ pressed }) => [
-                  styles.chip,
-                  { borderColor: theme.primary, backgroundColor: pressed ? theme.primarySoft : theme.background, WebkitTapHighlightColor: 'transparent' } as object,
-                ]}>
-                <ThemedText type="smallBold">{CATEGORY_LABELS[group.category]}</ThemedText>
-              </Pressable>
-            ))}
-          </ScrollView>
+      {extra?.(query)}
 
-          <FadingScroll
-            scrollRef={listRef}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.list}
-            onScroll={onScroll}
-            onLayout={onScrollLayout}>
-            {groups.length === 0 && (
-              <ThemedText themeColor="textSecondary">No hay ejercicios con ese nombre.</ThemedText>
-            )}
-            {groups.map((group) => (
-              <Group key={group.category} category={group.category} items={group.items} animated={animated} track={track} onPick={pick} />
-            ))}
-          </FadingScroll>
-        </View>
-      </ThemedView>
-    </Modal>
+      <FadingScroll
+        scrollRef={listRef}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.list}
+        onScroll={onScroll}
+        onLayout={onScrollLayout}>
+        {groups.length === 0 && (
+          <ThemedText themeColor="textSecondary">No hay ejercicios con ese nombre.</ThemedText>
+        )}
+        {groups.map((group) => (
+          <Group key={group.category} category={group.category} items={group.items} animated={animated} track={track} onPick={pick} onRemove={onRemove} />
+        ))}
+      </FadingScroll>
+    </>
   );
 }
 
@@ -197,6 +223,7 @@ function Group({
   animated,
   track,
   onPick,
+  onRemove,
 }: {
   category: ExerciseCategory;
   items: Exercise[];
@@ -207,6 +234,7 @@ function Group({
     tile: (id: string, y: number, h: number) => void;
   };
   onPick: (exercise: Exercise) => void;
+  onRemove?: (exercise: Exercise) => void;
 }) {
   const theme = useTheme();
   return (
@@ -233,6 +261,16 @@ function Group({
             <ThemedText type="smallBold" numberOfLines={3}>
               {exercise.name}
             </ThemedText>
+            {onRemove && exercise.ownerId && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Borrar ${exercise.name}`}
+                onPress={() => onRemove(exercise)}
+                hitSlop={8}
+                style={styles.remove}>
+                <ThemedText type="smallBold" themeColor="textSecondary">✕</ThemedText>
+              </Pressable>
+            )}
           </Pressable>
         ))}
       </View>
@@ -267,4 +305,5 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   image: { borderRadius: Radius.control },
+  remove: { position: 'absolute', top: Spacing.two, right: Spacing.three, padding: Spacing.one },
 });

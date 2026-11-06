@@ -517,6 +517,10 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/elevaciones-frontales-con-barra_0.webp'),
     require('../../assets/exercises/elevaciones-frontales-con-barra_1.webp'),
   ],
+  'elevaciones laterales en banco inclinado': [
+    require('../../assets/exercises/elevaciones-laterales-en-banco-inclinado_0.webp'),
+    require('../../assets/exercises/elevaciones-laterales-en-banco-inclinado_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
