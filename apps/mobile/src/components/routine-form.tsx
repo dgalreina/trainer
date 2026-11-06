@@ -198,6 +198,7 @@ export function RoutineForm({
         accessibilityLabel="Nombre de la rutina"
         value={name}
         onChangeText={setName}
+        autoCapitalize="sentences"
         placeholder="Pecho + Espalda, Pierna…"
         placeholderTextColor={theme.textSecondary}
         style={[styles.nameInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}

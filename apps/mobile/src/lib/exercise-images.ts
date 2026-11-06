@@ -521,6 +521,18 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/elevaciones-laterales-en-banco-inclinado_0.webp'),
     require('../../assets/exercises/elevaciones-laterales-en-banco-inclinado_1.webp'),
   ],
+  'burpees': [
+    require('../../assets/exercises/burpees_0.webp'),
+    require('../../assets/exercises/burpees_1.webp'),
+  ],
+  'jumping jacks': [
+    require('../../assets/exercises/jumping-jacks_0.webp'),
+    require('../../assets/exercises/jumping-jacks_1.webp'),
+  ],
+  'dragon flag': [
+    require('../../assets/exercises/dragon-flag_0.webp'),
+    require('../../assets/exercises/dragon-flag_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
