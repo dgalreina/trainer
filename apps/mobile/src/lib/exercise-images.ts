@@ -191,6 +191,166 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/press-arnold_0.webp'),
     require('../../assets/exercises/press-arnold_1.webp'),
   ],
+  'press militar con barra': [
+    require('../../assets/exercises/press-militar-con-barra_0.webp'),
+    require('../../assets/exercises/press-militar-con-barra_1.webp'),
+  ],
+  'press militar con mancuernas': [
+    require('../../assets/exercises/press-militar-con-mancuernas_0.webp'),
+    require('../../assets/exercises/press-militar-con-mancuernas_1.webp'),
+  ],
+  'press militar en maquina': [
+    require('../../assets/exercises/press-militar-en-maquina_0.webp'),
+    require('../../assets/exercises/press-militar-en-maquina_1.webp'),
+  ],
+  'press tras nuca': [
+    require('../../assets/exercises/press-tras-nuca_0.webp'),
+    require('../../assets/exercises/press-tras-nuca_1.webp'),
+  ],
+  'remo al menton': [
+    require('../../assets/exercises/remo-al-menton_0.webp'),
+    require('../../assets/exercises/remo-al-menton_1.webp'),
+  ],
+  'curl concentrado': [
+    require('../../assets/exercises/curl-concentrado_0.webp'),
+    require('../../assets/exercises/curl-concentrado_1.webp'),
+  ],
+  'curl de biceps con barra': [
+    require('../../assets/exercises/curl-de-biceps-con-barra_0.webp'),
+    require('../../assets/exercises/curl-de-biceps-con-barra_1.webp'),
+  ],
+  'curl de biceps con mancuernas': [
+    require('../../assets/exercises/curl-de-biceps-con-mancuernas_0.webp'),
+    require('../../assets/exercises/curl-de-biceps-con-mancuernas_1.webp'),
+  ],
+  'curl en banco scott (predicador)': [
+    require('../../assets/exercises/curl-en-banco-scott-predicador_0.webp'),
+    require('../../assets/exercises/curl-en-banco-scott-predicador_1.webp'),
+  ],
+  'curl en maquina': [
+    require('../../assets/exercises/curl-en-maquina_0.webp'),
+    require('../../assets/exercises/curl-en-maquina_1.webp'),
+  ],
+  'curl en polea': [
+    require('../../assets/exercises/curl-en-polea_0.webp'),
+    require('../../assets/exercises/curl-en-polea_1.webp'),
+  ],
+  'curl inverso con barra': [
+    require('../../assets/exercises/curl-inverso-con-barra_0.webp'),
+    require('../../assets/exercises/curl-inverso-con-barra_1.webp'),
+  ],
+  'curl martillo': [
+    require('../../assets/exercises/curl-martillo_0.webp'),
+    require('../../assets/exercises/curl-martillo_1.webp'),
+  ],
+  'extension de triceps en maquina': [
+    require('../../assets/exercises/extension-de-triceps-en-maquina_0.webp'),
+    require('../../assets/exercises/extension-de-triceps-en-maquina_1.webp'),
+  ],
+  'extension de triceps en polea (barra)': [
+    require('../../assets/exercises/extension-de-triceps-en-polea-barra_0.webp'),
+    require('../../assets/exercises/extension-de-triceps-en-polea-barra_1.webp'),
+  ],
+  'extension de triceps en polea (cuerda)': [
+    require('../../assets/exercises/extension-de-triceps-en-polea-cuerda_0.webp'),
+    require('../../assets/exercises/extension-de-triceps-en-polea-cuerda_1.webp'),
+  ],
+  'extension de triceps sobre la cabeza con mancuerna': [
+    require('../../assets/exercises/extension-de-triceps-sobre-la-cabeza-con-mancuerna_0.webp'),
+    require('../../assets/exercises/extension-de-triceps-sobre-la-cabeza-con-mancuerna_1.webp'),
+  ],
+  'fondos en banco': [
+    require('../../assets/exercises/fondos-en-banco_0.webp'),
+    require('../../assets/exercises/fondos-en-banco_1.webp'),
+  ],
+  'patada de triceps con mancuerna': [
+    require('../../assets/exercises/patada-de-triceps-con-mancuerna_0.webp'),
+    require('../../assets/exercises/patada-de-triceps-con-mancuerna_1.webp'),
+  ],
+  'fondos en paralelas (triceps)': [
+    require('../../assets/exercises/fondos-en-paralelas-triceps_0.webp'),
+    require('../../assets/exercises/fondos-en-paralelas-triceps_1.webp'),
+  ],
+  'press frances con barra': [
+    require('../../assets/exercises/press-frances-con-barra_0.webp'),
+    require('../../assets/exercises/press-frances-con-barra_1.webp'),
+  ],
+  'press frances con mancuerna': [
+    require('../../assets/exercises/press-frances-con-mancuerna_0.webp'),
+    require('../../assets/exercises/press-frances-con-mancuerna_1.webp'),
+  ],
+  'abduccion de cadera en maquina': [
+    require('../../assets/exercises/abduccion-de-cadera-en-maquina_0.webp'),
+    require('../../assets/exercises/abduccion-de-cadera-en-maquina_1.webp'),
+  ],
+  'aduccion de cadera en maquina': [
+    require('../../assets/exercises/aduccion-de-cadera-en-maquina_0.webp'),
+    require('../../assets/exercises/aduccion-de-cadera-en-maquina_1.webp'),
+  ],
+  'curl femoral de pie': [
+    require('../../assets/exercises/curl-femoral-de-pie_0.webp'),
+    require('../../assets/exercises/curl-femoral-de-pie_1.webp'),
+  ],
+  'curl femoral nordico': [
+    require('../../assets/exercises/curl-femoral-nordico_0.webp'),
+    require('../../assets/exercises/curl-femoral-nordico_1.webp'),
+  ],
+  'curl femoral sentado': [
+    require('../../assets/exercises/curl-femoral-sentado_0.webp'),
+    require('../../assets/exercises/curl-femoral-sentado_1.webp'),
+  ],
+  'curl femoral tumbado': [
+    require('../../assets/exercises/curl-femoral-tumbado_0.webp'),
+    require('../../assets/exercises/curl-femoral-tumbado_1.webp'),
+  ],
+  'elevacion de gemelos de pie': [
+    require('../../assets/exercises/elevacion-de-gemelos-de-pie_0.webp'),
+    require('../../assets/exercises/elevacion-de-gemelos-de-pie_1.webp'),
+  ],
+  'elevacion de gemelos en prensa': [
+    require('../../assets/exercises/elevacion-de-gemelos-en-prensa_0.webp'),
+    require('../../assets/exercises/elevacion-de-gemelos-en-prensa_1.webp'),
+  ],
+  'elevacion de gemelos sentado': [
+    require('../../assets/exercises/elevacion-de-gemelos-sentado_0.webp'),
+    require('../../assets/exercises/elevacion-de-gemelos-sentado_1.webp'),
+  ],
+  'extension de cuadriceps': [
+    require('../../assets/exercises/extension-de-cuadriceps_0.webp'),
+    require('../../assets/exercises/extension-de-cuadriceps_1.webp'),
+  ],
+  'hip thrust con barra': [
+    require('../../assets/exercises/hip-thrust-con-barra_0.webp'),
+    require('../../assets/exercises/hip-thrust-con-barra_1.webp'),
+  ],
+  'patada de gluteo en polea': [
+    require('../../assets/exercises/patada-de-gluteo-en-polea_0.webp'),
+    require('../../assets/exercises/patada-de-gluteo-en-polea_1.webp'),
+  ],
+  'peso muerto a una pierna': [
+    require('../../assets/exercises/peso-muerto-a-una-pierna_0.webp'),
+    require('../../assets/exercises/peso-muerto-a-una-pierna_1.webp'),
+  ],
+  'prensa de piernas': [
+    require('../../assets/exercises/prensa-de-piernas_0.webp'),
+    require('../../assets/exercises/prensa-de-piernas_1.webp'),
+  ],
+  'puente de gluteo': [
+    require('../../assets/exercises/puente-de-gluteo_0.webp'),
+    require('../../assets/exercises/puente-de-gluteo_1.webp'),
+  ],
+  'puente de gluteo a una pierna': [
+    require('../../assets/exercises/puente-de-gluteo-a-una-pierna_0.webp'),
+    require('../../assets/exercises/puente-de-gluteo-a-una-pierna_1.webp'),
+  ],
+  'sentadilla con barra': [
+    require('../../assets/exercises/sentadilla-con-barra_0.webp'),
+    require('../../assets/exercises/sentadilla-con-barra_1.webp'),
+  ],
+  'sentadilla en maquina smith': [
+    require('../../assets/exercises/sentadilla-en-maquina-smith_0.webp'),
+    require('../../assets/exercises/sentadilla-en-maquina-smith_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
