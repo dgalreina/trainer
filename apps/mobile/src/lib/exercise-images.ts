@@ -351,6 +351,150 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/sentadilla-en-maquina-smith_0.webp'),
     require('../../assets/exercises/sentadilla-en-maquina-smith_1.webp'),
   ],
+  'sentadilla bulgara': [
+    require('../../assets/exercises/sentadilla-bulgara_0.webp'),
+    require('../../assets/exercises/sentadilla-bulgara_1.webp'),
+  ],
+  'sentadilla frontal': [
+    require('../../assets/exercises/sentadilla-frontal_0.webp'),
+    require('../../assets/exercises/sentadilla-frontal_1.webp'),
+  ],
+  'sentadilla goblet': [
+    require('../../assets/exercises/sentadilla-goblet_0.webp'),
+    require('../../assets/exercises/sentadilla-goblet_1.webp'),
+  ],
+  'sentadilla hack': [
+    require('../../assets/exercises/sentadilla-hack_0.webp'),
+    require('../../assets/exercises/sentadilla-hack_1.webp'),
+  ],
+  'sissy squat': [
+    require('../../assets/exercises/sissy-squat_0.webp'),
+    require('../../assets/exercises/sissy-squat_1.webp'),
+  ],
+  'step-up con mancuernas': [
+    require('../../assets/exercises/step-up-con-mancuernas_0.webp'),
+    require('../../assets/exercises/step-up-con-mancuernas_1.webp'),
+  ],
+  'zancada inversa': [
+    require('../../assets/exercises/zancada-inversa_0.webp'),
+    require('../../assets/exercises/zancada-inversa_1.webp'),
+  ],
+  'zancada lateral': [
+    require('../../assets/exercises/zancada-lateral_0.webp'),
+    require('../../assets/exercises/zancada-lateral_1.webp'),
+  ],
+  'zancadas caminando': [
+    require('../../assets/exercises/zancadas-caminando_0.webp'),
+    require('../../assets/exercises/zancadas-caminando_1.webp'),
+  ],
+  'zancadas con mancuernas': [
+    require('../../assets/exercises/zancadas-con-mancuernas_0.webp'),
+    require('../../assets/exercises/zancadas-con-mancuernas_1.webp'),
+  ],
+  'crunch abdominal': [
+    require('../../assets/exercises/crunch-abdominal_0.webp'),
+    require('../../assets/exercises/crunch-abdominal_1.webp'),
+  ],
+  'crunch en polea': [
+    require('../../assets/exercises/crunch-en-polea_0.webp'),
+    require('../../assets/exercises/crunch-en-polea_1.webp'),
+  ],
+  'elevacion de piernas colgado': [
+    require('../../assets/exercises/elevacion-de-piernas-colgado_0.webp'),
+    require('../../assets/exercises/elevacion-de-piernas-colgado_1.webp'),
+  ],
+  'elevacion de piernas tumbado': [
+    require('../../assets/exercises/elevacion-de-piernas-tumbado_0.webp'),
+    require('../../assets/exercises/elevacion-de-piernas-tumbado_1.webp'),
+  ],
+  'elevacion de rodillas colgado': [
+    require('../../assets/exercises/elevacion-de-rodillas-colgado_0.webp'),
+    require('../../assets/exercises/elevacion-de-rodillas-colgado_1.webp'),
+  ],
+  'encogimiento abdominal en maquina': [
+    require('../../assets/exercises/encogimiento-abdominal-en-maquina_0.webp'),
+    require('../../assets/exercises/encogimiento-abdominal-en-maquina_1.webp'),
+  ],
+  'escaladores (mountain climbers)': [
+    require('../../assets/exercises/escaladores-mountain-climbers_0.webp'),
+    require('../../assets/exercises/escaladores-mountain-climbers_1.webp'),
+  ],
+  'giro ruso (russian twist)': [
+    require('../../assets/exercises/giro-ruso-russian-twist_0.webp'),
+    require('../../assets/exercises/giro-ruso-russian-twist_1.webp'),
+  ],
+  'rueda abdominal (ab wheel)': [
+    require('../../assets/exercises/rueda-abdominal-ab-wheel_0.webp'),
+    require('../../assets/exercises/rueda-abdominal-ab-wheel_1.webp'),
+  ],
+  'curl de muneca con barra': [
+    require('../../assets/exercises/curl-de-muneca-con-barra_0.webp'),
+    require('../../assets/exercises/curl-de-muneca-con-barra_1.webp'),
+  ],
+  'curl de muneca inverso': [
+    require('../../assets/exercises/curl-de-muneca-inverso_0.webp'),
+    require('../../assets/exercises/curl-de-muneca-inverso_1.webp'),
+  ],
+  'arrastre de trineo (sled pull)': [
+    require('../../assets/exercises/arrastre-de-trineo-sled-pull_0.webp'),
+    require('../../assets/exercises/arrastre-de-trineo-sled-pull_1.webp'),
+  ],
+  'bicicleta estatica': [
+    require('../../assets/exercises/bicicleta-estatica_0.webp'),
+    require('../../assets/exercises/bicicleta-estatica_1.webp'),
+  ],
+  'cinta de correr': [
+    require('../../assets/exercises/cinta-de-correr_0.webp'),
+    require('../../assets/exercises/cinta-de-correr_1.webp'),
+  ],
+  'comba (salto de cuerda)': [
+    require('../../assets/exercises/comba-salto-de-cuerda_0.webp'),
+    require('../../assets/exercises/comba-salto-de-cuerda_1.webp'),
+  ],
+  'empuje de trineo (sled push)': [
+    require('../../assets/exercises/empuje-de-trineo-sled-push_0.webp'),
+    require('../../assets/exercises/empuje-de-trineo-sled-push_1.webp'),
+  ],
+  'kettlebell swing': [
+    require('../../assets/exercises/kettlebell-swing_0.webp'),
+    require('../../assets/exercises/kettlebell-swing_1.webp'),
+  ],
+  'remo en maquina (rowing)': [
+    require('../../assets/exercises/remo-en-maquina-rowing_0.webp'),
+    require('../../assets/exercises/remo-en-maquina-rowing_1.webp'),
+  ],
+  'saltos al cajon (box jumps)': [
+    require('../../assets/exercises/saltos-al-cajon-box-jumps_0.webp'),
+    require('../../assets/exercises/saltos-al-cajon-box-jumps_1.webp'),
+  ],
+  'paseo del granjero (farmer walk)': [
+    require('../../assets/exercises/paseo-del-granjero-farmer-walk_0.webp'),
+    require('../../assets/exercises/paseo-del-granjero-farmer-walk_1.webp'),
+  ],
+  'clean (cargada)': [
+    require('../../assets/exercises/clean-cargada_0.webp'),
+    require('../../assets/exercises/clean-cargada_1.webp'),
+  ],
+  'clean and jerk': [
+    require('../../assets/exercises/clean-and-jerk_0.webp'),
+    require('../../assets/exercises/clean-and-jerk_1.webp'),
+  ],
+  'push press': [
+    require('../../assets/exercises/push-press_0.webp'),
+    require('../../assets/exercises/push-press_1.webp'),
+  ],
+  'snatch (arrancada)': [
+    require('../../assets/exercises/snatch-arrancada_0.webp'),
+    require('../../assets/exercises/snatch-arrancada_1.webp'),
+  ],
+  'thruster': [
+    require('../../assets/exercises/thruster_0.webp'),
+    require('../../assets/exercises/thruster_1.webp'),
+  ],
+  'turkish get-up': [
+    require('../../assets/exercises/turkish-get-up_0.webp'),
+    require('../../assets/exercises/turkish-get-up_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */
