@@ -13,6 +13,7 @@ export const FOOD_CATEGORY_LABELS: Record<FoodCategory, string> = {
   grasas: 'Grasas',
   dulces: 'Dulces',
   bebidas: 'Bebidas',
+  suplementos: 'Suplementos',
   otros: 'Otros',
 };
 

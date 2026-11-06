@@ -14,6 +14,7 @@ export const FOOD_CATEGORIES = [
   "grasas",
   "dulces",
   "bebidas",
+  "suplementos",
   "otros",
 ] as const;
 
