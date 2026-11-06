@@ -12,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { api } from '@/lib/api';
 import { beep, unlockAudio } from '@/lib/beep';
 import { confirmAction } from '@/lib/confirm';
-import { notifySessionSaved } from '@/lib/session-events';
+import { notifySessionsChanged, useSessionsVersion } from '@/lib/session-events';
 import { useExercises } from '@/lib/exercises';
 import { deleteItem, getItem, setItem } from '@/lib/storage';
 import { useTrainings } from '@/lib/trainings';
@@ -89,11 +89,35 @@ export function WorkoutScreen() {
   }, [routine, id, key]);
 
   // Guarda el borrador tras cada cambio (con una pequeña espera para no escribir en cada tecla).
+  // El calendario muestra el entreno en cuanto se empieza: se avisa cuando el borrador ya está
+  // guardado (es de donde lo lee) y el entreno ha pasado de sin empezar a empezado.
+  const announcedStarted = useRef(false);
   useEffect(() => {
     if (!draft || finished) return;
-    const timer = setTimeout(() => setItem(key, JSON.stringify(draft)), 300);
+    const timer = setTimeout(async () => {
+      await setItem(key, JSON.stringify(draft));
+      const started = draft.startedAt !== null;
+      if (started !== announcedStarted.current) {
+        announcedStarted.current = started;
+        notifySessionsChanged();
+      }
+    }, 300);
     return () => clearTimeout(timer);
   }, [draft, key, finished]);
+
+  // Si la hora de inicio se corrige desde el calendario, se recoge aquí (solo la hora: lo demás es de esta pantalla).
+  const sessionsVersion = useSessionsVersion();
+  useEffect(() => {
+    if (!draft || draft.startedAt === null) return;
+    getItem(key).then((raw) => {
+      const saved = parseDraft(raw);
+      if (saved && saved.startedAt !== null && saved.startedAt !== draft.startedAt) {
+        setDraft((d) => (d ? { ...d, startedAt: saved.startedAt } : d));
+      }
+    });
+    // Solo cuando algo avisa de un cambio, no en cada edición del borrador.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionsVersion]);
 
   const patch = useCallback((change: (d: WorkoutDraft) => WorkoutDraft) => {
     setDraft((d) => (d ? change(d) : d));
@@ -205,9 +229,9 @@ export function WorkoutScreen() {
     setSaving(true);
     try {
       await api.post('/sessions', result.payload);
-      // El calendario de «Yo» se recarga para mostrar este entreno.
-      notifySessionSaved();
       await deleteItem(key);
+      // El calendario se recarga: el entreno pasa de «en curso» a registrado.
+      notifySessionsChanged();
       setFinished(result.summary);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar el entreno');
@@ -224,6 +248,7 @@ export function WorkoutScreen() {
     );
     if (!ok) return;
     await deleteItem(key);
+    notifySessionsChanged();
     goBack();
   }
 

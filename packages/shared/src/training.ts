@@ -79,11 +79,39 @@ export function trainingProgress(
 }
 
 /** Lo que el usuario tiene en marcha ahora. */
+export const dietScheduleEntrySchema = z.object({
+  /** Día (AAAA-MM-DD) desde el que rige: se mantiene hasta la siguiente entrada. */
+  from: dateSchema,
+  /** La dieta que se sigue desde ese día, o null si se deja de seguir una. */
+  dietId: z.string().nullable(),
+});
+export type DietScheduleEntry = z.infer<typeof dietScheduleEntrySchema>;
+
 export const userSettingsSchema = z.object({
   activeTrainingId: z.string().nullable(),
   activeDietId: z.string().nullable(),
+  /** Qué dieta rige cada día: sin fin hasta que se cambia o se quita, y antes de cada cambio rige la anterior. */
+  dietSchedule: z.array(dietScheduleEntrySchema),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 
-export const updateUserSettingsSchema = userSettingsSchema.partial();
+export const updateUserSettingsSchema = z.object({
+  activeTrainingId: z.string().nullable().optional(),
+  activeDietId: z.string().nullable().optional(),
+  /** Día desde el que rige el cambio de `activeDietId` (por defecto, hoy en el servidor). */
+  dietSince: dateSchema.optional(),
+});
 export type UpdateUserSettings = z.infer<typeof updateUserSettingsSchema>;
+
+/** La dieta que rige el día `day` (AAAA-MM-DD): la de la última entrada que empieza ese día o antes. */
+export function dietIdOn(schedule: DietScheduleEntry[], day: string): string | null {
+  let found: string | null = null;
+  let foundFrom = "";
+  for (const entry of schedule) {
+    if (entry.from <= day && entry.from >= foundFrom) {
+      found = entry.dietId;
+      foundFrom = entry.from;
+    }
+  }
+  return found;
+}

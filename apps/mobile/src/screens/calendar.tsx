@@ -11,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { confirmAction } from '@/lib/confirm';
 import { addDays, formatLongDay, formatTime, mondayOf, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
+import { useSettings } from '@/lib/settings';
 import { useWeekEvents, type DayEvent } from '@/lib/week-events';
 
 /** Calendario del día: qué hice y a qué hora (entrenos, comidas y pesadas). */
@@ -19,8 +20,14 @@ export function CalendarScreen() {
   const [day, setDay] = useState(todayISO);
   const [error, setError] = useState<string | null>(null);
 
-  const { eventsOf, mealsOf, error: loadError, moveEvent, reload } = useWeekEvents(mondayOf(day));
-  const dayEvents = eventsOf(day);
+  const { eventsOf, plannedOf, mealsOf, error: loadError, moveEvent, reload } = useWeekEvents(mondayOf(day));
+  const { settings, dietOn } = useSettings();
+  const dayEvents = [...eventsOf(day), ...plannedOf(day)].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  // Avisos del día: la dieta rige sin fin desde que se activa.
+  const dietChange = settings.dietSchedule.find((e) => e.from === day);
+  const startingDiet = dietChange?.dietId ? dietOn(day) : null;
+  const stoppedDiet = dietChange && !dietChange.dietId;
   const today = todayISO();
 
   async function onPressEvent(event: DayEvent) {
@@ -73,6 +80,16 @@ export function CalendarScreen() {
         </>
       }>
       <ErrorText message={error ?? loadError} />
+      {startingDiet && (
+        <ThemedText type="small" themeColor="primaryText" style={styles.notice}>
+          {day === today ? 'Desde hoy' : 'Desde este día'} sigues la dieta «{startingDiet.name}».
+        </ThemedText>
+      )}
+      {stoppedDiet && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.notice}>
+          {day === today ? 'Desde hoy' : 'Desde este día'} no sigues ninguna dieta.
+        </ThemedText>
+      )}
       <DayTimeline day={day} events={dayEvents} onPressEvent={onPressEvent} onMoveEvent={moveEvent} />
       {/* Lo de abajo queda fijo; si crece (formulario abierto, muchas comidas) tiene su propio scroll. */}
       <ScrollView style={styles.bottom} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -91,5 +108,6 @@ const styles = StyleSheet.create({
   dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dayTitle: { flex: 1, alignItems: 'center' },
   dayText: { textAlign: 'center' },
+  notice: { textAlign: 'center' },
   arrow: { paddingHorizontal: Spacing.three, lineHeight: 36 },
 });

@@ -46,14 +46,15 @@ export function DietScreen() {
               <ThemedText type="smallBold" style={styles.name}>
                 {diet.name}
               </ThemedText>
-              {/* El punto marca la dieta actual; tocar fuera de él abre la dieta. */}
+              {/* El punto marca la dieta que se sigue desde hoy (sin fin); pulsarlo otra vez la quita. */}
               <Pressable
                 accessibilityRole="radio"
                 accessibilityState={{ checked: isActive }}
                 accessibilityLabel={`Usar ${diet.name} como dieta actual`}
                 hitSlop={8}
                 onPress={() => {
-                  if (!isActive) setActiveDiet(diet.id).catch(() => {});
+                  // Pulsar la dieta actual la quita: desde hoy no se sigue ninguna.
+                  setActiveDiet(isActive ? null : diet.id).catch(() => {});
                 }}
                 style={styles.dotHit}>
                 <View style={[styles.dot, { borderColor: theme.primaryText }, isActive && { backgroundColor: theme.primary }]} />

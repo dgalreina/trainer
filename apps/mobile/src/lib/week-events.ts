@@ -1,13 +1,18 @@
-import { loggedMacros, routineTitle, type MealLog, type WeightEntry, type WorkoutSession } from '@trainer/shared';
+import { loggedMacros, mealMacros, routineTitle, type MealLog, type WeightEntry, type WorkoutSession } from '@trainer/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api } from '@/lib/api';
+import { getItem, setItem } from '@/lib/storage';
+import { notifySessionsChanged } from '@/lib/session-events';
+import { draftKey, parseDraft, type WorkoutDraft } from '@/lib/workout-draft';
 import { addDays, isoOf, startOfDay } from '@/lib/dates';
+import { useFoods } from '@/lib/foods';
 import { useMe } from '@/lib/me';
 import { useSessionsVersion } from '@/lib/session-events';
+import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
 
-export type EventKind = 'workout' | 'weight' | 'meal';
+export type EventKind = 'workout' | 'weight' | 'meal' | 'plan';
 
 /** Algo que pasó en un momento del día: un entreno, una pesada o una comida. */
 export interface DayEvent {
@@ -23,6 +28,18 @@ export interface DayEvent {
   weightId?: string;
   /** Solo en comidas: el id del registro, para poder moverlo. */
   mealId?: string;
+  /** Entreno empezado y aún sin finalizar: su hora de inicio vive en el borrador del dispositivo. */
+  inProgress?: boolean;
+  /** Solo en entrenos en curso: de qué entrenamiento y rutina es el borrador. */
+  draftOf?: { trainingId: string; routineId: string };
+}
+
+/** Hora "HH:MM" de un día "AAAA-MM-DD", en la hora del dispositivo. */
+function atTime(day: string, time: string): Date {
+  const [h, m] = time.split(':').map(Number);
+  const date = startOfDay(day);
+  date.setHours(h, m, 0, 0);
+  return date;
 }
 
 const MINUTE_MS = 60_000;
@@ -40,6 +57,8 @@ const WEEKS_AFTER = 2;
 /** Los eventos de la semana que empieza el lunes `weekStart` y de las dos que la rodean. */
 export function useWeekEvents(weekStart: string) {
   const { trainings } = useTrainings();
+  const { dietOn } = useSettings();
+  const { foods } = useFoods();
   const { weightsVersion, updateWeight } = useMe();
   const sessionsVersion = useSessionsVersion();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
@@ -47,6 +66,43 @@ export function useWeekEvents(weekStart: string) {
   const [meals, setMeals] = useState<MealLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inProgress, setInProgress] = useState<DayEvent[]>([]);
+
+  // Un entreno solo entra en el calendario cuando se pulsa «Comenzar»: mientras no se finaliza, es
+  // un borrador en el dispositivo; se busca el de cada rutina.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const found: DayEvent[] = [];
+      for (const training of trainings) {
+        for (const routine of training.routines) {
+          const raw = await getItem(draftKey(training.id, routine.id));
+          if (!raw) continue;
+          try {
+            const draft = JSON.parse(raw) as WorkoutDraft;
+            if (draft.startedAt === null) continue;
+            const start = new Date(draft.startedAt);
+            found.push({
+              id: `draft-${training.id}-${routine.id}`,
+              kind: 'workout',
+              inProgress: true,
+              draftOf: { trainingId: training.id, routineId: routine.id },
+              start,
+              end: new Date(start.getTime() + FALLBACK_WORKOUT_MINUTES * MINUTE_MS),
+              title: routineTitle(training.routines, routine.id),
+              subtitle: 'En curso',
+            });
+          } catch {
+            // Borrador ilegible: se ignora.
+          }
+        }
+      }
+      if (!cancelled) setInProgress(found);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trainings, sessionsVersion]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,13 +173,38 @@ export function useWeekEvents(weekStart: string) {
         subtitle: `${loggedMacros([meal]).kcal} kcal`,
       };
     });
-    return [...workouts, ...weighIns, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [sessions, weights, meals, trainings]);
+    return [...workouts, ...inProgress, ...weighIns, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [sessions, weights, meals, trainings, inProgress]);
 
   /** Eventos del día "AAAA-MM-DD", por hora. */
   const eventsOf = useCallback(
     (day: string) => events.filter((event) => isoOf(event.start) === day),
     [events],
+  );
+
+  /**
+   * Las comidas que toca hacer el día "AAAA-MM-DD" según la dieta que rige ese día: desde que se
+   * activó y sin fin hasta que se cambia o se quita. No se pueden mover (son el plan, no lo comido).
+   */
+  const plannedOf = useCallback(
+    (day: string): DayEvent[] => {
+      const diet = dietOn(day);
+      if (!diet) return [];
+      const byId = new Map(foods.map((f) => [f.id, f]));
+      return diet.meals.map((meal): DayEvent => {
+        const start = atTime(day, meal.time);
+        return {
+          id: `plan-${diet.id}-${meal.id}-${day}`,
+          kind: 'plan',
+          start,
+          end: new Date(start.getTime() + MEAL_MINUTES * MINUTE_MS),
+          title: meal.name,
+          // Hasta que carga el catálogo de alimentos no hay macros que calcular.
+          subtitle: foods.length > 0 ? `${mealMacros(meal, byId).kcal} kcal` : undefined,
+        };
+      });
+    },
+    [dietOn, foods],
   );
 
   /** Comidas registradas del día "AAAA-MM-DD", por hora. */
@@ -144,6 +225,22 @@ export function useWeekEvents(weekStart: string) {
         } else if (event.kind === 'meal' && event.mealId) {
           setMeals((prev) => prev.map((m) => (m.id === event.mealId ? { ...m, date } : m)));
           await api.patch(`/me/meals/${event.mealId}`, { date });
+        } else if (event.inProgress && event.draftOf) {
+          // El entreno en curso aún no está guardado: se corrige la hora de inicio de su borrador.
+          const key = draftKey(event.draftOf.trainingId, event.draftOf.routineId);
+          const draft = parseDraft(await getItem(key));
+          if (draft) {
+            await setItem(key, JSON.stringify({ ...draft, startedAt: newStart.getTime() }));
+            setInProgress((prev) =>
+              prev.map((e) =>
+                e.id === event.id
+                  ? { ...e, start: newStart, end: new Date(newStart.getTime() + FALLBACK_WORKOUT_MINUTES * MINUTE_MS) }
+                  : e,
+              ),
+            );
+            // Si el entreno está abierto, también cambia allí.
+            notifySessionsChanged();
+          }
         } else if (event.sessionId) {
           setSessions((prev) => prev.map((s) => (s.id === event.sessionId ? { ...s, date } : s)));
           await api.patch(`/sessions/${event.sessionId}`, { date });
@@ -156,5 +253,5 @@ export function useWeekEvents(weekStart: string) {
     [updateWeight, load],
   );
 
-  return { events, eventsOf, mealsOf, loading, error, reload: load, moveEvent };
+  return { events, eventsOf, plannedOf, mealsOf, loading, error, reload: load, moveEvent };
 }

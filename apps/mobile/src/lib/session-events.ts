@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from 'react';
 
-// Aviso mínimo de "se ha guardado un entreno": el calendario de «Yo» está montado siempre
+// Aviso mínimo de "ha cambiado un entreno" (se empieza, se descarta o se guarda): el calendario de «Yo» está montado siempre
 // (el paginador tiene todas las pestañas a la vez) y no se enteraría solo.
 let version = 0;
 const listeners = new Set<() => void>();
 
-export function notifySessionSaved(): void {
+export function notifySessionsChanged(): void {
   version += 1;
   listeners.forEach((listener) => listener());
 }

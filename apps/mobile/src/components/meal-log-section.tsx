@@ -42,7 +42,9 @@ export function MealLogSection({
 }) {
   const theme = useTheme();
   const { foods } = useFoods();
-  const { activeDiet } = useSettings();
+  const { dietOn } = useSettings();
+  // La dieta que rige ese día (puede no ser la de hoy si se ha cambiado).
+  const activeDiet = dietOn(day);
   const { profile, latestWeight } = useMe();
   const byId = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
 
@@ -58,7 +60,7 @@ export function MealLogSection({
   const targets = calculateTargets({
     ...profile,
     weightKg: latestWeight?.weightKg ?? null,
-    goal: activeDiet?.goal ?? profile.goal ?? 'mantener',
+    goal: profile.goal ?? activeDiet?.goal ?? 'mantener',
     today: todayISO(),
   });
 

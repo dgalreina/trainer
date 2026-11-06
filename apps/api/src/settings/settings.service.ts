@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { UpdateUserSettings, UserSettings } from "@trainer/shared";
+import type { DietScheduleEntry, UpdateUserSettings, UserSettings } from "@trainer/shared";
 import { isValidObjectId, type Model } from "mongoose";
 import { DietDoc } from "../diets/diet.schema.js";
 import { TrainingDoc } from "../trainings/training.schema.js";
@@ -16,10 +16,17 @@ export class SettingsService {
 
   async get(userId: string): Promise<UserSettings> {
     const doc = await this.model.findOne({ userId });
-    return {
-      activeTrainingId: doc?.activeTrainingId ?? null,
-      activeDietId: doc?.activeDietId ?? null,
-    };
+    const activeDietId = doc?.activeDietId ?? null;
+    let dietSchedule: DietScheduleEntry[] = (doc?.dietSchedule ?? []).map((e) => ({
+      from: e.from,
+      dietId: e.dietId ?? null,
+    }));
+    // Quien activó una dieta antes de que existiera el calendario: rige desde su fecha de inicio.
+    if (dietSchedule.length === 0 && activeDietId && isValidObjectId(activeDietId)) {
+      const diet = await this.diets.findOne({ _id: activeDietId, userId }).lean();
+      if (diet) dietSchedule = [{ from: diet.startDate, dietId: activeDietId }];
+    }
+    return { activeTrainingId: doc?.activeTrainingId ?? null, activeDietId, dietSchedule };
   }
 
   async update(userId: string, dto: UpdateUserSettings): Promise<UserSettings> {
@@ -35,7 +42,18 @@ export class SettingsService {
         (await this.diets.exists({ _id: dto.activeDietId, userId }));
       if (!exists) throw new BadRequestException("Esa dieta no existe");
     }
-    await this.model.updateOne({ userId }, { $set: dto }, { upsert: true });
+    const { dietSince, ...changes } = dto;
+    const set: Record<string, unknown> = { ...changes };
+    if (dto.activeDietId !== undefined) {
+      // Desde ese día rige la dieta nueva (o ninguna); lo anterior se conserva y lo posterior se descarta.
+      const since = dietSince ?? new Date().toISOString().slice(0, 10);
+      const current = (await this.get(userId)).dietSchedule;
+      set.dietSchedule = [
+        ...current.filter((e) => e.from < since),
+        { from: since, dietId: dto.activeDietId },
+      ];
+    }
+    await this.model.updateOne({ userId }, { $set: set }, { upsert: true });
     return this.get(userId);
   }
 

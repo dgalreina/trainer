@@ -17,7 +17,7 @@ import type { DayEvent } from '@/lib/week-events';
 const HOUR_HEIGHT = 56;
 const LABEL_WIDTH = 48;
 // Alto mínimo de cada tipo: un entreno lleva dos líneas de texto; una pesada, una.
-const MIN_HEIGHT = { workout: 52, weight: 34, meal: 52 } as const;
+const MIN_HEIGHT = { workout: 52, weight: 34, meal: 52, plan: 52 } as const;
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
@@ -211,12 +211,14 @@ function EventCard({
   );
   // Salmón para lo que entra (comidas) y azul cielo para lo que se gasta (entrenos).
   const background =
-    event.kind === 'meal'
+    event.kind === 'meal' || event.kind === 'plan'
       ? theme.primarySoft
       : event.kind === 'workout'
         ? theme.skySoft
         : theme.backgroundElement;
-  const canMove = Boolean(onMove);
+  // Lo que marca la dieta se ve como una comida más, pero no se mueve (lo que se mueve es lo registrado).
+  const planned = event.kind === 'plan';
+  const canMove = Boolean(onMove) && !planned;
 
   return (
     <Pressable

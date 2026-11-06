@@ -1,4 +1,4 @@
-import type { Diet, Training, UserSettings } from '@trainer/shared';
+import { dietIdOn, type Diet, type Training, type UserSettings } from '@trainer/shared';
 import {
   createContext,
   useCallback,
@@ -11,10 +11,11 @@ import {
 
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { todayISO } from '@/lib/dates';
 import { useDiets } from '@/lib/diets';
 import { useTrainings } from '@/lib/trainings';
 
-const EMPTY: UserSettings = { activeTrainingId: null, activeDietId: null };
+const EMPTY: UserSettings = { activeTrainingId: null, activeDietId: null, dietSchedule: [] };
 
 interface SettingsValue {
   settings: UserSettings;
@@ -23,10 +24,16 @@ interface SettingsValue {
   setActiveTraining: (id: string | null) => Promise<void>;
   /** La dieta que el usuario sigue ahora, si la hay. */
   activeDiet: Diet | null;
+  /** Desde hoy se sigue esa dieta (sin fin, hasta que se cambia o se quita con `null`). */
   setActiveDiet: (id: string | null) => Promise<void>;
+  /** La dieta que rige un día (AAAA-MM-DD), si la hay: antes de activarla no, después sí, sin fin. */
+  dietOn: (day: string) => Diet | null;
 }
 
 const SettingsContext = createContext<SettingsValue | null>(null);
+
+/** Una API anterior al calendario de dietas no manda `dietSchedule`: se toma como vacío. */
+const normalize = (s: UserSettings): UserSettings => ({ ...s, dietSchedule: s.dietSchedule ?? [] });
 
 /** Qué entrenamiento y qué dieta tiene el usuario en marcha ahora. */
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -40,17 +47,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setSettings(EMPTY);
       return;
     }
-    api.get<UserSettings>('/me/settings').then(setSettings).catch(() => {
+    api.get<UserSettings>('/me/settings').then((s) => setSettings(normalize(s))).catch(() => {
       // Sin ajustes no hay entrenamiento activo: la app sigue funcionando.
     });
   }, [status]);
 
   const setActiveTraining = useCallback(async (id: string | null) => {
-    setSettings(await api.put<UserSettings>('/me/settings', { activeTrainingId: id }));
+    setSettings(normalize(await api.put<UserSettings>('/me/settings', { activeTrainingId: id })));
   }, []);
 
   const setActiveDiet = useCallback(async (id: string | null) => {
-    setSettings(await api.put<UserSettings>('/me/settings', { activeDietId: id }));
+    setSettings(normalize(await api.put<UserSettings>('/me/settings', { activeDietId: id, dietSince: todayISO() })));
   }, []);
 
   const activeTraining = useMemo(
@@ -63,9 +70,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [diets, settings.activeDietId],
   );
 
+  const dietOn = useCallback(
+    (day: string) => {
+      // Sin calendario (ajustes de antes), la dieta actual rige desde su fecha de inicio.
+      const legacy = diets.find((d) => d.id === settings.activeDietId);
+      const schedule =
+        settings.dietSchedule.length === 0 && legacy
+          ? [{ from: legacy.startDate, dietId: legacy.id }]
+          : settings.dietSchedule;
+      const id = dietIdOn(schedule, day);
+      return id ? (diets.find((d) => d.id === id) ?? null) : null;
+    },
+    [settings.dietSchedule, settings.activeDietId, diets],
+  );
+
   const value = useMemo<SettingsValue>(
-    () => ({ settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet }),
-    [settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet],
+    () => ({ settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn }),
+    [settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
