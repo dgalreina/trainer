@@ -11,15 +11,18 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export function Field({ label, style, ...props }: TextInputProps & { label: string }) {
+export function Field({ label, style, ...props }: TextInputProps & { label?: string }) {
   const theme = useTheme();
   return (
     <>
-      <ThemedText type="smallBold" themeColor="textSecondary">
-        {label}
-      </ThemedText>
+      {label ? (
+        <ThemedText type="smallBold" themeColor="textSecondary">
+          {label}
+        </ThemedText>
+      ) : null}
       <TextInput
         placeholderTextColor={theme.textSecondary}
+        accessibilityLabel={label}
         {...props}
         style={[
           styles.input,

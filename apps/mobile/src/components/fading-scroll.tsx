@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   Animated,
   ScrollView,
@@ -21,7 +21,11 @@ const EDGE_PX = 4;
  * hay más contenido por ese lado: al empezar no se ve el de arriba, y al llegar al final se
  * quita el de abajo. Pensado para listas sobre fondo liso (el degradado es del color de fondo).
  */
-export function FadingScroll({ children, ...props }: ScrollViewProps & { children: ReactNode }) {
+export function FadingScroll({
+  children,
+  scrollRef,
+  ...props
+}: ScrollViewProps & { children: ReactNode; scrollRef?: Ref<ComponentRef<typeof ScrollView>> }) {
   const theme = useTheme();
   const [top, setTop] = useState(false);
   const [bottom, setBottom] = useState(false);
@@ -53,6 +57,7 @@ export function FadingScroll({ children, ...props }: ScrollViewProps & { childre
     <View style={styles.root}>
       <ScrollView
         {...props}
+        ref={scrollRef}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}

@@ -1,8 +1,9 @@
 import { type Exercise, type ExerciseCategory } from '@trainer/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
   type LayoutChangeEvent,
@@ -40,6 +41,8 @@ export function ExercisePicker({
 }) {
   const { exercises } = useExercises();
   const [query, setQuery] = useState('');
+  const listRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const theme = useTheme();
 
   const groups = useMemo(() => {
     const found = query.trim() ? searchExercises(exercises, query, 60) : exercises;
@@ -116,6 +119,12 @@ export function ExercisePicker({
     [schedule],
   );
 
+  /** Salta directo a la sección de un grupo muscular. */
+  function goTo(category: string) {
+    const y = boxes.current.group.get(category);
+    if (y !== undefined) listRef.current?.scrollTo({ y: Math.max(0, y - 4), animated: true });
+  }
+
   function pick(exercise: Exercise) {
     setQuery('');
     onSelect(exercise);
@@ -133,14 +142,36 @@ export function ExercisePicker({
           </View>
 
           <Field
-            label="Buscar"
+            accessibilityLabel="Buscar ejercicio"
             value={query}
             onChangeText={setQuery}
             placeholder="Press banca, sentadilla…"
             autoCapitalize="none"
           />
 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            style={styles.chipsScroll}
+            contentContainerStyle={styles.chips}>
+            {groups.map((group) => (
+              <Pressable
+                key={group.category}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir a ${CATEGORY_LABELS[group.category]}`}
+                onPress={() => goTo(group.category)}
+                style={({ pressed }) => [
+                  styles.chip,
+                  { borderColor: theme.primary, backgroundColor: pressed ? theme.primarySoft : theme.background, WebkitTapHighlightColor: 'transparent' } as object,
+                ]}>
+                <ThemedText type="smallBold">{CATEGORY_LABELS[group.category]}</ThemedText>
+              </Pressable>
+            ))}
+          </ScrollView>
+
           <FadingScroll
+            scrollRef={listRef}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.list}
             onScroll={onScroll}
@@ -220,6 +251,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chipsScroll: { flexGrow: 0, flexShrink: 0 },
+  chips: { gap: Spacing.two, paddingVertical: 2 },
+  chip: { borderWidth: 1, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   list: { gap: Spacing.four, paddingBottom: Spacing.five },
   group: { gap: Spacing.two },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
