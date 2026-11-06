@@ -22,6 +22,7 @@ import {
   formatClock,
   lastPerformed,
   parseDraft,
+  routineSignature,
   toSessionPayload,
   type WorkoutDraft,
   type WorkoutSummary,
@@ -83,7 +84,10 @@ export function WorkoutScreen() {
       setLast(last);
 
       const saved = parseDraft(await getItem(key));
-      if (saved) return setDraft(saved);
+      // Un entreno ya empezado se respeta; uno sin empezar se rehace si la rutina ha cambiado.
+      if (saved && (saved.startedAt !== null || saved.planSig === routineSignature(routine))) {
+        return setDraft(saved);
+      }
       setDraft(buildDraft(id, routine, last));
     })();
   }, [routine, id, key]);

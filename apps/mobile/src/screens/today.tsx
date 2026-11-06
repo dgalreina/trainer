@@ -1,6 +1,6 @@
 import { dayLabel, routineTitle } from '@trainer/shared';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -19,7 +19,13 @@ import { useTrainings } from '@/lib/trainings';
 export function TodayScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { trainings, loading, error } = useTrainings();
+  const { trainings, loading, error, refresh } = useTrainings();
+  // Al entrar se vuelve a pedir al servidor: el entrenamiento pudo cambiar desde otro sitio.
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
   const newTraining = useNewTraining();
   const [createError, setCreateError] = useState<string | null>(null);
   const { activeTraining } = useSettings();

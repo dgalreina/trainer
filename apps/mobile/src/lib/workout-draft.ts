@@ -31,7 +31,12 @@ export interface WorkoutDraft {
   entries: DraftEntry[];
   /** Momento (ms) en que acaba el descanso en curso. Es una hora, no una cuenta atrás: iOS suspende la web en segundo plano. */
   restEndsAt: number | null;
+  /** Firma de la rutina con la que se creó (`routineSignature`): si cambia antes de empezar, se rehace. */
+  planSig?: string;
 }
+
+/** Lo planeado de una rutina, en un texto comparable. */
+export const routineSignature = (routine: Routine) => JSON.stringify(routine.slots);
 
 export const draftKey = (trainingId: string, routineId: string) =>
   `trainer.draft.${trainingId}.${routineId}`;
@@ -63,6 +68,7 @@ export function buildDraft(
     routineId: routine.id,
     startedAt: null,
     restEndsAt: null,
+    planSig: routineSignature(routine),
     entries: routine.slots.map((slot) => {
       const previous = last.get(slot.exerciseId) ?? [];
       const planned = slot.sets.length > 0 ? slot.sets : previous;

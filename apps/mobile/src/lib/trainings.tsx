@@ -23,6 +23,8 @@ interface TrainingsValue {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** Vuelve a pedir la lista al servidor sin mostrar la carga (por si cambió desde otro dispositivo). */
+  refresh: () => Promise<void>;
   create: (training: CreateTraining) => Promise<Training>;
   update: (id: string, changes: UpdateTraining) => Promise<Training>;
   remove: (id: string) => Promise<void>;
@@ -49,6 +51,14 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : 'No se han podido cargar los entrenamientos');
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    try {
+      setTrainings(await api.get<Training[]>('/trainings'));
+    } catch {
+      // Se queda con lo que ya hay; no es un error que mostrar.
     }
   }, []);
 
@@ -100,8 +110,8 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<TrainingsValue>(
-    () => ({ trainings, loading, error, reload, create, update, remove, addRoutine, updateRoutine, removeRoutine }),
-    [trainings, loading, error, reload, create, update, remove, addRoutine, updateRoutine, removeRoutine],
+    () => ({ trainings, loading, error, reload, refresh, create, update, remove, addRoutine, updateRoutine, removeRoutine }),
+    [trainings, loading, error, reload, refresh, create, update, remove, addRoutine, updateRoutine, removeRoutine],
   );
 
   return <TrainingsContext.Provider value={value}>{children}</TrainingsContext.Provider>;
