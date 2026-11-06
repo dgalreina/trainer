@@ -1,8 +1,8 @@
 import { exerciseNameKey } from '@trainer/shared';
 import type { ImageSourcePropType } from 'react-native';
 
-/** Las dos posiciones de un ejercicio: la de inicio y la final. */
-export type ExerciseFrames = [ImageSourcePropType, ImageSourcePropType];
+/** Las posiciones de un ejercicio, de la de inicio a la final (normalmente dos; el curl 21s lleva tres). */
+export type ExerciseFrames = [ImageSourcePropType, ImageSourcePropType, ...ImageSourcePropType[]];
 
 // Ilustraciones por nombre de ejercicio (normalizado). Se generan con OpenAI a partir de las fotos
 // de free-exercise-db (dominio público) y se guardan en `assets/exercises/<nombre>_0.webp` y `_1.webp`.
@@ -494,6 +494,28 @@ const FRAMES: Record<string, ExerciseFrames> = {
   'turkish get-up': [
     require('../../assets/exercises/turkish-get-up_0.webp'),
     require('../../assets/exercises/turkish-get-up_1.webp'),
+  ],
+  // Tres posiciones: abajo, mitad (la pausa de las 21) y arriba.
+  'curl 21s': [
+    require('../../assets/exercises/curl-21s_0.webp'),
+    require('../../assets/exercises/curl-21s_mid.webp'),
+    require('../../assets/exercises/curl-21s_1.webp'),
+  ],
+  'remo pendlay': [
+    require('../../assets/exercises/remo-pendlay_0.webp'),
+    require('../../assets/exercises/remo-pendlay_1.webp'),
+  ],
+  'battle ropes': [
+    require('../../assets/exercises/battle-ropes_0.webp'),
+    require('../../assets/exercises/battle-ropes_1.webp'),
+  ],
+  'wall balls': [
+    require('../../assets/exercises/wall-balls_0.webp'),
+    require('../../assets/exercises/wall-balls_1.webp'),
+  ],
+  'elevaciones frontales con barra': [
+    require('../../assets/exercises/elevaciones-frontales-con-barra_0.webp'),
+    require('../../assets/exercises/elevaciones-frontales-con-barra_1.webp'),
   ],
 };
 
