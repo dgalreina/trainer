@@ -41,7 +41,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const message = typeof data.message === 'string' ? data.message : 'Error del servidor';
     throw new ApiError(res.status, message);
   }
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+  if (res.status === 204) return undefined as T;
+  // Un `null` del servidor llega como cuerpo vacío (p. ej. «último peso» sin ninguna pesada): no es un error.
+  const raw = await res.text();
+  return (raw ? JSON.parse(raw) : undefined) as T;
 }
 
 export const api = {

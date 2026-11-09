@@ -45,7 +45,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const [weightsVersion, setWeightsVersion] = useState(0);
 
   const loadLatest = useCallback(
-    async () => setLatestWeight(await api.get<WeightEntry | null>('/me/weights/latest')),
+    async () => setLatestWeight((await api.get<WeightEntry | null>('/me/weights/latest')) ?? null),
     [],
   );
 
@@ -56,11 +56,12 @@ export function MeProvider({ children }: { children: ReactNode }) {
       return;
     }
     setLoading(true);
-    Promise.all([api.get<Profile>('/me/profile').then(setProfile), loadLatest()])
-      .catch(() => {
-        // Sin datos la app sigue funcionando: el perfil queda vacío.
-      })
-      .finally(() => setLoading(false));
+    // `allSettled`: «cargando» solo termina cuando han acabado las dos peticiones. Con `Promise.all`,
+    // si una fallaba se marcaba como cargado con la otra aún en vuelo y los formularios se rellenaban
+    // con el perfil vacío. Si alguna falla, la app sigue funcionando con ese dato vacío.
+    Promise.allSettled([api.get<Profile>('/me/profile').then(setProfile), loadLatest()]).then(() =>
+      setLoading(false),
+    );
   }, [status, loadLatest]);
 
   const saveProfile = useCallback(async (changes: UpdateProfile) => {
