@@ -112,7 +112,6 @@ export function TodayScreen() {
                     <ThemedText type="small" themeColor="textSecondary">
                       {summary.counts}
                     </ThemedText>
-                    {summary.preview ? <ThemedText type="small">{summary.preview}</ThemedText> : null}
                   </Card>
                 );
               })}
