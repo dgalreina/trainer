@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/dist
+**/lambda-dist
+**/cdk.out
+**/.env
+# Solo hace falta el package.json de estos workspaces (para el lockfile).
+apps/mobile/*
+!apps/mobile/package.json
+apps/infra/*
+!apps/infra/package.json
