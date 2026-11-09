@@ -1,10 +1,7 @@
 import * as path from "node:path";
 import { CfnOutput, Duration, Stack, type StackProps } from "aws-cdk-lib";
 import { HttpApi, HttpStage, VpcLink } from "aws-cdk-lib/aws-apigatewayv2";
-import {
-  HttpLambdaIntegration,
-  HttpServiceDiscoveryIntegration,
-} from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import { HttpServiceDiscoveryIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { CfnBudget } from "aws-cdk-lib/aws-budgets";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import { Port, SecurityGroup, SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
@@ -18,8 +15,6 @@ import {
   OperatingSystemFamily,
   Secret as EcsSecret,
 } from "aws-cdk-lib/aws-ecs";
-import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { Architecture, Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { DnsRecordType, NamespaceType } from "aws-cdk-lib/aws-servicediscovery";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
@@ -41,69 +36,9 @@ export class TrainerStack extends Stack {
   constructor(scope: Construct, id: string, props: TrainerStackProps) {
     super(scope, id, props);
 
-    // Una sola Lambda para toda la API normal (CRUD): un único arranque en frío.
-    // lambda-dist lo genera `npm run build:lambda --workspace apps/api`.
-    const logGroup = new LogGroup(this, "ApiLogs", {
-      retention: RetentionDays.ONE_MONTH,
-    });
-
-    const apiFn = new Function(this, "ApiFunction", {
-      runtime: Runtime.NODEJS_22_X,
-      architecture: Architecture.ARM_64,
-      handler: "dist/lambda.handler",
-      code: Code.fromAsset(path.join(__dirname, "../../api/lambda-dist")),
-      memorySize: 512,
-      timeout: Duration.seconds(15),
-      logGroup,
-      environment: {
-        COGNITO_USER_POOL_ID: props.userPoolId,
-        COGNITO_CLIENT_ID: props.userPoolClientId,
-        CORS_ORIGINS: props.corsOrigins.join(","),
-        MONGODB_URI_PARAM: props.mongoUriParam,
-      },
-    });
-
-    // La URI de Mongo (con la contraseña) vive en SSM, no en el entorno de la función.
-    apiFn.addToRolePolicy(
-      new PolicyStatement({
-        actions: ["ssm:GetParameter"],
-        resources: [
-          this.formatArn({
-            service: "ssm",
-            resource: "parameter",
-            resourceName: props.mongoUriParam.replace(/^\//, ""),
-          }),
-        ],
-      }),
-    );
-    // SecureString con la clave gestionada por AWS (aws/ssm): solo vía SSM.
-    apiFn.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ["kms:Decrypt"],
-        resources: ["*"],
-        conditions: {
-          StringEquals: { "kms:ViaService": `ssm.${this.region}.amazonaws.com` },
-        },
-      }),
-    );
-
-    const httpApi = new HttpApi(this, "HttpApi", {
-      apiName: "trainer-api",
-      createDefaultStage: false,
-      defaultIntegration: new HttpLambdaIntegration("ApiIntegration", apiFn),
-    });
-    // Tope de peticiones: protege el coste si algo (o alguien) abusa de la API.
-    new HttpStage(this, "DefaultStage", {
-      httpApi,
-      stageName: "$default",
-      autoDeploy: true,
-      throttle: { rateLimit: 20, burstLimit: 40 },
-    });
-
     // --- API en un servidor siempre encendido (ECS Fargate) --------------------------------------
-    // Misma app NestJS en un contenedor: sin arranque en frío ni el tope de ejecuciones simultáneas
-    // de Lambda. Conviven con la Lambda hasta que la app apunte a la URL nueva.
+    // Toda la API normal (CRUD) en un contenedor: sin arranque en frío ni el tope de ejecuciones
+    // simultáneas de Lambda. El agente de IA irá en una Lambda aparte (pendiente, ver CLAUDE.md).
     const image = new DockerImageAsset(this, "ApiImage", {
       directory: path.join(__dirname, "../../.."),
       file: "apps/api/Dockerfile",
@@ -187,8 +122,7 @@ export class TrainerStack extends Stack {
       securityGroups: [linkSecurityGroup],
     });
 
-    // Segundo API Gateway hacia el servidor. La Lambda y su API siguen como están hasta que la
-    // app use esta URL.
+    // API Gateway (HTTPS) hacia el servidor: es la URL pública que usa la app.
     const serverApi = new HttpApi(this, "ServerHttpApi", {
       apiName: "trainer-api-server",
       createDefaultStage: false,
@@ -236,7 +170,6 @@ export class TrainerStack extends Stack {
       ],
     });
 
-    new CfnOutput(this, "ApiUrl", { value: httpApi.apiEndpoint });
     new CfnOutput(this, "ServerApiUrl", { value: serverApi.apiEndpoint });
   }
 }

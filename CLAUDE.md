@@ -6,7 +6,7 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 ## Estructura (monorepo con npm workspaces)
 
 - `apps/mobile`: Expo + React Native + TypeScript + Expo Router. Se prueba como PWA (`expo start --web`) y más adelante como app iOS.
-- `apps/api`: backend Node + TypeScript con NestJS (ESM). Se despliega en AWS Lambda + API Gateway (región UE). `src/main.ts` es el servidor local; `src/lambda.ts` es el handler de Lambda.
+- `apps/api`: backend Node + TypeScript con NestJS (ESM). Se despliega como contenedor en AWS ECS Fargate detrás de API Gateway (región UE). `src/main.ts` arranca el servidor (local y en el contenedor); `src/lambda.ts` es el handler de Lambda del CRUD, ya sin uso (queda de referencia para el agente de IA).
 - `packages/shared`: tipos y validaciones compartidos (contrato de la API).
 
 ## Decisiones tomadas
@@ -25,14 +25,16 @@ Primero PWA para uso propio; después App Store (iPhone). Si funciona, se podrí
 
 ## Backend en AWS (decidido)
 
-- **AWS Lambda, no servidor fijo.** La API sigue siendo REST normal; Lambda es solo dónde se ejecuta.
-- **Una sola Lambda para toda la API normal (CRUD)** con NestJS: un único arranque en frío para todos los endpoints. No una Lambda por endpoint ni por colección de Mongo.
-- **Chat con la IA en streaming:** handler aparte (como máximo 2 funciones en total). Node soporta streaming de forma nativa en Lambda (`awslambda.streamifyResponse`); Python no. Las Function URLs con streaming no funcionan dentro de una VPC, y si el cliente se desconecta la función sigue ejecutándose y cobrando. Pendiente de confirmar: si API Gateway (REST o HTTP) soporta el streaming. Mientras tanto se puede empezar sin streaming (respuesta completa).
+- **La API normal (CRUD) corre en un servidor siempre encendido: ECS Fargate** (una tarea de 0,25 vCPU y 0,5 GB), con la misma app NestJS en un contenedor. Se probó antes en Lambda y se abandonó: la cuenta de AWS limita Lambda a **10 ejecuciones simultáneas** (compartidas con el resto de proyectos) y al arrancar la app salían ráfagas de peticiones que pasaban de 10, con 5xx en el cliente; además cada arranque en frío tardaba ~1,7 s. La versión con Lambda está guardada en la etiqueta de git `version-lambda`.
+- **Lambda queda reservada para el agente de IA** (trabajos puntuales y pesados: análisis de fotos, resúmenes, chat). Todavía no existe. No borrar `src/lambda.ts`, `build:lambda` ni `@codegenie/serverless-express` sin pensar en ello: son la base de ese handler.
+- **Límites de cuenta (cuenta nueva):** App Runner no deja crear servicios («can't create new App Runner services») y Lightsail Containers da «maximum limit of Lightsail Container Services»; por eso se eligió ECS. Si algún día falla un despliegue con un mensaje de límite, es cosa de la cuenta, no del código.
+- **Chat con la IA en streaming:** handler de Lambda aparte (junto al agente, como máximo 2 funciones). Node soporta streaming de forma nativa en Lambda (`awslambda.streamifyResponse`); Python no. Las Function URLs con streaming no funcionan dentro de una VPC, y si el cliente se desconecta la función sigue ejecutándose y cobrando. Pendiente de confirmar: si API Gateway (REST o HTTP) soporta el streaming. Mientras tanto se puede empezar sin streaming (respuesta completa).
 - **Empaquetado (resuelto):** `npm run build:lambda --workspace apps/api` compila con tsc y copia el JS con sus dependencias de producción a `apps/api/lambda-dist`. No se usa esbuild: no emite los metadatos de los decoradores y además rompe `mongoose` con `@nestjs/mongoose` ("Cannot set property nextConnectionId").
-- **Infraestructura con AWS CDK** en `apps/infra` (stack `TrainerStack`, eu-west-1): Lambda + API Gateway HTTP + presupuesto mensual de 10 $. Desplegar: `npm run build:lambda --workspace apps/api` y luego `npx cdk deploy` dentro de `apps/infra`. La URI de Mongo vive en SSM (`/trainer/mongodb-uri`, SecureString), no en variables de entorno. Atlas (M0) permite `0.0.0.0/0` porque Lambda no tiene IP fija: pasar a PrivateLink antes de abrir la app al público.
+- **Infraestructura con AWS CDK** en `apps/infra` (stack `TrainerStack`, eu-west-1): VPC con subredes públicas y sin NAT (un NAT cuesta ~33 $/mes), clúster ECS con un servicio Fargate, Cloud Map (el API Gateway localiza la tarea por un VPC Link, sin balanceador, que costaría ~17 $/mes) y un API Gateway HTTP con tope de 50 peticiones/s, más el presupuesto mensual de 10 $ (coste real ~14 $/mes, cubierto por créditos de AWS mientras duren). La imagen es `apps/api/Dockerfile` (contexto: la raíz del repo; reutiliza `build:lambda` para empaquetar) y CDK la construye y la sube a ECR al desplegar, así que hace falta **Docker Desktop abierto**. Desplegar: `npx cdk deploy` dentro de `apps/infra`. La URI de Mongo vive en SSM (`/trainer/mongodb-uri`, SecureString) y llega al contenedor como secreto de ECS. La URL pública sale como `ServerApiUrl` y está en `apps/mobile/src/config.ts`. Atlas (M0) permite `0.0.0.0/0` porque la tarea no tiene IP fija: pasar a PrivateLink antes de abrir la app al público.
 - **Catálogo base de ejercicios:** `apps/api/seed/exercises.base.json` (133, copiado de zitytraining) y `npm run seed --workspace apps/api` para cargarlo (idempotente).
 - **Web:** GitHub Pages en https://dgalreina.github.io/trainer/ (workflow `.github/workflows/pages.yml`).
-- Reutilizar la conexión a MongoDB entre invocaciones (variable fuera del handler).
+- En el servidor Mongoose mantiene su propia conexión; en una Lambda (agente) reutilizarla entre invocaciones (variable fuera del handler).
+- **Cada dato se pide una vez al back y se comparte entre pantallas** con un proveedor (`ExercisesProvider`, `FoodsProvider`, `TrainingsProvider`…), nunca con hooks que cada pantalla instancia por su cuenta.
 - Alerta de facturación en AWS Budgets desde el primer día.
 
 ## Orden de trabajo
