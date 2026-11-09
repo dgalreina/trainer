@@ -1,37 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Card } from '@/components/card';
 import { Button, ErrorText, NumberInput } from '@/components/form';
+import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { TimeField } from '@/components/time-field';
 import { Spacing } from '@/constants/theme';
-import { formatDay, formatTime, startOfDay, todayISO } from '@/lib/dates';
+import { formatDay, startOfDay } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 
 const MIN_KG = 20;
 const MAX_KG = 400;
 
-/** Hora con la que se propone la pesada: ahora si es hoy; a primera hora de la mañana en otro día. */
-function defaultTime(day: string): string {
-  return day === todayISO() ? formatTime(new Date()) : '08:00';
-}
-
-/** Formulario para registrar una pesada en un día y a una hora concretos. */
-export function WeighInCard({ day }: { day: string }) {
+/** Ventana para registrar una pesada en un día y a una hora concretos (la hora llega propuesta). */
+export function WeighInSheet({
+  visible,
+  day,
+  time: initialTime,
+  onClose,
+}: {
+  visible: boolean;
+  day: string;
+  /** "HH:MM" con el que se abre. */
+  time: string;
+  onClose: () => void;
+}) {
   const { addWeight } = useMe();
-  const [open, setOpen] = useState(false);
   const [kg, setKg] = useState('');
-  const [time, setTime] = useState(() => defaultTime(day));
+  const [time, setTime] = useState(initialTime);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function openForm() {
-    // La hora se propone al abrir, no al montar: si no, "ahora" sería la de cuando se abrió la app.
-    setTime(defaultTime(day));
+  // La hora se propone al abrir: no se arrastra la de una vez anterior.
+  useEffect(() => {
+    if (!visible) return;
+    setKg('');
+    setTime(initialTime);
     setError(null);
-    setOpen(true);
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   async function save() {
     const weight = Number.parseFloat(kg.replace(',', '.'));
@@ -50,8 +57,7 @@ export function WeighInCard({ day }: { day: string }) {
     setError(null);
     try {
       await addWeight({ date: moment.toISOString(), weightKg: Math.round(weight * 10) / 10 });
-      setKg('');
-      setOpen(false);
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar la pesada');
     } finally {
@@ -59,10 +65,8 @@ export function WeighInCard({ day }: { day: string }) {
     }
   }
 
-  if (!open) return <Button variant="secondary" title="+ Registrar peso" onPress={openForm} />;
-
   return (
-    <Card style={styles.card}>
+    <Sheet visible={visible} onClose={onClose}>
       <ThemedText type="smallBold">Peso del {formatDay(day)}</ThemedText>
       <View style={styles.row}>
         <View style={styles.kg}>
@@ -77,13 +81,12 @@ export function WeighInCard({ day }: { day: string }) {
       </View>
       <ErrorText message={error} />
       <Button title="Guardar pesada" onPress={save} loading={saving} />
-      <Button variant="secondary" title="Cancelar" onPress={() => setOpen(false)} />
-    </Card>
+      <Button variant="secondary" title="Cancelar" onPress={onClose} />
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: Spacing.three },
   row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'flex-end' },
   kg: { width: 110, gap: Spacing.two },
   time: { flex: 1, gap: Spacing.two },

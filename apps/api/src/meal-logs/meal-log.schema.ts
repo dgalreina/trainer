@@ -38,6 +38,14 @@ export class MealLogDoc {
 
   @Prop({ type: [LoggedItemSchema], default: [] })
   items!: LoggedItemDoc[];
+
+  // Si es la versión de ese día de una comida de la dieta: su id. La plantilla no se toca.
+  @Prop({ type: String })
+  dietMealId?: string;
+
+  // Comida de la dieta descartada ese día: no cuenta ni se muestra, solo evita que reaparezca.
+  @Prop({ type: Boolean })
+  skipped?: boolean;
 }
 
 export type MealLogDocument = HydratedDocument<MealLogDoc>;

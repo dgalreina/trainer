@@ -47,7 +47,9 @@ function useNow(active: boolean, ms: number): number {
 
 /** El entreno del día: una rutina del entrenamiento, con sus series editables, Comenzar y Finalizar. */
 export function WorkoutScreen() {
-  const { id, rid } = useLocalSearchParams<{ id: string; rid: string }>();
+  const { id, rid, at } = useLocalSearchParams<{ id: string; rid: string; at?: string }>();
+  // Si se llega desde el calendario tocando una hora, el entreno empieza a esa hora.
+  const startAt = Number(at) > 0 ? Number(at) : null;
   const router = useRouter();
   const theme = useTheme();
   const { trainings, loading } = useTrainings();
@@ -85,10 +87,11 @@ export function WorkoutScreen() {
 
       const saved = parseDraft(await getItem(key));
       // Un entreno ya empezado se respeta; uno sin empezar se rehace si la rutina ha cambiado.
-      if (saved && (saved.startedAt !== null || saved.planSig === routineSignature(routine))) {
-        return setDraft(saved);
-      }
-      setDraft(buildDraft(id, routine, last));
+      const base =
+        saved && (saved.startedAt !== null || saved.planSig === routineSignature(routine))
+          ? saved
+          : buildDraft(id, routine, last);
+      setDraft(startAt !== null && base.startedAt === null ? { ...base, startedAt: startAt } : base);
     })();
   }, [routine, id, key]);
 

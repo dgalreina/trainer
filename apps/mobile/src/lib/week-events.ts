@@ -1,4 +1,14 @@
-import { loggedMacros, mealMacros, routineTitle, type MealLog, type WeightEntry, type WorkoutSession } from '@trainer/shared';
+import {
+  loggedMacros,
+  mealMacros,
+  routineTitle,
+  type Macros,
+  type Meal,
+  type MealItem,
+  type MealLog,
+  type WeightEntry,
+  type WorkoutSession,
+} from '@trainer/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api } from '@/lib/api';
@@ -28,6 +38,11 @@ export interface DayEvent {
   weightId?: string;
   /** Solo en comidas: el id del registro, para poder moverlo. */
   mealId?: string;
+  /** Solo en comidas registradas: el registro entero, para poder editarlo. */
+  log?: MealLog;
+  /** Solo en comidas de la dieta que siguen en pie ese día: de qué dieta y cuál es, y sus macros. */
+  plan?: { dietId: string; meal: Meal };
+  macros?: Macros;
   /** Entreno empezado y aún sin finalizar: su hora de inicio vive en el borrador del dispositivo. */
   inProgress?: boolean;
   /** Solo en entrenos en curso: de qué entrenamiento y rutina es el borrador. */
@@ -161,12 +176,14 @@ export function useWeekEvents(weekStart: string) {
         weightId: entry.id,
       };
     });
-    const eaten = meals.map((meal): DayEvent => {
+    // Las comidas de la dieta descartadas ese día no se muestran (solo evitan que reaparezcan).
+    const eaten = meals.filter((meal) => !meal.skipped).map((meal): DayEvent => {
       const start = new Date(meal.date);
       return {
         id: `meal-${meal.id}`,
         kind: 'meal',
         mealId: meal.id,
+        log: meal,
         start,
         end: new Date(start.getTime() + MEAL_MINUTES * MINUTE_MS),
         title: meal.name,
@@ -184,31 +201,87 @@ export function useWeekEvents(weekStart: string) {
 
   /**
    * Las comidas que toca hacer el día "AAAA-MM-DD" según la dieta que rige ese día: desde que se
-   * activó y sin fin hasta que se cambia o se quita. No se pueden mover (son el plan, no lo comido).
+   * activó y sin fin hasta que se cambia o se quita. Se da por hecho que se comen (cuentan en el
+   * recuento) mientras ese día no se hayan editado, movido o quitado: en cuanto se toca una, deja de
+   * ser una comida de la dieta y pasa a ser una comida registrada de ese día (la dieta no cambia).
    */
   const plannedOf = useCallback(
     (day: string): DayEvent[] => {
       const diet = dietOn(day);
       if (!diet) return [];
       const byId = new Map(foods.map((f) => [f.id, f]));
-      return diet.meals.map((meal): DayEvent => {
-        const start = atTime(day, meal.time);
-        return {
-          id: `plan-${diet.id}-${meal.id}-${day}`,
-          kind: 'plan',
-          start,
-          end: new Date(start.getTime() + MEAL_MINUTES * MINUTE_MS),
-          title: meal.name,
+      // Las de la dieta que ese día ya tienen su propia versión (editada, movida o quitada).
+      const touched = new Set(
+        meals.filter((m) => m.dietMealId && isoOf(new Date(m.date)) === day).map((m) => m.dietMealId),
+      );
+      return diet.meals
+        .filter((meal) => !touched.has(meal.id))
+        .map((meal): DayEvent => {
+          const start = atTime(day, meal.time);
           // Hasta que carga el catálogo de alimentos no hay macros que calcular.
-          subtitle: foods.length > 0 ? `${mealMacros(meal, byId).kcal} kcal` : undefined,
-        };
-      });
+          const macros = foods.length > 0 ? mealMacros(meal, byId) : undefined;
+          return {
+            id: `plan-${diet.id}-${meal.id}-${day}`,
+            kind: 'plan',
+            plan: { dietId: diet.id, meal },
+            macros,
+            start,
+            end: new Date(start.getTime() + MEAL_MINUTES * MINUTE_MS),
+            title: meal.name,
+            subtitle: macros ? `${macros.kcal} kcal` : undefined,
+          };
+        });
     },
-    [dietOn, foods],
+    [dietOn, foods, meals],
   );
 
-  /** Comidas registradas del día "AAAA-MM-DD", por hora. */
-  const mealsOf = useCallback((day: string) => meals.filter((meal) => isoOf(new Date(meal.date)) === day), [meals]);
+  /** Comidas registradas del día "AAAA-MM-DD", por hora (sin las de la dieta descartadas ese día). */
+  const mealsOf = useCallback(
+    (day: string) => meals.filter((meal) => !meal.skipped && isoOf(new Date(meal.date)) === day),
+    [meals],
+  );
+
+  /**
+   * Guarda una comida de un día. Sin `target`, es una comida nueva. Si `target` es una comida
+   * registrada, se edita esa. Si es una comida de la dieta, se crea la versión de ese día enlazada a
+   * ella: la plantilla de la dieta no se toca.
+   */
+  const saveMeal = useCallback(
+    async (target: DayEvent | null, draft: { name: string; date: Date; items: MealItem[] }) => {
+      const body = { date: draft.date.toISOString(), name: draft.name, items: draft.items };
+      if (target?.kind === 'meal' && target.mealId) {
+        await api.patch(`/me/meals/${target.mealId}`, body);
+      } else {
+        await api.post('/me/meals', { ...body, ...(target?.plan ? { dietMealId: target.plan.meal.id } : {}) });
+      }
+      await load();
+    },
+    [load],
+  );
+
+  /**
+   * Quita una comida de ese día. Una registrada se borra, salvo que viniera de la dieta: entonces
+   * se marca como descartada para que no reaparezca. Una de la dieta se descarta solo ese día.
+   */
+  const removeMeal = useCallback(
+    async (target: DayEvent) => {
+      if (target.kind === 'meal' && target.log && !target.log.dietMealId) {
+        await api.delete(`/me/meals/${target.log.id}`);
+      } else if (target.kind === 'meal' && target.log) {
+        await api.patch(`/me/meals/${target.log.id}`, { skipped: true });
+      } else if (target.plan) {
+        await api.post('/me/meals', {
+          date: target.start.toISOString(),
+          name: target.plan.meal.name,
+          items: [],
+          dietMealId: target.plan.meal.id,
+          skipped: true,
+        });
+      }
+      await load();
+    },
+    [load],
+  );
 
   /**
    * Cambia la hora de un evento. Se ve el cambio al instante y se guarda en el servidor; si falla,
@@ -225,6 +298,15 @@ export function useWeekEvents(weekStart: string) {
         } else if (event.kind === 'meal' && event.mealId) {
           setMeals((prev) => prev.map((m) => (m.id === event.mealId ? { ...m, date } : m)));
           await api.patch(`/me/meals/${event.mealId}`, { date });
+        } else if (event.kind === 'plan' && event.plan) {
+          // Mover una comida de la dieta crea la versión de ese día a la nueva hora; la dieta no cambia.
+          await api.post('/me/meals', {
+            date,
+            name: event.plan.meal.name,
+            items: event.plan.meal.items.map(({ foodId, grams }) => ({ foodId, grams })),
+            dietMealId: event.plan.meal.id,
+          });
+          await load();
         } else if (event.inProgress && event.draftOf) {
           // El entreno en curso aún no está guardado: se corrige la hora de inicio de su borrador.
           const key = draftKey(event.draftOf.trainingId, event.draftOf.routineId);
@@ -253,5 +335,5 @@ export function useWeekEvents(weekStart: string) {
     [updateWeight, load],
   );
 
-  return { events, eventsOf, plannedOf, mealsOf, loading, error, reload: load, moveEvent };
+  return { events, eventsOf, plannedOf, mealsOf, saveMeal, removeMeal, loading, error, reload: load, moveEvent };
 }

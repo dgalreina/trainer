@@ -5,8 +5,10 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type GestureResponderEvent,
   type ScrollViewInstance,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -25,6 +27,9 @@ const MINUTE_MS = 60_000;
 const SNAP_MINUTES = 5;
 const DAY_MINUTES = 24 * 60;
 const HANDLE_WIDTH = 30;
+const EDIT_WIDTH = 34;
+/** Al tocar un hueco del día para añadir algo, la hora se redondea hacia abajo a múltiplos de esto. */
+const SLOT_MINUTES = 15;
 
 interface Placed {
   event: DayEvent;
@@ -60,18 +65,36 @@ function dragMinutes(dy: number, event: DayEvent, dayStart: number): number {
   return Math.min(Math.max(wanted, lowest), highest);
 }
 
-/** Un día con las horas de arriba abajo y lo que pasó en cada una. Los eventos se pueden arrastrar. */
+/** Hora en la que se ha tocado el día, a partir de la altura del toque dentro de las 24 horas. */
+function slotAt(event: GestureResponderEvent, dayStart: number): Date {
+  // En nativo llega `locationY`; en la web el clic trae `offsetY` (relativo al hueco tocado).
+  const native = event.nativeEvent as { locationY?: number; offsetY?: number };
+  const y = native.locationY ?? native.offsetY ?? 0;
+  const minutes = Math.floor(((y / HOUR_HEIGHT) * 60) / SLOT_MINUTES) * SLOT_MINUTES;
+  return new Date(dayStart + Math.min(Math.max(minutes, 0), DAY_MINUTES - SLOT_MINUTES) * MINUTE_MS);
+}
+
+/**
+ * Un día con las horas de arriba abajo y lo que pasó en cada una. Los eventos se pueden arrastrar;
+ * tocar un hueco vacío propone añadir algo a esa hora.
+ */
 export function DayTimeline({
   day,
   events,
   onPressEvent,
+  onEditEvent,
   onMoveEvent,
+  onPressSlot,
 }: {
   day: string;
   events: DayEvent[];
   onPressEvent?: (event: DayEvent) => void;
+  /** Se llama al pulsar el lápiz de una comida. */
+  onEditEvent?: (event: DayEvent) => void;
   /** Se llama al soltar un evento arrastrado, con su nueva hora de inicio. */
   onMoveEvent?: (event: DayEvent, newStart: Date) => void;
+  /** Se llama al tocar un hueco del día, con la hora tocada. */
+  onPressSlot?: (time: Date) => void;
 }) {
   const theme = useTheme();
   const scroll = useRef<ScrollViewInstance>(null);
@@ -110,13 +133,13 @@ export function DayTimeline({
     <View style={styles.wrapper}>
       {events.length === 0 && (
         <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-          Nada registrado este día.
+          Nada registrado este día. Toca una hora para añadir algo.
         </ThemedText>
       )}
       <ScrollView ref={scroll} style={styles.scroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
         <View style={{ height: 24 * HOUR_HEIGHT }}>
           {HOURS.map((hour) => (
-            <View key={hour} style={[styles.hourRow, { top: hour * HOUR_HEIGHT }]}>
+            <View key={hour} pointerEvents="none" style={[styles.hourRow, { top: hour * HOUR_HEIGHT }]}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.hourLabel}>
                 {String(hour).padStart(2, '0')}:00
               </ThemedText>
@@ -124,8 +147,18 @@ export function DayTimeline({
             </View>
           ))}
 
-          {/* Zona de eventos, a la derecha de las horas. */}
-          <View style={styles.events}>
+          {/* Fondo táctil del día: tocar un hueco vacío propone añadir algo a esa hora. */}
+          {onPressSlot && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Añadir a esta hora"
+              onPress={(e) => onPressSlot(slotAt(e, dayStart))}
+              style={styles.slots}
+            />
+          )}
+
+          {/* Zona de eventos, a la derecha de las horas. Solo las tarjetas capturan el toque. */}
+          <View pointerEvents="box-none" style={styles.events}>
             {placed.map(({ event, column }) => (
               <EventCard
                 key={event.id}
@@ -134,6 +167,7 @@ export function DayTimeline({
                 column={column}
                 columns={columns}
                 onPress={onPressEvent}
+                onEdit={onEditEvent}
                 onMove={onMoveEvent}
               />
             ))}
@@ -162,6 +196,7 @@ function EventCard({
   column,
   columns,
   onPress,
+  onEdit,
   onMove,
 }: {
   event: DayEvent;
@@ -169,6 +204,7 @@ function EventCard({
   column: number;
   columns: number;
   onPress?: (event: DayEvent) => void;
+  onEdit?: (event: DayEvent) => void;
   onMove?: (event: DayEvent, newStart: Date) => void;
 }) {
   const theme = useTheme();
@@ -216,9 +252,10 @@ function EventCard({
       : event.kind === 'workout'
         ? theme.skySoft
         : theme.backgroundElement;
-  // Lo que marca la dieta se ve como una comida más, pero no se mueve (lo que se mueve es lo registrado).
-  const planned = event.kind === 'plan';
-  const canMove = Boolean(onMove) && !planned;
+  // Una comida de la dieta se ve y se trata como una comida más: se puede mover y editar, y al hacerlo
+  // se crea la versión de ese día sin tocar la dieta.
+  const canMove = Boolean(onMove);
+  const canEdit = Boolean(onEdit) && (event.kind === 'meal' || event.kind === 'plan');
 
   return (
     <Pressable
@@ -246,6 +283,20 @@ function EventCard({
           </ThemedText>
         ) : null}
       </View>
+      {canEdit && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Editar ${event.title}`}
+          hitSlop={6}
+          onPress={() => onEdit?.(event)}
+          disabled={dragging}
+          style={styles.edit}>
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={theme.primaryText} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+            <Path d="M13.5 6.5l4 4" />
+          </Svg>
+        </Pressable>
+      )}
       {canMove && (
         <View
           accessibilityLabel={`Mover ${event.title}`}
@@ -276,6 +327,9 @@ const styles = StyleSheet.create({
   hourLabel: { width: LABEL_WIDTH, marginTop: -9 },
   hourLine: { flex: 1, height: 1 },
   events: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
+  // Cubre todo el día a la derecha de las horas, por debajo de las tarjetas.
+  slots: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
+  edit: { width: EDIT_WIDTH, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   event: {
     position: 'absolute',
     borderRadius: Radius.control,

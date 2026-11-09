@@ -29,6 +29,8 @@ function toLog(doc: MealLogDocument): MealLog {
       carbs: i.carbs,
       fat: i.fat,
     })),
+    ...(doc.dietMealId ? { dietMealId: doc.dietMealId } : {}),
+    ...(doc.skipped ? { skipped: true } : {}),
   };
 }
 
@@ -51,12 +53,15 @@ export class MealLogsService {
   }
 
   async create(userId: string, dto: CreateMealLog): Promise<MealLog> {
-    const items = await this.snapshot(userId, dto.items);
+    // Una comida descartada no guarda alimentos: solo marca que ese día no se hizo.
+    const items = dto.skipped ? [] : await this.snapshot(userId, dto.items);
     const doc = await this.model.create({
       userId,
       date: new Date(dto.date),
       name: dto.name,
       items,
+      ...(dto.dietMealId ? { dietMealId: dto.dietMealId } : {}),
+      ...(dto.skipped ? { skipped: true } : {}),
     });
     return toLog(doc);
   }
@@ -65,8 +70,12 @@ export class MealLogsService {
     const doc = await this.findOwn(userId, id);
     if (dto.date !== undefined) doc.date = new Date(dto.date);
     if (dto.name !== undefined) doc.name = dto.name;
+    if (dto.skipped) {
+      doc.skipped = true;
+      doc.set("items", []);
+    }
     // Solo si cambian los alimentos se recalculan las macros; mover la hora no toca nada más.
-    if (dto.items !== undefined) doc.set("items", await this.snapshot(userId, dto.items));
+    if (dto.items !== undefined && !dto.skipped) doc.set("items", await this.snapshot(userId, dto.items));
     return toLog(await doc.save());
   }
 
