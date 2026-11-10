@@ -5,7 +5,7 @@ import { StyleSheet } from 'react-native';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { todayISO } from '@/lib/dates';
+import { currentDay, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import type { DayEvent } from '@/lib/week-events';
@@ -27,12 +27,12 @@ export function MealLogSection({
   /** Gasto, consumo y balance estimados del día, los de las gráficas. */
   energy?: DayEnergy | null;
 }) {
-  const { dietOn } = useSettings();
+  const { dietOn, dayStartMinutes } = useSettings();
   // La dieta que rige ese día (puede no ser la de hoy si se ha cambiado).
   const activeDiet = dietOn(day);
   const { profile, latestWeight, loading } = useMe();
   // Hoy y los días futuros no han acabado: el gasto y el balance son una previsión a las 24:00.
-  const projected = day >= todayISO();
+  const projected = day >= currentDay(dayStartMinutes);
 
   const eaten = sumMacros([loggedMacros(logs), ...planned.flatMap((event) => (event.macros ? [event.macros] : []))]);
   const targets = calculateTargets({

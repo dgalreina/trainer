@@ -14,6 +14,10 @@ export class SettingsDoc {
 
   @Prop({ type: [{ _id: false, from: String, dietId: { type: String, default: null } }], default: [] })
   dietSchedule!: { from: string; dietId: string | null }[];
+
+  // Minutos desde las 00:00 a los que empieza el día del usuario (0 = el día normal).
+  @Prop({ type: Number, default: 0 })
+  dayStartMinutes!: number;
 }
 
 export type SettingsDocument = HydratedDocument<SettingsDoc>;

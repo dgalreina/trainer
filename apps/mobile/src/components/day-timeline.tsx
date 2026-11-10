@@ -16,14 +16,13 @@ import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatTime, startOfDay, todayISO } from '@/lib/dates';
+import { currentDay, dayStart as dayStartOf, formatTime } from '@/lib/dates';
 import type { DayEvent } from '@/lib/week-events';
 
 const HOUR_HEIGHT = 56;
 const LABEL_WIDTH = 48;
 // Alto mínimo de cada tipo: un entreno lleva dos líneas de texto; una pesada, una.
 const MIN_HEIGHT = { workout: 52, weight: 34, meal: 52, plan: 52 } as const;
-const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 /** Al soltar un evento arrastrado, la hora se ajusta a múltiplos de estos minutos. */
@@ -95,9 +94,12 @@ export function DayTimeline({
   onMoveEvent,
   onPressSlot,
   energy,
+  startMinutes = 0,
 }: {
   day: string;
   events: DayEvent[];
+  /** A qué hora empieza el día del usuario, en minutos desde las 00:00: el día va de ahí a la misma hora del siguiente. */
+  startMinutes?: number;
   /** Gasto, consumo y balance del día para las gráficas de fondo; sin él no se dibujan. */
   energy?: DayEnergy | null;
   onPressEvent?: (event: DayEvent) => void;
@@ -110,8 +112,9 @@ export function DayTimeline({
 }) {
   const theme = useTheme();
   const scroll = useRef<ScrollViewInstance>(null);
-  const isToday = day === todayISO();
-  const dayStart = startOfDay(day).getTime();
+  const today = currentDay(startMinutes);
+  const isToday = day === today;
+  const dayStart = dayStartOf(day, startMinutes).getTime();
   const [now, setNow] = useState(() => Date.now());
   const [areaWidth, setAreaWidth] = useState(0);
 
@@ -125,13 +128,16 @@ export function DayTimeline({
 
   const { placed, columns } = placeEvents(events);
 
-  // Al abrir un día se muestra la zona que importa: lo primero que pasó, la hora actual o las 7.
+  // Al abrir un día se muestra la zona que importa: lo primero que pasó, la hora actual o, si no hay nada,
+  // las 7 (con el día normal) o el principio del día (si empieza a otra hora). En horas desde su inicio.
   const firstEvent = events[0];
   const focusHour = firstEvent
-    ? firstEvent.start.getHours() - 1
+    ? Math.floor((firstEvent.start.getTime() - dayStart) / HOUR_MS) - 1
     : isToday
-      ? new Date().getHours() - 2
-      : 7;
+      ? Math.floor((Date.now() - dayStart) / HOUR_MS) - 2
+      : startMinutes === 0
+        ? 7
+        : 0;
   useEffect(() => {
     const timer = setTimeout(
       () => scroll.current?.scrollTo({ y: Math.max(0, focusHour) * HOUR_HEIGHT, animated: false }),
@@ -142,7 +148,16 @@ export function DayTimeline({
 
   const nowTop = ((now - dayStart) / HOUR_MS) * HOUR_HEIGHT;
   // Lo que aún no ha pasado se dibuja tenue: hoy, desde ahora; un día futuro, entero.
-  const dimFrom = day > todayISO() ? 0 : isToday ? nowTop : 24 * HOUR_HEIGHT;
+  const dimFrom = day > today ? 0 : isToday ? nowTop : 24 * HOUR_HEIGHT;
+
+  // Las rayas son las horas en punto del reloj, desde la primera que cae dentro del día.
+  const hourMarks = useMemo(() => {
+    const marks: { top: number; label: string }[] = [];
+    for (let m = Math.ceil(startMinutes / 60) * 60; m < startMinutes + DAY_MINUTES; m += 60) {
+      marks.push({ top: ((m - startMinutes) / 60) * HOUR_HEIGHT, label: `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:00` });
+    }
+    return marks;
+  }, [startMinutes]);
 
   return (
     <View style={styles.wrapper}>
@@ -161,10 +176,10 @@ export function DayTimeline({
             ) : null}
           </View>
 
-          {HOURS.map((hour) => (
-            <View key={hour} pointerEvents="none" style={[styles.hourRow, { top: hour * HOUR_HEIGHT }]}>
+          {hourMarks.map((mark) => (
+            <View key={mark.top} pointerEvents="none" style={[styles.hourRow, { top: mark.top }]}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.hourLabel}>
-                {String(hour).padStart(2, '0')}:00
+                {mark.label}
               </ThemedText>
               <View style={[styles.hourLine, { backgroundColor: theme.backgroundSelected }]} />
             </View>

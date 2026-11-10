@@ -15,7 +15,7 @@ import { api } from '@/lib/api';
 import { getItem, setItem } from '@/lib/storage';
 import { notifySessionsChanged } from '@/lib/session-events';
 import { draftKey, parseDraft, type WorkoutDraft } from '@/lib/workout-draft';
-import { addDays, isoOf, startOfDay } from '@/lib/dates';
+import { addDays, dayOf, startOfDay, timeInDay } from '@/lib/dates';
 import { useFoods } from '@/lib/foods';
 import { useMe } from '@/lib/me';
 import { useSessionsVersion } from '@/lib/session-events';
@@ -49,14 +49,6 @@ export interface DayEvent {
   draftOf?: { trainingId: string; routineId: string };
 }
 
-/** Hora "HH:MM" de un día "AAAA-MM-DD", en la hora del dispositivo. */
-function atTime(day: string, time: string): Date {
-  const [h, m] = time.split(':').map(Number);
-  const date = startOfDay(day);
-  date.setHours(h, m, 0, 0);
-  return date;
-}
-
 const MINUTE_MS = 60_000;
 /** Duración con la que se dibuja lo que no la tiene (pesadas) o no se registró (entrenos antiguos). */
 const POINT_EVENT_MINUTES = 20;
@@ -72,7 +64,7 @@ const WEEKS_AFTER = 2;
 /** Los eventos de la semana que empieza el lunes `weekStart` y de las dos que la rodean. */
 export function useWeekEvents(weekStart: string) {
   const { trainings } = useTrainings();
-  const { dietOn } = useSettings();
+  const { dietOn, dayStartMinutes } = useSettings();
   const { foods } = useFoods();
   const { weightsVersion, updateWeight } = useMe();
   const sessionsVersion = useSessionsVersion();
@@ -123,7 +115,8 @@ export function useWeekEvents(weekStart: string) {
     setLoading(true);
     setError(null);
     const from = startOfDay(addDays(weekStart, -7 * WEEKS_BEFORE)).toISOString();
-    const to = startOfDay(addDays(weekStart, 7 * WEEKS_AFTER)).toISOString();
+    // Un día más: el último día de esas semanas puede acabar pasada la medianoche (según cuándo empiece el día).
+    const to = startOfDay(addDays(weekStart, 7 * WEEKS_AFTER + 1)).toISOString();
     const range = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     try {
       const [s, w, m] = await Promise.all([
@@ -193,10 +186,16 @@ export function useWeekEvents(weekStart: string) {
     return [...workouts, ...inProgress, ...weighIns, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [sessions, weights, meals, trainings, inProgress]);
 
+  /** ¿Está ese momento dentro del día "AAAA-MM-DD" del usuario (de su hora de inicio a la misma del siguiente)? */
+  const inDay = useCallback(
+    (moment: Date, day: string) => dayOf(moment, dayStartMinutes) === day,
+    [dayStartMinutes],
+  );
+
   /** Eventos del día "AAAA-MM-DD", por hora. */
   const eventsOf = useCallback(
-    (day: string) => events.filter((event) => isoOf(event.start) === day),
-    [events],
+    (day: string) => events.filter((event) => inDay(event.start, day)),
+    [events, inDay],
   );
 
   /**
@@ -212,12 +211,13 @@ export function useWeekEvents(weekStart: string) {
       const byId = new Map(foods.map((f) => [f.id, f]));
       // Las de la dieta que ese día ya tienen su propia versión (editada, movida o quitada).
       const touched = new Set(
-        meals.filter((m) => m.dietMealId && isoOf(new Date(m.date)) === day).map((m) => m.dietMealId),
+        meals.filter((m) => m.dietMealId && inDay(new Date(m.date), day)).map((m) => m.dietMealId),
       );
       return diet.meals
         .filter((meal) => !touched.has(meal.id))
         .map((meal): DayEvent => {
-          const start = atTime(day, meal.time);
+          // Una comida anterior a la hora de inicio del día es de la madrugada siguiente.
+          const start = timeInDay(day, meal.time, dayStartMinutes);
           // Hasta que carga el catálogo de alimentos no hay macros que calcular.
           const macros = foods.length > 0 ? mealMacros(meal, byId) : undefined;
           return {
@@ -232,13 +232,13 @@ export function useWeekEvents(weekStart: string) {
           };
         });
     },
-    [dietOn, foods, meals],
+    [dietOn, foods, meals, inDay, dayStartMinutes],
   );
 
   /** Comidas registradas del día "AAAA-MM-DD", por hora (sin las de la dieta descartadas ese día). */
   const mealsOf = useCallback(
-    (day: string) => meals.filter((meal) => !meal.skipped && isoOf(new Date(meal.date)) === day),
-    [meals],
+    (day: string) => meals.filter((meal) => !meal.skipped && inDay(new Date(meal.date), day)),
+    [meals, inDay],
   );
 
   /**

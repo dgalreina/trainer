@@ -78,6 +78,9 @@ export function trainingProgress(
   };
 }
 
+/** Hora de inicio del día en minutos desde las 00:00 (de 0 a 23:59). */
+export const dayStartMinutesSchema = z.number().int().min(0).max(1439);
+
 /** Lo que el usuario tiene en marcha ahora. */
 export const dietScheduleEntrySchema = z.object({
   /** Día (AAAA-MM-DD) desde el que rige: se mantiene hasta la siguiente entrada. */
@@ -92,6 +95,8 @@ export const userSettingsSchema = z.object({
   activeDietId: z.string().nullable(),
   /** Qué dieta rige cada día: sin fin hasta que se cambia o se quita, y antes de cada cambio rige la anterior. */
   dietSchedule: z.array(dietScheduleEntrySchema),
+  /** A qué hora empieza el día para el usuario, en minutos desde las 00:00 (0 = el día normal; 600 = a las 10:00). */
+  dayStartMinutes: dayStartMinutesSchema,
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 
@@ -100,6 +105,7 @@ export const updateUserSettingsSchema = z.object({
   activeDietId: z.string().nullable().optional(),
   /** Día desde el que rige el cambio de `activeDietId` (por defecto, hoy en el servidor). */
   dietSince: dateSchema.optional(),
+  dayStartMinutes: dayStartMinutesSchema.optional(),
 });
 export type UpdateUserSettings = z.infer<typeof updateUserSettingsSchema>;
 

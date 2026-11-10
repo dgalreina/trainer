@@ -1,7 +1,7 @@
 import { calculateTargets, dayEnergy, loggedMacros, routineTitle } from '@trainer/shared';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { DayTimeline } from '@/components/day-timeline';
 import { Button, ErrorText, LinkButton } from '@/components/form';
@@ -13,7 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { WeighInSheet } from '@/components/weigh-in-card';
 import { Spacing } from '@/constants/theme';
 import { confirmAction } from '@/lib/confirm';
-import { addDays, formatLongDay, formatTime, mondayOf, startOfDay, todayISO } from '@/lib/dates';
+import { addDays, currentDay, dayStart, formatLongDay, formatTime, mondayOf, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import { useWeekEvents, type DayEvent } from '@/lib/week-events';
@@ -24,11 +24,34 @@ interface MealEditing {
   form: MealForm;
 }
 
+/**
+ * Vuelve a pintar la pantalla cada minuto y al volver a la app: así «hoy» cambia solo al pasar por la hora
+ * a la que empieza el día (iOS suspende las PWA en segundo plano, y entonces no hay temporizador).
+ */
+function useMinuteTick(): void {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setTick((t) => t + 1);
+    const timer = setInterval(bump, 60_000);
+    const onVisible = () => document.visibilityState === 'visible' && bump();
+    if (Platform.OS === 'web') document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      if (Platform.OS === 'web') document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+}
+
 /** Calendario del día: qué hice y a qué hora (entrenos, comidas y pesadas). */
 export function CalendarScreen() {
+  useMinuteTick();
   const router = useRouter();
   const { removeWeight, profile, latestWeight } = useMe();
-  const [day, setDay] = useState(todayISO);
+  const { settings, dietOn, activeTraining, dayStartMinutes } = useSettings();
+  // El día que se mira: el que se haya elegido o, si no, el de ahora (que depende de la hora a la que empieza el día).
+  const [picked, setPicked] = useState<string | null>(null);
+  const today = currentDay(dayStartMinutes);
+  const day = picked ?? today;
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -40,7 +63,6 @@ export function CalendarScreen() {
     error: loadError,
     moveEvent,
   } = useWeekEvents(mondayOf(day));
-  const { settings, dietOn, activeTraining } = useSettings();
   const planned = useMemo(() => plannedOf(day), [plannedOf, day]);
   const dayEvents = useMemo(
     () => [...eventsOf(day), ...planned].sort((a, b) => a.start.getTime() - b.start.getTime()),
@@ -61,7 +83,7 @@ export function CalendarScreen() {
   const energy = useMemo(
     () =>
       dayEnergy({
-        dayStart: startOfDay(day).getTime(),
+        dayStart: dayStart(day, dayStartMinutes).getTime(),
         bmr,
         weightKg,
         workouts: dayEvents
@@ -75,7 +97,7 @@ export function CalendarScreen() {
               : [],
         ),
       }),
-    [day, dayEvents, bmr, weightKg],
+    [day, dayEvents, bmr, weightKg, dayStartMinutes],
   );
 
   // Tocar un hueco del día abre «añadir»; de ahí sale la comida, la pesada o el entreno.
@@ -88,7 +110,6 @@ export function CalendarScreen() {
   const dietChange = settings.dietSchedule.find((e) => e.from === day);
   const startingDiet = dietChange?.dietId ? dietOn(day) : null;
   const stoppedDiet = dietChange && !dietChange.dietId;
-  const today = todayISO();
 
   async function onPressEvent(event: DayEvent) {
     // De momento solo las pesadas se pueden borrar desde aquí; los entrenos se verán en un historial.
@@ -158,13 +179,13 @@ export function CalendarScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Día anterior"
-              onPress={() => setDay(addDays(day, -1))}
+              onPress={() => setPicked(addDays(day, -1))}
               hitSlop={12}>
               <ThemedText type="subtitle" style={styles.arrow}>
                 ‹
               </ThemedText>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setDay(today)} style={styles.dayTitle}>
+            <Pressable accessibilityRole="button" onPress={() => setPicked(null)} style={styles.dayTitle}>
               <ThemedText type="smallBold" style={styles.dayText}>
                 {formatLongDay(day)}
               </ThemedText>
@@ -172,14 +193,14 @@ export function CalendarScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Día siguiente"
-              onPress={() => setDay(addDays(day, 1))}
+              onPress={() => setPicked(addDays(day, 1))}
               hitSlop={12}>
               <ThemedText type="subtitle" style={styles.arrow}>
                 ›
               </ThemedText>
             </Pressable>
           </View>
-          {day !== today && <LinkButton centered title="Ir a hoy" onPress={() => setDay(today)} />}
+          {day !== today && <LinkButton centered title="Ir a hoy" onPress={() => setPicked(null)} />}
         </>
       }>
       <ErrorText message={error ?? loadError} />
@@ -201,6 +222,7 @@ export function CalendarScreen() {
         onMoveEvent={moveEvent}
         onPressSlot={setSlot}
         energy={energy}
+        startMinutes={dayStartMinutes}
       />
       <View style={styles.bottom}>
         <MealLogSection day={day} logs={mealsOf(day)} planned={planned} energy={energy} />
