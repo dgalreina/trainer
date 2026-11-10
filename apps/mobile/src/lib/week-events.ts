@@ -9,13 +9,13 @@ import {
   type WeightEntry,
   type WorkoutSession,
 } from '@trainer/shared';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { api } from '@/lib/api';
 import { getItem, setItem } from '@/lib/storage';
 import { notifySessionsChanged } from '@/lib/session-events';
 import { draftKey, parseDraft, type WorkoutDraft } from '@/lib/workout-draft';
-import { addDays, dayOf, startOfDay, timeInDay } from '@/lib/dates';
+import { addDays, isoOf, startOfDay } from '@/lib/dates';
 import { useFoods } from '@/lib/foods';
 import { useMe } from '@/lib/me';
 import { useSessionsVersion } from '@/lib/session-events';
@@ -49,22 +49,31 @@ export interface DayEvent {
   draftOf?: { trainingId: string; routineId: string };
 }
 
+/** Hora "HH:MM" de un día "AAAA-MM-DD", en la hora del dispositivo. */
+function atTime(day: string, time: string): Date {
+  const [h, m] = time.split(':').map(Number);
+  const date = startOfDay(day);
+  date.setHours(h, m, 0, 0);
+  return date;
+}
+
 const MINUTE_MS = 60_000;
 /** Duración con la que se dibuja lo que no la tiene (pesadas) o no se registró (entrenos antiguos). */
 const POINT_EVENT_MINUTES = 20;
 const FALLBACK_WORKOUT_MINUTES = 45;
 const MEAL_MINUTES = 30;
 /**
- * Se cargan tres semanas (la anterior, la actual y la siguiente): al pasar de día en día, el día
- * de al lado ya está cargado y no hay un parpadeo de "nada registrado" al cruzar de semana.
+ * Se cargan cinco semanas alrededor de la del día que se muestra (dos antes y tres después): con el scroll
+ * continuo, los días de los lados ya están cargados y no hay un parpadeo de "nada registrado"; al pasar a
+ * otra semana se recarga la ventana.
  */
-const WEEKS_BEFORE = 1;
-const WEEKS_AFTER = 2;
+const WEEKS_BEFORE = 2;
+const WEEKS_AFTER = 3;
 
 /** Los eventos de la semana que empieza el lunes `weekStart` y de las dos que la rodean. */
 export function useWeekEvents(weekStart: string) {
   const { trainings } = useTrainings();
-  const { dietOn, dayStartMinutes } = useSettings();
+  const { dietOn } = useSettings();
   const { foods } = useFoods();
   const { weightsVersion, updateWeight } = useMe();
   const sessionsVersion = useSessionsVersion();
@@ -73,6 +82,10 @@ export function useWeekEvents(weekStart: string) {
   const [meals, setMeals] = useState<MealLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Qué días cubren los datos que hay (de "from" incluido a "to" excluido): fuera de ahí no se sabe qué hay.
+  const [loaded, setLoaded] = useState<{ from: string; to: string } | null>(null);
+  // Cada carga lleva un número: si llega la respuesta de una vieja cuando ya hay otra en marcha, se descarta.
+  const request = useRef(0);
   const [inProgress, setInProgress] = useState<DayEvent[]>([]);
 
   // Un entreno solo entra en el calendario cuando se pulsa «Comenzar»: mientras no se finaliza, es
@@ -112,11 +125,13 @@ export function useWeekEvents(weekStart: string) {
   }, [trainings, sessionsVersion]);
 
   const load = useCallback(async () => {
+    const mine = ++request.current;
     setLoading(true);
     setError(null);
-    const from = startOfDay(addDays(weekStart, -7 * WEEKS_BEFORE)).toISOString();
-    // Un día más: el último día de esas semanas puede acabar pasada la medianoche (según cuándo empiece el día).
-    const to = startOfDay(addDays(weekStart, 7 * WEEKS_AFTER + 1)).toISOString();
+    const fromDay = addDays(weekStart, -7 * WEEKS_BEFORE);
+    const toDay = addDays(weekStart, 7 * WEEKS_AFTER);
+    const from = startOfDay(fromDay).toISOString();
+    const to = startOfDay(toDay).toISOString();
     const range = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     try {
       const [s, w, m] = await Promise.all([
@@ -124,15 +139,24 @@ export function useWeekEvents(weekStart: string) {
         api.get<WeightEntry[]>(`/me/weights?${range}`),
         api.get<MealLog[]>(`/me/meals?${range}`),
       ]);
+      if (mine !== request.current) return;
       setSessions(s);
       setWeights(w);
       setMeals(m);
+      setLoaded({ from: fromDay, to: toDay });
     } catch (err) {
+      if (mine !== request.current) return;
       setError(err instanceof Error ? err.message : 'No se ha podido cargar el calendario');
     } finally {
-      setLoading(false);
+      if (mine === request.current) setLoading(false);
     }
   }, [weekStart]);
+
+  /** ¿Hay datos cargados de ese día? Fuera de la ventana no se sabe qué hay, y no hay que decir que está vacío. */
+  const isLoaded = useCallback(
+    (day: string) => loaded !== null && day >= loaded.from && day < loaded.to,
+    [loaded],
+  );
 
   useEffect(() => {
     load();
@@ -186,11 +210,8 @@ export function useWeekEvents(weekStart: string) {
     return [...workouts, ...inProgress, ...weighIns, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [sessions, weights, meals, trainings, inProgress]);
 
-  /** ¿Está ese momento dentro del día "AAAA-MM-DD" del usuario (de su hora de inicio a la misma del siguiente)? */
-  const inDay = useCallback(
-    (moment: Date, day: string) => dayOf(moment, dayStartMinutes) === day,
-    [dayStartMinutes],
-  );
+  /** ¿Cae ese momento en el día "AAAA-MM-DD"? */
+  const inDay = useCallback((moment: Date, day: string) => isoOf(moment) === day, []);
 
   /** Eventos del día "AAAA-MM-DD", por hora. */
   const eventsOf = useCallback(
@@ -204,11 +225,13 @@ export function useWeekEvents(weekStart: string) {
    * recuento) mientras ese día no se hayan editado, movido o quitado: en cuanto se toca una, deja de
    * ser una comida de la dieta y pasa a ser una comida registrada de ese día (la dieta no cambia).
    */
+  // El catálogo por id, una sola vez (y no en cada día que se pinta).
+  const foodsById = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
+
   const plannedOf = useCallback(
     (day: string): DayEvent[] => {
       const diet = dietOn(day);
       if (!diet) return [];
-      const byId = new Map(foods.map((f) => [f.id, f]));
       // Las de la dieta que ese día ya tienen su propia versión (editada, movida o quitada).
       const touched = new Set(
         meals.filter((m) => m.dietMealId && inDay(new Date(m.date), day)).map((m) => m.dietMealId),
@@ -216,10 +239,9 @@ export function useWeekEvents(weekStart: string) {
       return diet.meals
         .filter((meal) => !touched.has(meal.id))
         .map((meal): DayEvent => {
-          // Una comida anterior a la hora de inicio del día es de la madrugada siguiente.
-          const start = timeInDay(day, meal.time, dayStartMinutes);
+          const start = atTime(day, meal.time);
           // Hasta que carga el catálogo de alimentos no hay macros que calcular.
-          const macros = foods.length > 0 ? mealMacros(meal, byId) : undefined;
+          const macros = foods.length > 0 ? mealMacros(meal, foodsById) : undefined;
           return {
             id: `plan-${diet.id}-${meal.id}-${day}`,
             kind: 'plan',
@@ -232,7 +254,7 @@ export function useWeekEvents(weekStart: string) {
           };
         });
     },
-    [dietOn, foods, meals, inDay, dayStartMinutes],
+    [dietOn, foodsById, foods.length, meals, inDay],
   );
 
   /** Comidas registradas del día "AAAA-MM-DD", por hora (sin las de la dieta descartadas ese día). */
@@ -335,5 +357,5 @@ export function useWeekEvents(weekStart: string) {
     [updateWeight, load],
   );
 
-  return { events, eventsOf, plannedOf, mealsOf, saveMeal, removeMeal, loading, error, reload: load, moveEvent };
+  return { events, eventsOf, plannedOf, mealsOf, isLoaded, saveMeal, removeMeal, loading, error, reload: load, moveEvent };
 }

@@ -1,9 +1,9 @@
 import { calculateTargets, dayEnergy, loggedMacros, routineTitle } from '@trainer/shared';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { DayTimeline } from '@/components/day-timeline';
+import { DayList, type DayListHandle, type DayModel } from '@/components/day-timeline';
 import { Button, ErrorText, LinkButton } from '@/components/form';
 import { MealEditor, type MealDraft, type MealForm } from '@/components/meal-editor';
 import { MealLogSection } from '@/components/meal-log-section';
@@ -11,9 +11,10 @@ import { Screen } from '@/components/screen';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { WeighInSheet } from '@/components/weigh-in-card';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
-import { addDays, currentDay, dayStart, formatLongDay, formatTime, mondayOf, todayISO } from '@/lib/dates';
+import { formatTime, isoOf, mondayOf, startOfDay, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
@@ -26,8 +27,8 @@ interface MealEditing {
 }
 
 /**
- * Vuelve a pintar la pantalla cada minuto y al volver a la app: así «hoy» cambia solo al pasar por la hora
- * a la que empieza el día (iOS suspende las PWA en segundo plano, y entonces no hay temporizador).
+ * Vuelve a pintar la pantalla cada minuto y al volver a la app: así «hoy» cambia solo al pasar la medianoche
+ * (iOS suspende las PWA en segundo plano, y entonces no hay temporizador).
  */
 function useMinuteTick(): void {
   const [, setTick] = useState(0);
@@ -43,16 +44,32 @@ function useMinuteTick(): void {
   }, []);
 }
 
-/** Calendario del día: qué hice y a qué hora (entrenos, comidas y pesadas). */
+/** Un valor que se actualiza 250 ms después del último cambio (la primera vez, al instante). */
+function useSettled<T>(value: T, ms = 250): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return settled;
+}
+
+/**
+ * Calendario en scroll continuo: los días uno debajo de otro (qué hice y a qué hora: entrenos, comidas y
+ * pesadas), cada uno con su tarjeta «Día X» al empezar. Abajo, la tarjeta de calorías del día que se muestra.
+ */
 export function CalendarScreen() {
   useMinuteTick();
   const router = useRouter();
+  const theme = useTheme();
+  const list = useRef<DayListHandle>(null);
   const { removeWeight, profile, latestWeight } = useMe();
-  const { settings, dietOn, activeTraining, dayStartMinutes } = useSettings();
-  // El día que se mira: el que se haya elegido o, si no, el de ahora (que depende de la hora a la que empieza el día).
-  const [picked, setPicked] = useState<string | null>(null);
-  const today = currentDay(dayStartMinutes);
-  const day = picked ?? today;
+  const { settings, dietOn, activeTraining } = useSettings();
+  const { trainings } = useTrainings();
+  const today = todayISO();
+  // El día que se está mostrando (el del centro de la pantalla): la tarjeta de abajo habla de él y de él
+  // cuelga qué semanas se cargan.
+  const [visibleDay, setVisibleDay] = useState(today);
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -61,92 +78,101 @@ export function CalendarScreen() {
     mealsOf,
     saveMeal,
     removeMeal,
+    isLoaded,
     error: loadError,
     moveEvent,
-  } = useWeekEvents(mondayOf(day));
-  const planned = useMemo(() => plannedOf(day), [plannedOf, day]);
-  const dayEvents = useMemo(
-    () => [...eventsOf(day), ...planned].sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [eventsOf, planned, day],
-  );
+    // La ventana de semanas se mueve al terminar el scroll, no a cada lunes que se cruza: así volver a hoy
+    // desde lejos no lanza cientos de peticiones.
+  } = useWeekEvents(useSettled(mondayOf(visibleDay)));
 
-  // Gasto, consumo y balance del día para las gráficas: el basal sale del perfil (Mifflin-St Jeor, con el
-  // último peso y la edad de hoy, también en días pasados) y los entrenos se estiman; lo comido es lo
-  // registrado más lo de la dieta que se da por comido. Un entreno en curso no gasta hasta finalizarlo.
+  // El basal sale del perfil (Mifflin-St Jeor, con el último peso y la edad de hoy, también en días pasados) y
+  // los entrenos se estiman; lo comido es lo registrado más lo de la dieta que se da por comido. Un entreno
+  // en curso no gasta hasta finalizarlo.
   const weightKg = latestWeight?.weightKg ?? null;
   const bmr =
-    calculateTargets({
-      ...profile,
-      weightKg,
-      goal: profile.goal ?? dietOn(day)?.goal ?? 'mantener',
-      today: todayISO(),
-    })?.bmr ?? null;
-  const energy = useMemo(
-    () =>
-      dayEnergy({
-        dayStart: dayStart(day, dayStartMinutes).getTime(),
+    calculateTargets({ ...profile, weightKg, goal: profile.goal ?? 'mantener', today })?.bmr ?? null;
+
+  /** Todo lo de un día: sus tarjetas, sus gráficas y sus marcas. Se calcula día a día, solo para los que se pintan. */
+  const modelOf = useCallback(
+    (day: string): DayModel & { planned: DayEvent[]; logs: ReturnType<typeof mealsOf> } => {
+      // Marcas discretas al principio del día: cuándo empieza una dieta (rige sin fin desde que se activa) o un
+      // entrenamiento. Solo se guarda el día, no la hora, así que van al principio.
+      const marks: string[] = [];
+      if (settings.dietSchedule.some((e) => e.from === day && e.dietId)) {
+        const diet = dietOn(day);
+        if (diet) marks.push(`Comienza la dieta «${diet.name}»`);
+      }
+      for (const training of trainings) {
+        if (training.startDate === day) marks.push(`Comienza el entrenamiento «${training.name}»`);
+      }
+      // Fuera de lo cargado no se sabe qué hay: ni se dice que esté vacío ni se suma la dieta (podría haber
+      // comidas editadas o quitadas ese día).
+      if (!isLoaded(day)) return { events: [], planned: [], logs: [], energy: null, marks, loaded: false };
+      const planned = plannedOf(day);
+      const events = [...eventsOf(day), ...planned].sort((a, b) => a.start.getTime() - b.start.getTime());
+      const energy = dayEnergy({
+        dayStart: startOfDay(day).getTime(),
         bmr,
         weightKg,
-        workouts: dayEvents
+        workouts: events
           .filter((e) => e.kind === 'workout' && !e.inProgress)
           .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
-        meals: dayEvents.flatMap((e) =>
+        meals: events.flatMap((e) =>
           e.kind === 'meal' && e.log
             ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
             : e.kind === 'plan' && e.macros
               ? [{ at: e.start.getTime(), kcal: e.macros.kcal }]
               : [],
         ),
-      }),
-    [day, dayEvents, bmr, weightKg, dayStartMinutes],
+      });
+      return { events, planned, logs: mealsOf(day), energy, marks, loaded: true };
+    },
+    [eventsOf, plannedOf, mealsOf, isLoaded, bmr, weightKg, settings.dietSchedule, dietOn, trainings],
   );
+  const visible = useMemo(() => modelOf(visibleDay), [modelOf, visibleDay]);
 
-  // Tocar un hueco del día abre «añadir»; de ahí sale la comida, la pesada o el entreno.
+  // Tocar un hueco de un día abre «añadir»; de ahí sale la comida, la pesada o el entreno. Todo lo que se
+  // hace desde ahí es de ese día (no tiene por qué ser el que se muestra en la tarjeta de abajo).
+  const [actionDay, setActionDay] = useState(today);
   const [slot, setSlot] = useState<Date | null>(null);
   const [choosingWorkout, setChoosingWorkout] = useState(false);
   const [meal, setMeal] = useState<MealEditing | null>(null);
   const [weighAt, setWeighAt] = useState<string | null>(null);
-  // Alto del resumen que flota abajo: la línea de tiempo deja ese hueco al final para poder verlo todo.
+  // Alto de la tarjeta de abajo: el «centro» de lo visible (el día que se muestra) queda por encima de ella.
   const [summaryHeight, setSummaryHeight] = useState(0);
 
-  // Marcas discretas al principio del día: cuándo empieza una dieta (rige sin fin desde que se activa) o un
-  // entrenamiento. Solo se guarda el día, no la hora, así que van al principio.
-  const { trainings } = useTrainings();
-  const marks = useMemo(() => {
-    const list: string[] = [];
-    if (settings.dietSchedule.some((e) => e.from === day && e.dietId)) {
-      const diet = dietOn(day);
-      if (diet) list.push(`Comienza la dieta «${diet.name}»`);
-    }
-    for (const training of trainings) {
-      if (training.startDate === day) list.push(`Comienza el entrenamiento «${training.name}»`);
-    }
-    return list;
-  }, [settings.dietSchedule, dietOn, trainings, day]);
+  const onPressSlot = useCallback((time: Date) => {
+    setActionDay(isoOf(time));
+    setSlot(time);
+  }, []);
 
-  async function onPressEvent(event: DayEvent) {
-    // De momento solo las pesadas se pueden borrar desde aquí; los entrenos se verán en un historial.
-    if (event.kind !== 'weight' || !event.weightId) return;
-    const ok = await confirmAction(
-      'Borrar pesada',
-      `Se borrará la pesada de ${event.title} de las ${formatTime(event.start)}.`,
-      'Borrar',
-    );
-    if (!ok) return;
-    try {
-      await removeWeight(event.weightId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se ha podido borrar');
-    }
-  }
+  const onPressEvent = useCallback(
+    async (event: DayEvent) => {
+      // De momento solo las pesadas se pueden borrar desde aquí; los entrenos se verán en un historial.
+      if (event.kind !== 'weight' || !event.weightId) return;
+      const ok = await confirmAction(
+        'Borrar pesada',
+        `Se borrará la pesada de ${event.title} de las ${formatTime(event.start)}.`,
+        'Borrar',
+      );
+      if (!ok) return;
+      try {
+        await removeWeight(event.weightId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se ha podido borrar');
+      }
+    },
+    [removeWeight],
+  );
 
   /** El lápiz de una comida: se abre su editor con lo que tiene (la de la dieta, con lo de la dieta). */
-  function onEditEvent(event: DayEvent) {
+  const onEditEvent = useCallback((event: DayEvent) => {
     const items = event.plan
       ? event.plan.meal.items
       : (event.log?.items ?? []).map(({ foodId, grams }) => ({ foodId, grams }));
+    setActionDay(isoOf(event.start));
     setMeal({ target: event, form: { name: event.title, time: formatTime(event.start), items } });
-  }
+  }, []);
 
   async function onSaveMeal(draft: MealDraft) {
     await saveMeal(meal?.target ?? null, draft);
@@ -184,61 +210,53 @@ export function CalendarScreen() {
   }
 
   return (
-    <Screen
-      fullBleed
-      noWaves
-      fixedTop={
-        <>
-          <View style={styles.dayNav}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Día anterior"
-              onPress={() => setPicked(addDays(day, -1))}
-              hitSlop={12}>
-              <ThemedText type="subtitle" style={styles.arrow}>
-                ‹
-              </ThemedText>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setPicked(null)} style={styles.dayTitle}>
-              <ThemedText type="smallBold" style={styles.dayText}>
-                {formatLongDay(day)}
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Día siguiente"
-              onPress={() => setPicked(addDays(day, 1))}
-              hitSlop={12}>
-              <ThemedText type="subtitle" style={styles.arrow}>
-                ›
-              </ThemedText>
-            </Pressable>
-          </View>
-          {/* Siempre ocupa su sitio (invisible en hoy): si apareciera y desapareciera, la cabecera cambiaría de alto y el día daría un salto. */}
-          <View style={day === today ? styles.hidden : undefined} pointerEvents={day === today ? 'none' : 'auto'}>
-            <LinkButton centered title="Ir a hoy" onPress={() => setPicked(null)} />
-          </View>
-          <ErrorText message={error ?? loadError} />
-        </>
-      }>
+    <Screen fullBleed noWaves>
       {(topInset) => (
         <>
-          <DayTimeline
-            day={day}
-            events={dayEvents}
+          <DayList
+            ref={list}
+            today={today}
+            modelOf={modelOf}
+            topInset={topInset}
+            bottomInset={summaryHeight}
+            onVisibleDay={setVisibleDay}
             onPressEvent={onPressEvent}
             onEditEvent={onEditEvent}
             onMoveEvent={moveEvent}
-            onPressSlot={setSlot}
-            energy={energy}
-            startMinutes={dayStartMinutes}
-            topInset={topInset}
-            marks={marks}
-            bottomInset={summaryHeight}
+            onPressSlot={onPressSlot}
           />
-          {/* El resumen flota sobre la gráfica, que llega hasta el borde de abajo. Solo la tarjeta capta toques. */}
+
+          {/* Un fallo al cargar o borrar, justo bajo la barra de pestañas. */}
+          {error ?? loadError ? (
+            <View pointerEvents="none" style={[styles.error, { top: topInset }]}>
+              <ErrorText message={error ?? loadError} />
+            </View>
+          ) : null}
+
+          {/* Solo cuando hoy no está a la vista: un botón discreto para volver, con la flecha hacia donde está. */}
+          {visibleDay !== today ? (
+            <View pointerEvents="box-none" style={[styles.todayWrap, { bottom: summaryHeight + Spacing.two }]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ir a hoy"
+                onPress={() => list.current?.scrollToDay(today)}
+                style={[styles.today, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+                <ThemedText type="smallBold" themeColor="primaryText">
+                  {visibleDay > today ? 'Hoy ↑' : 'Hoy ↓'}
+                </ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* El resumen flota sobre los días y habla del que se muestra. Solo la tarjeta capta toques. */}
           <View pointerEvents="box-none" style={styles.floating} onLayout={(e) => setSummaryHeight(e.nativeEvent.layout.height)}>
-            <MealLogSection day={day} logs={mealsOf(day)} planned={planned} energy={energy} />
+            <MealLogSection
+              day={visibleDay}
+              logs={visible.logs}
+              planned={visible.planned}
+              energy={visible.energy}
+              ready={visible.loaded}
+            />
           </View>
 
           {/* Añadir algo a la hora tocada. */}
@@ -290,16 +308,16 @@ export function CalendarScreen() {
 
           <MealEditor
             visible={meal !== null}
-            day={day}
+            day={actionDay}
             initial={meal?.form ?? { name: '', time: '12:00', items: [] }}
-            diet={dietOn(day)}
+            diet={dietOn(actionDay)}
             canDelete={meal?.target != null}
             onSave={onSaveMeal}
             onDelete={onDeleteMeal}
             onClose={() => setMeal(null)}
           />
 
-          <WeighInSheet visible={weighAt !== null} day={day} time={weighAt ?? '08:00'} onClose={() => setWeighAt(null)} />
+          <WeighInSheet visible={weighAt !== null} day={actionDay} time={weighAt ?? '08:00'} onClose={() => setWeighAt(null)} />
         </>
       )}
     </Screen>
@@ -308,9 +326,13 @@ export function CalendarScreen() {
 
 const styles = StyleSheet.create({
   floating: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.four, paddingBottom: Spacing.four },
-  hidden: { opacity: 0 },
-  dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dayTitle: { flex: 1, alignItems: 'center' },
-  dayText: { textAlign: 'center' },
-  arrow: { paddingHorizontal: Spacing.three, lineHeight: 36 },
+  error: { position: 'absolute', left: 0, right: 0, paddingHorizontal: Spacing.four },
+  todayWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'flex-end', paddingHorizontal: Spacing.four },
+  today: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    ...({ boxShadow: '0 2px 10px rgba(0, 0, 0, 0.12)' } as object),
+  },
 });

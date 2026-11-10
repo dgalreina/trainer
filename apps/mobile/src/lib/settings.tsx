@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -16,7 +15,7 @@ import { todayISO } from '@/lib/dates';
 import { useDiets } from '@/lib/diets';
 import { useTrainings } from '@/lib/trainings';
 
-const EMPTY: UserSettings = { activeTrainingId: null, activeDietId: null, dietSchedule: [], dayStartMinutes: 0 };
+const EMPTY: UserSettings = { activeTrainingId: null, activeDietId: null, dietSchedule: [] };
 
 interface SettingsValue {
   settings: UserSettings;
@@ -29,19 +28,12 @@ interface SettingsValue {
   setActiveDiet: (id: string | null) => Promise<void>;
   /** La dieta que rige un día (AAAA-MM-DD), si la hay: antes de activarla no, después sí, sin fin. */
   dietOn: (day: string) => Diet | null;
-  /** A qué hora empieza el día del usuario, en minutos desde las 00:00 (0 = el día normal). */
-  dayStartMinutes: number;
-  setDayStartMinutes: (minutes: number) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsValue | null>(null);
 
-/** Una API anterior no manda `dietSchedule` ni `dayStartMinutes`: se toman como vacío y como el día normal. */
-const normalize = (s: UserSettings): UserSettings => ({
-  ...s,
-  dietSchedule: s.dietSchedule ?? [],
-  dayStartMinutes: s.dayStartMinutes ?? 0,
-});
+/** Una API anterior al calendario de dietas no manda `dietSchedule`: se toma como vacío. */
+const normalize = (s: UserSettings): UserSettings => ({ ...s, dietSchedule: s.dietSchedule ?? [] });
 
 /** Qué entrenamiento y qué dieta tiene el usuario en marcha ahora. */
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -66,14 +58,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const setActiveDiet = useCallback(async (id: string | null) => {
     setSettings(normalize(await api.put<UserSettings>('/me/settings', { activeDietId: id, dietSince: todayISO() })));
-  }, []);
-
-  // Si se cambia varias veces seguidas, solo cuenta la respuesta de la última petición (pueden llegar desordenadas).
-  const dayStartRequest = useRef(0);
-  const setDayStartMinutes = useCallback(async (minutes: number) => {
-    const request = ++dayStartRequest.current;
-    const saved = await api.put<UserSettings>('/me/settings', { dayStartMinutes: minutes });
-    if (request === dayStartRequest.current) setSettings(normalize(saved));
   }, []);
 
   const activeTraining = useMemo(
@@ -101,17 +85,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<SettingsValue>(
-    () => ({
-      settings,
-      activeTraining,
-      setActiveTraining,
-      activeDiet,
-      setActiveDiet,
-      dietOn,
-      dayStartMinutes: settings.dayStartMinutes,
-      setDayStartMinutes,
-    }),
-    [settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn, setDayStartMinutes],
+    () => ({ settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn }),
+    [settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

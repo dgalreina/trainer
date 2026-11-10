@@ -26,12 +26,7 @@ export class SettingsService {
       const diet = await this.diets.findOne({ _id: activeDietId, userId }).lean();
       if (diet) dietSchedule = [{ from: diet.startDate, dietId: activeDietId }];
     }
-    return {
-      activeTrainingId: doc?.activeTrainingId ?? null,
-      activeDietId,
-      dietSchedule,
-      dayStartMinutes: doc?.dayStartMinutes ?? 0,
-    };
+    return { activeTrainingId: doc?.activeTrainingId ?? null, activeDietId, dietSchedule };
   }
 
   async update(userId: string, dto: UpdateUserSettings): Promise<UserSettings> {

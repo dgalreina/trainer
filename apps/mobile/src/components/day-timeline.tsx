@@ -1,22 +1,33 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  FlatList,
   PanResponder,
   Pressable,
   StyleSheet,
   View,
   type GestureResponderEvent,
-  type ScrollViewInstance,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import type { DayEnergy } from '@trainer/shared';
 
 import { DayEnergyChart } from '@/components/day-energy-chart';
-import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { currentDay, dayStart as dayStartOf, formatTime } from '@/lib/dates';
+import { addDays, formatLongDay, formatTime, parseISO, startOfDay } from '@/lib/dates';
 import type { DayEvent } from '@/lib/week-events';
 
 const HOUR_HEIGHT = 56;
@@ -25,21 +36,46 @@ const LABEL_WIDTH = 48;
 const MIN_HEIGHT = { workout: 52, weight: 34, meal: 52, plan: 52 } as const;
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
+const DAY_MS = 24 * HOUR_MS;
 /** Al soltar un evento arrastrado, la hora se ajusta a múltiplos de estos minutos. */
 const SNAP_MINUTES = 5;
 const DAY_MINUTES = 24 * 60;
 const HANDLE_WIDTH = 30;
 const EDIT_WIDTH = 34;
-/** Alto de cada marca del principio del día. */
+/** Alto de la tarjeta «Día X» al empezar cada día y de cada marca que la sigue. */
+const DAY_CARD_HEIGHT = 28;
 const MARK_HEIGHT = 22;
 /** Las tarjetas dejan ver las gráficas de detrás: opacidad de su fondo. */
 const CARD_OPACITY = 0.82;
+/** Lo mínimo que se ve de una tarjeta pegada al final del día. */
+const CARD_MIN_VISIBLE = 24;
+/** Al tocar un hueco del día para añadir algo, la hora se redondea hacia abajo a múltiplos de esto. */
+const SLOT_MINUTES = 15;
+
+/** Alto de un día entero: sus 24 horas. Es fijo, así la lista sabe dónde está cada día sin medirlos. */
+const DAY_HEIGHT = 24 * HOUR_HEIGHT;
+/** Días que se pueden recorrer a cada lado de hoy (unos dos años). */
+const RADIUS = 730;
+const INDEXES = Array.from({ length: RADIUS * 2 + 1 }, (_, i) => i);
 
 /** Un color #RRGGBB con transparencia. */
 const withAlpha = (hex: string, alpha: number) =>
   hex.length === 7 ? hex + Math.round(alpha * 255).toString(16).padStart(2, '0') : hex;
-/** Al tocar un hueco del día para añadir algo, la hora se redondea hacia abajo a múltiplos de esto. */
-const SLOT_MINUTES = 15;
+
+/** Días de diferencia entre dos días «AAAA-MM-DD» (con signo). */
+const dayDiff = (from: string, to: string) =>
+  Math.round((parseISO(to).getTime() - parseISO(from).getTime()) / DAY_MS);
+
+/** Lo que se dibuja en un día: sus tarjetas, sus gráficas y las marcas del principio. */
+export interface DayModel {
+  events: DayEvent[];
+  /** Gasto, consumo y balance del día para las gráficas de fondo; sin él no se dibujan. */
+  energy: DayEnergy | null;
+  /** Marcas discretas del principio del día («Comienza la dieta…»). */
+  marks: string[];
+  /** Si ya hay datos de ese día: hasta entonces no se dice que esté vacío. */
+  loaded: boolean;
+}
 
 interface Placed {
   event: DayEvent;
@@ -84,48 +120,168 @@ function slotAt(event: GestureResponderEvent, dayStart: number): Date {
   return new Date(dayStart + Math.min(Math.max(minutes, 0), DAY_MINUTES - SLOT_MINUTES) * MINUTE_MS);
 }
 
-/**
- * Un día con las horas de arriba abajo y lo que pasó en cada una. Los eventos se pueden arrastrar;
- * tocar un hueco vacío propone añadir algo a esa hora.
- */
-export function DayTimeline({
-  day,
-  events,
-  onPressEvent,
-  onEditEvent,
-  onMoveEvent,
-  onPressSlot,
-  energy,
-  startMinutes = 0,
-  topInset = 0,
-  bottomInset = 0,
-  marks,
-}: {
-  day: string;
-  /** Alto (px) de lo que flota por encima (barra de pestañas y fecha): el día empieza justo debajo y, al hacer scroll, pasa por detrás difuminándose. */
-  topInset?: number;
-  /** Marcas discretas al principio del día («Comienza la dieta…»): una línea fina con una etiqueta pequeña en el centro. */
-  marks?: string[];
-  /** Alto (px) de lo que flota encima por abajo (el resumen): el día puede subirse por encima de ello. */
-  bottomInset?: number;
-  events: DayEvent[];
-  /** A qué hora empieza el día del usuario, en minutos desde las 00:00: el día va de ahí a la misma hora del siguiente. */
-  startMinutes?: number;
-  /** Gasto, consumo y balance del día para las gráficas de fondo; sin él no se dibujan. */
-  energy?: DayEnergy | null;
+/** Lo que se puede pedir a la lista desde fuera. */
+export interface DayListHandle {
+  /** Lleva el scroll al día indicado, a la hora que interesa (la de ahora si es hoy; las 7 si no). */
+  scrollToDay: (day: string, animated?: boolean) => void;
+}
+
+interface Handlers {
   onPressEvent?: (event: DayEvent) => void;
   /** Se llama al pulsar el lápiz de una comida. */
   onEditEvent?: (event: DayEvent) => void;
   /** Se llama al soltar un evento arrastrado, con su nueva hora de inicio. */
   onMoveEvent?: (event: DayEvent, newStart: Date) => void;
-  /** Se llama al tocar un hueco del día, con la hora tocada. */
+  /** Se llama al tocar un hueco de un día, con la hora tocada. */
   onPressSlot?: (time: Date) => void;
-}) {
+}
+
+/**
+ * Los días uno debajo de otro en un scroll continuo (unos dos años a cada lado de hoy): bajas y entras en el
+ * día siguiente, subes y vuelves al anterior. Cada día tiene su tarjeta «Día X» al empezar (a las 00:00), con
+ * sus tarjetas, sus gráficas y sus marcas. Pasa por detrás de la barra de pestañas y de la tarjeta de abajo.
+ * Avisa de cuál es el día que se está mostrando (el del centro de la zona visible).
+ */
+export const DayList = forwardRef<
+  DayListHandle,
+  {
+    /** El día de hoy («AAAA-MM-DD»). */
+    today: string;
+    /** Lo que se pinta en cada día. */
+    modelOf: (day: string) => DayModel;
+    /** Alto (px) de lo que flota por encima (la barra de pestañas): el día de interés se coloca justo debajo. */
+    topInset: number;
+    /** Alto (px) de lo que flota por debajo (la tarjeta de calorías): el «centro» de lo visible queda por encima de ella. */
+    bottomInset: number;
+    /** Se llama cuando cambia el día que se está mostrando. */
+    onVisibleDay: (day: string) => void;
+  } & Handlers
+>(function DayList({ today, modelOf, topInset, bottomInset, onVisibleDay, ...handlers }, ref) {
+  const list = useRef<FlatList<number>>(null);
+  // El día del que cuelgan los índices: el de hoy al abrir. Si la app sigue abierta pasada la medianoche,
+  // los índices no se mueven (solo cambia cuál es «hoy»).
+  const anchor = useRef(today);
+  const dayOfIndex = useCallback((index: number) => addDays(anchor.current, index - RADIUS), []);
+
+  // Los valores más recientes, para los manejadores que viven toda la vida del componente.
+  const latest = useRef({ today, topInset, bottomInset, height: 0, onVisibleDay });
+  latest.current.today = today;
+  latest.current.topInset = topInset;
+  latest.current.bottomInset = bottomInset;
+  latest.current.onVisibleDay = onVisibleDay;
+  const [height, setHeight] = useState(0);
+  const lastIndex = useRef(RADIUS);
+
+  /**
+   * El scroll al que hay que ir para ver un día: su hora de interés queda justo bajo la barra de pestañas. Con
+   * un tope: el centro de lo visible tiene que seguir cayendo dentro de ese día (si no, por la tarde-noche se
+   * acabaría mostrando el día siguiente).
+   */
+  const offsetOf = useCallback((day: string) => {
+    const { topInset: inset, bottomInset: bottom, height: viewport } = latest.current;
+    const base = (RADIUS + dayDiff(anchor.current, day)) * DAY_HEIGHT;
+    const hour = day === latest.current.today ? Math.max(0, new Date().getHours() - 2) : 7;
+    const centre = inset + Math.max(0, viewport - inset - bottom) / 2;
+    const wanted = base + hour * HOUR_HEIGHT - inset;
+    return Math.max(0, Math.min(Math.max(wanted, base - centre + 1), base + DAY_HEIGHT - centre - 1));
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToDay: (day, animated = true) => list.current?.scrollToOffset({ offset: offsetOf(day), animated }),
+    }),
+    [offsetOf],
+  );
+
+  // Al abrir, hoy a la hora que interesa. La lista ya arranca en el día de hoy; esto la afina.
+  const placed = useRef(false);
+  useEffect(() => {
+    if (placed.current || height === 0 || topInset === 0) return;
+    // Se da por hecho al disparar, no antes: si las medidas cambian en esos 30 ms, se reprograma.
+    const timer = setTimeout(() => {
+      placed.current = true;
+      list.current?.scrollToOffset({ offset: offsetOf(latest.current.today), animated: false });
+    }, 30);
+    return () => clearTimeout(timer);
+  }, [height, topInset, offsetOf]);
+
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { topInset: inset, bottomInset: bottom, height: viewport } = latest.current;
+      // El día que se muestra es el del centro de la zona visible (entre la barra de pestañas y la tarjeta de abajo).
+      const center = event.nativeEvent.contentOffset.y + inset + Math.max(0, viewport - inset - bottom) / 2;
+      const index = Math.min(Math.max(Math.floor(center / DAY_HEIGHT), 0), INDEXES.length - 1);
+      if (index !== lastIndex.current) {
+        lastIndex.current = index;
+        latest.current.onVisibleDay(dayOfIndex(index));
+      }
+    },
+    [dayOfIndex],
+  );
+
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    latest.current.height = event.nativeEvent.layout.height;
+    setHeight(event.nativeEvent.layout.height);
+  }, []);
+
+  const { onPressEvent, onEditEvent, onMoveEvent, onPressSlot } = handlers;
+  const renderItem = useCallback(
+    ({ item }: { item: number }) => (
+      <DayColumn
+        day={dayOfIndex(item)}
+        today={today}
+        modelOf={modelOf}
+        onPressEvent={onPressEvent}
+        onEditEvent={onEditEvent}
+        onMoveEvent={onMoveEvent}
+        onPressSlot={onPressSlot}
+      />
+    ),
+    [dayOfIndex, today, modelOf, onPressEvent, onEditEvent, onMoveEvent, onPressSlot],
+  );
+
+  return (
+    <FlatList
+      ref={list}
+      data={INDEXES}
+      keyExtractor={(index) => String(index)}
+      getItemLayout={(_, index) => ({ length: DAY_HEIGHT, offset: DAY_HEIGHT * index, index })}
+      initialScrollIndex={RADIUS}
+      initialNumToRender={2}
+      maxToRenderPerBatch={2}
+      windowSize={5}
+      showsVerticalScrollIndicator={false}
+      scrollEventThrottle={32}
+      onScroll={onScroll}
+      onLayout={onLayout}
+      nestedScrollEnabled
+      // Los días se vuelven a pintar si cambian los datos, el día de hoy o los manejadores (todo cuelga de renderItem).
+      extraData={renderItem}
+      style={styles.list}
+      renderItem={renderItem}
+    />
+  );
+});
+
+/** Un día: sus 24 horas de arriba abajo con lo que pasó en cada una. Los eventos se pueden arrastrar; tocar un hueco propone añadir algo. */
+const DayColumn = memo(function DayColumn({
+  day,
+  today,
+  modelOf,
+  onPressEvent,
+  onEditEvent,
+  onMoveEvent,
+  onPressSlot,
+}: {
+  day: string;
+  today: string;
+  modelOf: (day: string) => DayModel;
+} & Handlers) {
   const theme = useTheme();
-  const scroll = useRef<ScrollViewInstance>(null);
-  const today = currentDay(startMinutes);
+  const { events, energy, marks, loaded } = useMemo(() => modelOf(day), [modelOf, day]);
   const isToday = day === today;
-  const dayStart = dayStartOf(day, startMinutes).getTime();
+  const dayStart = startOfDay(day).getTime();
   const [now, setNow] = useState(() => Date.now());
   const [areaWidth, setAreaWidth] = useState(0);
 
@@ -137,133 +293,102 @@ export function DayTimeline({
     return () => clearInterval(timer);
   }, [isToday]);
 
-  const { placed, columns } = placeEvents(events);
-
-  // Al abrir un día se muestra la zona que importa: lo primero que pasó, la hora actual o, si no hay nada,
-  // las 7 (con el día normal) o el principio del día (si empieza a otra hora). En horas desde su inicio.
-  const firstEvent = events[0];
-  const focusHour = firstEvent
-    ? Math.floor((firstEvent.start.getTime() - dayStart) / HOUR_MS) - 1
-    : isToday
-      ? Math.floor((Date.now() - dayStart) / HOUR_MS) - 2
-      : startMinutes === 0
-        ? 7
-        : 0;
-  useEffect(() => {
-    const timer = setTimeout(
-      () => scroll.current?.scrollTo({ y: Math.max(0, focusHour) * HOUR_HEIGHT, animated: false }),
-      50,
-    );
-    return () => clearTimeout(timer);
-  }, [day, focusHour]);
+  const { placed, columns } = useMemo(() => placeEvents(events), [events]);
 
   const nowTop = ((now - dayStart) / HOUR_MS) * HOUR_HEIGHT;
   // Lo que aún no ha pasado se dibuja tenue: hoy, desde ahora; un día futuro, entero.
-  const dimFrom = day > today ? 0 : isToday ? nowTop : 24 * HOUR_HEIGHT;
-
-  // Las rayas son las horas en punto del reloj, desde la primera que cae dentro del día.
-  const hourMarks = useMemo(() => {
-    const marks: { top: number; label: string }[] = [];
-    for (let m = Math.ceil(startMinutes / 60) * 60; m < startMinutes + DAY_MINUTES; m += 60) {
-      marks.push({ top: ((m - startMinutes) / 60) * HOUR_HEIGHT, label: `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:00` });
-    }
-    return marks;
-  }, [startMinutes]);
+  const dimFrom = day > today ? 0 : isToday ? nowTop : DAY_HEIGHT;
+  // Debajo de la tarjeta «Día X» y de las marcas, si las hay.
+  const labelsBottom = DAY_CARD_HEIGHT + marks.length * MARK_HEIGHT;
 
   return (
-    <View style={styles.wrapper}>
-      {/* Difuminado solo arriba, y largo (todo lo que flota encima): el día se desvanece al pasar por detrás del menú. Abajo se corta limpio contra el resumen. Por máscara, para que valga sobre las gráficas y las ondas. */}
-      <FadingScroll
-        mask
-        fadeTop={topInset > 0 ? topInset : undefined}
-        fadeBottom={false}
-        scrollRef={scroll}
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
-        nestedScrollEnabled>
-        {/* Hueco de lo que flota encima: con el scroll arriba del todo, el día empieza justo debajo. */}
-        <View style={{ height: topInset }} />
-        <View style={{ height: 24 * HOUR_HEIGHT }}>
-          {/* Sin nada registrado, un aviso al principio del día (hace scroll con él; no capta toques). */}
-          {events.length === 0 && (
+    <View style={styles.day}>
+      <View style={styles.grid}>
+        {/* Gráficas del día, por debajo de todo lo demás. */}
+        <View pointerEvents="none" style={styles.chart}>
+          {energy && areaWidth > 0 ? (
+            <DayEnergyChart energy={energy} width={areaWidth} height={DAY_HEIGHT} dimFrom={dimFrom} />
+          ) : null}
+        </View>
+
+        {Array.from({ length: 24 }, (_, hour) => (
+          <View key={hour} pointerEvents="none" style={[styles.hourRow, { top: hour * HOUR_HEIGHT }]}>
+            <ThemedText type="small" themeColor="textSecondary" style={[styles.hourLabel, hour === 0 && styles.firstHourLabel]}>
+              {String(hour).padStart(2, '0')}:00
+            </ThemedText>
+            <View style={[styles.hourLine, { backgroundColor: theme.backgroundSelected }]} />
+          </View>
+        ))}
+
+        {/* El principio del día: la tarjeta «Día X» y, debajo, las marcas («Comienza la dieta…»). */}
+        <View pointerEvents="none" style={[styles.mark, { top: 0, height: DAY_CARD_HEIGHT }]}>
+          <ThemedText
+            type="smallBold"
+            numberOfLines={1}
+            style={[styles.dayCard, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+            {formatLongDay(day)}
+            {isToday ? ' · Hoy' : ''}
+          </ThemedText>
+        </View>
+        {marks.map((label, i) => (
+          <View key={label} pointerEvents="none" style={[styles.mark, { top: DAY_CARD_HEIGHT + i * MARK_HEIGHT }]}>
+            <View style={[styles.markLine, { backgroundColor: theme.primary }]} />
             <ThemedText
               type="small"
-              themeColor="textSecondary"
-              // Debajo de las marcas del principio del día, si las hay.
-              style={[styles.empty, { top: Spacing.two + (marks?.length ?? 0) * MARK_HEIGHT }]}>
-              Nada registrado este día. Toca una hora para añadir algo.
+              themeColor="primaryText"
+              numberOfLines={1}
+              style={[styles.markLabel, { backgroundColor: theme.background, borderColor: theme.primary }]}>
+              {label}
             </ThemedText>
-          )}
-
-          {/* Gráficas del día, por debajo de todo lo demás. */}
-          <View pointerEvents="none" style={styles.chart}>
-            {energy && areaWidth > 0 ? (
-              <DayEnergyChart energy={energy} width={areaWidth} height={24 * HOUR_HEIGHT} dimFrom={dimFrom} />
-            ) : null}
           </View>
+        ))}
 
-          {hourMarks.map((mark) => (
-            <View key={mark.top} pointerEvents="none" style={[styles.hourRow, { top: mark.top }]}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.hourLabel}>
-                {mark.label}
-              </ThemedText>
-              <View style={[styles.hourLine, { backgroundColor: theme.backgroundSelected }]} />
-            </View>
-          ))}
+        {/* Sin nada registrado, un aviso al principio del día (no capta toques). */}
+        {events.length === 0 && loaded && (
+          <ThemedText type="small" themeColor="textSecondary" style={[styles.empty, { top: labelsBottom + Spacing.two }]}>
+            Nada registrado este día. Toca una hora para añadir algo.
+          </ThemedText>
+        )}
 
-          {marks?.map((label, i) => (
-            <View key={label} pointerEvents="none" style={[styles.mark, { top: i * MARK_HEIGHT }]}>
-              <View style={[styles.markLine, { backgroundColor: theme.primary }]} />
-              <ThemedText
-                type="small"
-                themeColor="primaryText"
-                numberOfLines={1}
-                style={[styles.markLabel, { backgroundColor: theme.background, borderColor: theme.primary }]}>
-                {label}
-              </ThemedText>
-            </View>
-          ))}
+        {/* Fondo táctil del día: tocar un hueco vacío propone añadir algo a esa hora. */}
+        {onPressSlot && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Añadir a esta hora"
+            onPress={(e) => onPressSlot(slotAt(e, dayStart))}
+            style={styles.slots}
+          />
+        )}
 
-          {/* Fondo táctil del día: tocar un hueco vacío propone añadir algo a esa hora. */}
-          {onPressSlot && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Añadir a esta hora"
-              onPress={(e) => onPressSlot(slotAt(e, dayStart))}
-              style={styles.slots}
+        {/* Zona de eventos, a la derecha de las horas. Solo las tarjetas capturan el toque. */}
+        <View
+          pointerEvents="box-none"
+          style={styles.events}
+          onLayout={(e) => setAreaWidth(e.nativeEvent.layout.width)}>
+          {placed.map(({ event, column }) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              dayStart={dayStart}
+              column={column}
+              columns={columns}
+              onPress={onPressEvent}
+              onEdit={onEditEvent}
+              onMove={onMoveEvent}
             />
-          )}
-
-          {/* Zona de eventos, a la derecha de las horas. Solo las tarjetas capturan el toque. */}
-          <View
-            pointerEvents="box-none"
-            style={styles.events}
-            onLayout={(e) => setAreaWidth(e.nativeEvent.layout.width)}>
-            {placed.map(({ event, column }) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                dayStart={dayStart}
-                column={column}
-                columns={columns}
-                onPress={onPressEvent}
-                onEdit={onEditEvent}
-                onMove={onMoveEvent}
-              />
-            ))}
-          </View>
-
-          {isToday && nowTop >= 0 && nowTop <= 24 * HOUR_HEIGHT && (
-            <View pointerEvents="none" style={[styles.nowLine, { top: nowTop }]}>
-              <View style={[styles.nowDot, { backgroundColor: theme.primary }]} />
-              <View style={[styles.nowRule, { backgroundColor: theme.primary }]} />
-            </View>
-          )}
+          ))}
         </View>
-      </FadingScroll>
+
+        {isToday && nowTop >= 0 && nowTop <= DAY_HEIGHT && (
+          <View pointerEvents="none" style={[styles.nowLine, { top: nowTop }]}>
+            <View style={[styles.nowDot, { backgroundColor: theme.primary }]} />
+            <View style={[styles.nowRule, { backgroundColor: theme.primary }]} />
+          </View>
+        )}
+      </View>
     </View>
   );
-}
+});
 
 /**
  * Una tarjeta del calendario. Se toca (las pesadas se pueden borrar) y se mueve arrastrando el
@@ -320,10 +445,14 @@ function EventCard({
   const minutes = dragging ? dragMinutes(dragDy, event, dayStart) : 0;
   const start = new Date(event.start.getTime() + minutes * MINUTE_MS);
 
-  const top = ((event.start.getTime() - dayStart) / HOUR_MS) * HOUR_HEIGHT + (minutes / 60) * HOUR_HEIGHT;
-  const height = Math.max(
-    MIN_HEIGHT[event.kind],
-    ((event.end.getTime() - event.start.getTime()) / HOUR_MS) * HOUR_HEIGHT - 2,
+  // Una tarjeta no sale por el final de su día (la parte que sobresaldría quedaría tapada por el día siguiente).
+  const top = Math.min(
+    ((event.start.getTime() - dayStart) / HOUR_MS) * HOUR_HEIGHT + (minutes / 60) * HOUR_HEIGHT,
+    DAY_HEIGHT - CARD_MIN_VISIBLE,
+  );
+  const height = Math.min(
+    Math.max(MIN_HEIGHT[event.kind], ((event.end.getTime() - event.start.getTime()) / HOUR_MS) * HOUR_HEIGHT - 2),
+    DAY_HEIGHT - Math.max(0, top),
   );
   // Salmón para lo que entra (comidas) y azul cielo para lo que se gasta (entrenos).
   const background =
@@ -379,6 +508,7 @@ function EventCard({
       )}
       {canMove && (
         <View
+          accessibilityRole="button"
           accessibilityLabel={`Mover ${event.title}`}
           {...responder.panHandlers}
           // `touch-action: none` en el asa: el navegador no hace scroll mientras se arrastra.
@@ -393,18 +523,19 @@ function EventCard({
 }
 
 const styles = StyleSheet.create({
-  // Ocupa todo el alto de la pantalla (también por detrás del menú): las horas hacen scroll dentro de él.
-  wrapper: { flex: 1 },
+  list: { flex: 1 },
+  // Un día entero: alto fijo y los márgenes laterales de la pantalla.
+  day: { height: DAY_HEIGHT, paddingHorizontal: Spacing.four },
+  grid: { flex: 1 },
   empty: {
     position: 'absolute',
-    top: Spacing.two,
     left: LABEL_WIDTH,
     right: 0,
     zIndex: 1,
     textAlign: 'center',
     ...({ pointerEvents: 'none' } as object),
   },
-  // Marca discreta: una línea fina a todo lo ancho con una etiqueta pequeña, centrada, encima.
+  // Una fila del principio del día: la tarjeta «Día X» o una marca, centrada sobre la zona de eventos.
   mark: {
     position: 'absolute',
     left: LABEL_WIDTH,
@@ -424,8 +555,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Spacing.four },
+  // La tarjeta «Día X»: pequeña, con el fondo de las tarjetas de la app.
+  dayCard: {
+    maxWidth: '92%',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.half + 1,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    overflow: 'hidden',
+    fontSize: 13,
+    lineHeight: 18,
+  },
   hourRow: {
     position: 'absolute',
     left: 0,
@@ -434,6 +574,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   hourLabel: { width: LABEL_WIDTH, marginTop: -9 },
+  // La primera hora del día queda al borde: su etiqueta no puede sobresalir hacia el día anterior.
+  firstHourLabel: { marginTop: 1 },
   hourLine: { flex: 1, height: 1 },
   events: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
   chart: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },

@@ -58,51 +58,15 @@ export function startOfDay(iso: string): Date {
   return new Date(y, m - 1, d, 0, 0, 0, 0);
 }
 
-// --- El día del usuario. Por defecto empieza a las 00:00; con el ajuste «el día empieza a las…» (en minutos
-// desde las 00:00, p. ej. 600 = 10:00) cada día va de esa hora a la misma del día siguiente: lo que se hace a
-// las 02:00 cuenta en el día que empezó la tarde anterior.
-
-/** Minutos desde las 00:00 de un "HH:MM". */
-export function minutesOfTime(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return h * 60 + m;
-}
-
-/** "HH:MM" de unos minutos desde las 00:00. */
-export function timeOfMinutes(minutes: number): string {
-  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
-}
-
-/** El momento en que empieza el día "AAAA-MM-DD" del usuario, en la hora del dispositivo. */
-export function dayStart(iso: string, startMinutes: number): Date {
-  const date = startOfDay(iso);
-  date.setHours(Math.floor(startMinutes / 60), startMinutes % 60);
-  return date;
-}
-
-/** A qué día del usuario ("AAAA-MM-DD") pertenece un momento. */
-export function dayOf(date: Date, startMinutes: number): string {
-  const shifted = new Date(date);
-  shifted.setMinutes(shifted.getMinutes() - startMinutes);
-  return isoOf(shifted);
-}
-
-/** El día del usuario en el que estamos ahora: de madrugada, aún es el que empezó ayer. */
-export function currentDay(startMinutes: number): string {
-  return dayOf(new Date(), startMinutes);
-}
-
-/** Un "HH:MM" dentro del día "AAAA-MM-DD" del usuario: antes de la hora de inicio, ya es de la madrugada siguiente. */
-export function timeInDay(iso: string, time: string, startMinutes: number): Date {
-  const [h, m] = time.split(':').map(Number);
-  const date = startOfDay(minutesOfTime(time) < startMinutes ? addDays(iso, 1) : iso);
-  date.setHours(h, m, 0, 0);
-  return date;
-}
-
 /** "08:30". */
 export function formatTime(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** "Mié 11": día de la semana abreviado y número, para decir de qué día se habla en poco sitio. */
+export function formatShortDay(iso: string): string {
+  const text = parseISO(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }).replace('.', '');
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** "noviembre de 2026". */

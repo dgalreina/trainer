@@ -45,8 +45,10 @@ interface ScreenProps {
   children: ReactNode | ((topInset: number) => ReactNode);
 }
 
-/** Alto aproximado de lo que flota arriba en una pantalla a pantalla completa, hasta que se mide. */
-const FLOATING_HEADER_ESTIMATE = (Platform.OS === 'web' ? WebTabBarInset : Spacing.four) + 44;
+/** Hueco que ocupa la barra de pestañas flotante arriba: lo mínimo que flota sobre una pantalla a pantalla completa. */
+const TAB_BAR_INSET = Platform.OS === 'web' ? WebTabBarInset : Spacing.four;
+/** Alto aproximado de la cabecera flotante (barra de pestañas + una fila), hasta que se mide. */
+const FLOATING_HEADER_ESTIMATE = TAB_BAR_INSET + 44;
 
 // Hueco que se deja bajo el contenido para que la barra fija no tape lo último.
 const FOOTER_SPACE = 200;
@@ -71,11 +73,12 @@ export function Screen({
   noWaves,
   children,
 }: ScreenProps) {
-  // Hasta medir la cabecera se parte de una estimación (barra de pestañas + fila de fecha), para que el
-  // primer pintado no salte cuando llega la medida real.
+  // Hasta medir la cabecera se parte de una estimación, para que el primer pintado no salte cuando llega la medida real.
   const [overlayHeight, setOverlayHeight] = useState(fullBleed ? FLOATING_HEADER_ESTIMATE : 0);
+  // Sin cabecera propia, lo único que flota arriba es la barra de pestañas.
+  const floatsHeader = Boolean(title || action || onBack || fixedTop);
   // Quien no pide el alto de lo que flota arriba recibe el contenido tal cual.
-  const content = typeof children === 'function' ? children(overlayHeight) : children;
+  const content = typeof children === 'function' ? children(floatsHeader ? overlayHeight : TAB_BAR_INSET) : children;
   const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 

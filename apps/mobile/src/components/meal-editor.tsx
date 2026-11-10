@@ -9,9 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { TimeField } from '@/components/time-field';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatDay, timeInDay } from '@/lib/dates';
+import { formatDay, startOfDay } from '@/lib/dates';
 import { useFoods } from '@/lib/foods';
-import { useSettings } from '@/lib/settings';
 
 export interface MealForm {
   name: string;
@@ -53,7 +52,6 @@ export function MealEditor({
 }) {
   const theme = useTheme();
   const { foods } = useFoods();
-  const { dayStartMinutes } = useSettings();
   const byId = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
 
   const [name, setName] = useState(initial.name);
@@ -88,8 +86,8 @@ export function MealEditor({
     const match = /^(\d{2}):(\d{2})$/.exec(time);
     if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) return setError('Elige una hora válida');
 
-    // La hora se coloca dentro del día del usuario: antes de su hora de inicio, es de la madrugada siguiente.
-    const date = timeInDay(day, time, dayStartMinutes);
+    const date = startOfDay(day);
+    date.setHours(Number(match[1]), Number(match[2]));
 
     setSaving(true);
     setError(null);

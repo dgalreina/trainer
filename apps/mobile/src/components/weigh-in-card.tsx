@@ -6,9 +6,8 @@ import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { TimeField } from '@/components/time-field';
 import { Spacing } from '@/constants/theme';
-import { formatDay, timeInDay } from '@/lib/dates';
+import { formatDay, startOfDay } from '@/lib/dates';
 import { useMe } from '@/lib/me';
-import { useSettings } from '@/lib/settings';
 
 const MIN_KG = 20;
 const MAX_KG = 400;
@@ -27,7 +26,6 @@ export function WeighInSheet({
   onClose: () => void;
 }) {
   const { addWeight } = useMe();
-  const { dayStartMinutes } = useSettings();
   const [kg, setKg] = useState('');
   const [time, setTime] = useState(initialTime);
   const [saving, setSaving] = useState(false);
@@ -52,8 +50,8 @@ export function WeighInSheet({
       return setError('Elige una hora válida');
     }
 
-    // La hora se coloca dentro del día del usuario: antes de su hora de inicio, es de la madrugada siguiente.
-    const moment = timeInDay(day, time, dayStartMinutes);
+    const moment = startOfDay(day);
+    moment.setHours(Number(match[1]), Number(match[2]));
 
     setSaving(true);
     setError(null);
