@@ -29,11 +29,17 @@ export function FadingScroll({
   children,
   scrollRef,
   mask = false,
+  fadeTop = FADE_HEIGHT,
+  fadeBottom = true,
   ...props
 }: ScrollViewProps & {
   children: ReactNode;
   scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
   mask?: boolean;
+  /** Con `mask`: alto (px) del difuminado de arriba. Más alto = más suave (p. ej. el de una cabecera que flota encima). */
+  fadeTop?: number;
+  /** false: sin difuminado abajo (p. ej. si lo de debajo es una tarjeta fija y el contenido debe cortarse limpio contra ella). */
+  fadeBottom?: boolean;
 }) {
   const theme = useTheme();
   const [top, setTop] = useState(false);
@@ -65,7 +71,7 @@ export function FadingScroll({
   const masked = mask && Platform.OS === 'web';
 
   return (
-    <View style={[styles.root, masked ? maskStyle(top, bottom) : null]}>
+    <View style={[styles.root, masked ? maskStyle(top, bottom && fadeBottom, fadeTop) : null]}>
       <ScrollView
         {...props}
         ref={scrollRef}
@@ -77,14 +83,14 @@ export function FadingScroll({
         {children}
       </ScrollView>
       {!masked && <Fade edge="top" visible={top} color={theme.background} />}
-      {!masked && <Fade edge="bottom" visible={bottom} color={theme.background} />}
+      {!masked && fadeBottom && <Fade edge="bottom" visible={bottom} color={theme.background} />}
     </View>
   );
 }
 
 /** Máscara CSS: transparente en los bordes con más contenido detrás, opaca en el resto. */
-function maskStyle(top: boolean, bottom: boolean) {
-  const from = top ? `transparent 0, #000 ${FADE_HEIGHT}px` : '#000 0';
+function maskStyle(top: boolean, bottom: boolean, fadeTop: number) {
+  const from = top ? `transparent 0, #000 ${fadeTop}px` : '#000 0';
   const to = bottom ? `#000 calc(100% - ${FADE_HEIGHT}px), transparent 100%` : '#000 100%';
   const image = `linear-gradient(to bottom, ${from}, ${to})`;
   return { maskImage: image, WebkitMaskImage: image } as object;

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,7 +7,7 @@ import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
-import { Waves } from '@/components/waves';
+import { Waves, WAVES_HEIGHT } from '@/components/waves';
 import {
   BottomTabInset,
   MaxContentWidth,
@@ -33,8 +33,20 @@ interface ScreenProps {
   fixedTop?: ReactNode;
   /** Barra fija abajo (por ejemplo, el botón Finalizar de un entreno). */
   footer?: ReactNode;
-  children: ReactNode;
+  /**
+   * Pantalla a pantalla completa: el contenido ocupa todo el alto, también por detrás de la cabecera y de
+   * la barra de pestañas, y la cabecera (`fixedTop`) flota encima. El contenido recibe el alto de lo que
+   * flota arriba (para dejar ese hueco al principio) si `children` es una función. `scroll` y `fade` no
+   * se usan en este modo (el contenido gestiona su propio scroll). En nativo respeta las zonas seguras.
+   */
+  fullBleed?: boolean;
+  /** Alto de las ondas de la cabecera donde las dibuja la propia pantalla (nativo). */
+  wavesHeight?: number;
+  children: ReactNode | ((topInset: number) => ReactNode);
 }
+
+/** Alto aproximado de lo que flota arriba en una pantalla a pantalla completa, hasta que se mide. */
+const FLOATING_HEADER_ESTIMATE = (Platform.OS === 'web' ? WebTabBarInset : Spacing.four) + 44;
 
 // Hueco que se deja bajo el contenido para que la barra fija no tape lo último.
 const FOOTER_SPACE = 200;
@@ -45,7 +57,25 @@ const FOOTER_SPACE = 200;
  * mientras ellas siguen ondeando); en el resto (móvil nativo, pantallas fuera de las
  * pestañas) las pone cada pantalla.
  */
-export function Screen({ title, subtitle, action, onBack, scroll = true, fade, stacked, footer, fixedTop, children }: ScreenProps) {
+export function Screen({
+  title,
+  subtitle,
+  action,
+  onBack,
+  scroll = true,
+  fade,
+  stacked,
+  footer,
+  fixedTop,
+  fullBleed,
+  wavesHeight = WAVES_HEIGHT,
+  children,
+}: ScreenProps) {
+  // Hasta medir la cabecera se parte de una estimación (barra de pestañas + fila de fecha), para que el
+  // primer pintado no salte cuando llega la medida real.
+  const [overlayHeight, setOverlayHeight] = useState(fullBleed ? FLOATING_HEADER_ESTIMATE : 0);
+  // Quien no pide el alto de lo que flota arriba recibe el contenido tal cual.
+  const content = typeof children === 'function' ? children(overlayHeight) : children;
   const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
@@ -91,25 +121,38 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, fade, s
 
   const body = (
     <SafeAreaView style={styles.safe}>
-      {hasFixed ? (
+      {hasFixed && !fullBleed ? (
         <View style={fixedStyle}>
           {header}
           {fixedTop}
         </View>
       ) : null}
-      {scroll && fade ? (
+      {fullBleed ? (
+        <>
+          <View style={[styles.fill, { paddingBottom: bottomInset }]}>{content}</View>
+          {hasFixed ? (
+            <View
+              pointerEvents="box-none"
+              style={[fixedStyle, styles.overlay]}
+              onLayout={(e) => setOverlayHeight(e.nativeEvent.layout.height)}>
+              {header}
+              {fixedTop}
+            </View>
+          ) : null}
+        </>
+      ) : scroll && fade ? (
         <FadingScroll mask keyboardShouldPersistTaps="handled" contentContainerStyle={contentStyle}>
-          {children}
+          {content}
         </FadingScroll>
       ) : scroll ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={contentStyle}>
-          {children}
+          {content}
         </ScrollView>
       ) : (
-        <View style={[contentStyle, styles.fill]}>{children}</View>
+        <View style={[contentStyle, styles.fill]}>{content}</View>
       )}
       {footer ? (
         <View style={[styles.footer, { backgroundColor: theme.background }]}>{footer}</View>
@@ -122,7 +165,7 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, fade, s
 
   return (
     <ThemedView style={styles.root}>
-      <Waves height={230} />
+      <Waves height={wavesHeight} />
       {body}
     </ThemedView>
   );
@@ -132,6 +175,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center' },
   safe: { flex: 1, width: '100%', maxWidth: MaxContentWidth },
   fill: { flex: 1 },
+  // La cabecera de una pantalla a pantalla completa flota encima del contenido.
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
   footer: {
     position: 'absolute',
     left: 0,

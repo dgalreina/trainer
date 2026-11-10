@@ -32,7 +32,8 @@ const EDGE_RESISTANCE = 0.25;
 /**
  * Las cinco pestañas colocadas en fila y una al lado de la otra. Cambiar de pestaña
  * (tocando la barra o arrastrando el dedo) desplaza la fila: sale la de antes y entra la
- * nueva a la vez. Las ondas no forman parte de esto: están detrás y no se mueven.
+ * nueva a la vez. Las ondas no forman parte de esto: están detrás y no se deslizan (solo cambian de alto
+ * en las pestañas con `compactWaves`, ver `app/(tabs)/_layout.tsx`).
  */
 export function TabsPager() {
   const pathname = usePathname();

@@ -30,6 +30,8 @@ const SNAP_MINUTES = 5;
 const DAY_MINUTES = 24 * 60;
 const HANDLE_WIDTH = 30;
 const EDIT_WIDTH = 34;
+/** Alto de cada marca del principio del día. */
+const MARK_HEIGHT = 22;
 /** Las tarjetas dejan ver las gráficas de detrás: opacidad de su fondo. */
 const CARD_OPACITY = 0.82;
 
@@ -95,8 +97,14 @@ export function DayTimeline({
   onPressSlot,
   energy,
   startMinutes = 0,
+  topInset = 0,
+  marks,
 }: {
   day: string;
+  /** Alto (px) de lo que flota por encima (barra de pestañas y fecha): el día empieza justo debajo y, al hacer scroll, pasa por detrás difuminándose. */
+  topInset?: number;
+  /** Marcas discretas al principio del día («Comienza la dieta…»): una línea fina con una etiqueta pequeña en el centro. */
+  marks?: string[];
   events: DayEvent[];
   /** A qué hora empieza el día del usuario, en minutos desde las 00:00: el día va de ahí a la misma hora del siguiente. */
   startMinutes?: number;
@@ -161,14 +169,29 @@ export function DayTimeline({
 
   return (
     <View style={styles.wrapper}>
-      {events.length === 0 && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.empty}>
-          Nada registrado este día. Toca una hora para añadir algo.
-        </ThemedText>
-      )}
-      {/* Difuminado arriba y abajo cuando hay más por ver; por máscara, para que valga sobre las gráficas y las ondas. */}
-      <FadingScroll mask scrollRef={scroll} style={styles.scroll} nestedScrollEnabled>
+      {/* Difuminado solo arriba, y largo (todo lo que flota encima): el día se desvanece al pasar por detrás del menú. Abajo se corta limpio contra el resumen. Por máscara, para que valga sobre las gráficas y las ondas. */}
+      <FadingScroll
+        mask
+        fadeTop={topInset > 0 ? topInset : undefined}
+        fadeBottom={false}
+        scrollRef={scroll}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled>
+        {/* Hueco de lo que flota encima: con el scroll arriba del todo, el día empieza justo debajo. */}
+        <View style={{ height: topInset }} />
         <View style={{ height: 24 * HOUR_HEIGHT }}>
+          {/* Sin nada registrado, un aviso al principio del día (hace scroll con él; no capta toques). */}
+          {events.length === 0 && (
+            <ThemedText
+              type="small"
+              themeColor="textSecondary"
+              // Debajo de las marcas del principio del día, si las hay.
+              style={[styles.empty, { top: Spacing.two + (marks?.length ?? 0) * MARK_HEIGHT }]}>
+              Nada registrado este día. Toca una hora para añadir algo.
+            </ThemedText>
+          )}
+
           {/* Gráficas del día, por debajo de todo lo demás. */}
           <View pointerEvents="none" style={styles.chart}>
             {energy && areaWidth > 0 ? (
@@ -182,6 +205,19 @@ export function DayTimeline({
                 {mark.label}
               </ThemedText>
               <View style={[styles.hourLine, { backgroundColor: theme.backgroundSelected }]} />
+            </View>
+          ))}
+
+          {marks?.map((label, i) => (
+            <View key={label} pointerEvents="none" style={[styles.mark, { top: i * MARK_HEIGHT }]}>
+              <View style={[styles.markLine, { backgroundColor: theme.primary }]} />
+              <ThemedText
+                type="small"
+                themeColor="primaryText"
+                numberOfLines={1}
+                style={[styles.markLabel, { backgroundColor: theme.background, borderColor: theme.primary }]}>
+                {label}
+              </ThemedText>
             </View>
           ))}
 
@@ -354,10 +390,39 @@ function EventCard({
 }
 
 const styles = StyleSheet.create({
-  // Ocupa el hueco que deja la pantalla: las horas hacen scroll dentro de él.
-  wrapper: { flex: 1, gap: Spacing.two },
-  empty: { textAlign: 'center' },
+  // Ocupa todo el alto de la pantalla (también por detrás del menú): las horas hacen scroll dentro de él.
+  wrapper: { flex: 1 },
+  empty: {
+    position: 'absolute',
+    top: Spacing.two,
+    left: LABEL_WIDTH,
+    right: 0,
+    zIndex: 1,
+    textAlign: 'center',
+    ...({ pointerEvents: 'none' } as object),
+  },
+  // Marca discreta: una línea fina a todo lo ancho con una etiqueta pequeña, centrada, encima.
+  mark: {
+    position: 'absolute',
+    left: LABEL_WIDTH,
+    right: 0,
+    height: MARK_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markLine: { position: 'absolute', left: 0, right: 0, top: MARK_HEIGHT / 2, height: 1, opacity: 0.45 },
+  markLabel: {
+    maxWidth: '92%',
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
+    fontSize: 12,
+    lineHeight: 16,
+  },
   scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: Spacing.four },
   hourRow: {
     position: 'absolute',
     left: 0,

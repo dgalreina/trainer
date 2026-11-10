@@ -1,18 +1,23 @@
 import { calculateTargets, loggedMacros, sumMacros, type DayEnergy, type MealLog } from '@trainer/shared';
+import { useState } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
-import { StyleSheet } from 'react-native';
-
+import { BalanceBar } from '@/components/balance-bar';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { currentDay, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import type { DayEvent } from '@/lib/week-events';
 
 /**
- * Lo comido en el día frente al objetivo. Cuenta lo registrado y también las comidas de la dieta
- * que siguen en pie ese día: se da por hecho que se comen, salvo que se editen o se quiten.
+ * Resumen del día, fijo abajo: una sola línea con lo comido y una flecha que lo abre para leer todo
+ * (objetivo, gasto y balance), y siempre debajo una barra que dice cómo va el día: en déficit, en
+ * mantenimiento o en superávit. Cuenta lo registrado y también las comidas de la dieta que siguen en
+ * pie ese día: se da por hecho que se comen, salvo que se editen o se quiten.
  */
 export function MealLogSection({
   day,
@@ -27,10 +32,12 @@ export function MealLogSection({
   /** Gasto, consumo y balance estimados del día, los de las gráficas. */
   energy?: DayEnergy | null;
 }) {
+  const theme = useTheme();
   const { dietOn, dayStartMinutes } = useSettings();
   // La dieta que rige ese día (puede no ser la de hoy si se ha cambiado).
   const activeDiet = dietOn(day);
   const { profile, latestWeight, loading } = useMe();
+  const [open, setOpen] = useState(false);
   // Hoy y los días futuros no han acabado: el gasto y el balance son una previsión a las 24:00.
   const projected = day >= currentDay(dayStartMinutes);
 
@@ -43,36 +50,70 @@ export function MealLogSection({
   });
 
   return (
-    // Resumen compacto: sin título y con letra pequeña, para quitar el menor espacio posible al calendario.
+    // Compacto: quita el menor espacio posible al calendario.
     <Card tone="primarySoft" style={styles.card}>
-      <ThemedText type="smallBold">
-        {eaten.kcal} kcal · P {eaten.protein} · H {eaten.carbs} · G {eaten.fat}
-      </ThemedText>
-      {targets ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          Objetivo: {targets.kcal} kcal ·{' '}
-          {eaten.kcal <= targets.kcal
-            ? `te quedan ${targets.kcal - eaten.kcal}`
-            : `te pasas ${eaten.kcal - targets.kcal}`}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={open ? 'Ocultar el detalle del día' : 'Ver el detalle del día'}
+        onPress={() => setOpen((value) => !value)}
+        hitSlop={8}
+        style={styles.header}>
+        <ThemedText type="smallBold" numberOfLines={1} style={styles.main}>
+          {eaten.kcal} kcal · P {eaten.protein} · H {eaten.carbs} · G {eaten.fat}
         </ThemedText>
-      ) : null}
-      {energy?.hasBurn ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {projected ? 'Gasto previsto' : 'Gasto estimado'}: {energy.totals.burn} kcal (basal {energy.totals.basal}
-          {energy.totals.workouts > 0 ? ` + entrenos ${energy.totals.workouts}` : ''}) ·{' '}
-          {projected ? 'Balance previsto a las 24:00' : 'Balance'}:{' '}
-          {energy.totals.balance > 0 ? '+' : ''}
-          {energy.totals.balance} kcal
-        </ThemedText>
-      ) : loading ? null : (
+        {/* La flecha mira a la derecha con el resumen cerrado y hacia abajo con él abierto. */}
+        <Svg
+          width={18}
+          height={18}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={theme.primaryText}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
+          <Path d="M9 6l6 6-6 6" />
+        </Svg>
+      </Pressable>
+
+      {open && (
+        <>
+          {targets ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Objetivo: {targets.kcal} kcal ·{' '}
+              {eaten.kcal <= targets.kcal
+                ? `te quedan ${targets.kcal - eaten.kcal}`
+                : `te pasas ${eaten.kcal - targets.kcal}`}
+            </ThemedText>
+          ) : null}
+          {energy?.hasBurn ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {projected ? 'Gasto previsto' : 'Gasto estimado'}: {energy.totals.burn} kcal (basal {energy.totals.basal}
+              {energy.totals.workouts > 0 ? ` + entrenos ${energy.totals.workouts}` : ''}) ·{' '}
+              {projected ? 'Balance previsto a las 24:00' : 'Balance'}: {energy.totals.balance > 0 ? '+' : ''}
+              {energy.totals.balance} kcal
+            </ThemedText>
+          ) : null}
+        </>
+      )}
+
+      {/* Sin gasto no hay barra: se dice por qué, también con la tarjeta cerrada. */}
+      {!energy?.hasBurn && !loading ? (
         <ThemedText type="small" themeColor="textSecondary">
           Completa «Mis datos» (y registra tu peso) para ver el gasto y el balance del día.
         </ThemedText>
-      )}
+      ) : null}
+
+      {energy?.hasBurn ? (
+        <BalanceBar balance={energy.totals.balance} burn={energy.totals.burn} projected={projected} />
+      ) : null}
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: Spacing.two + 4, gap: Spacing.half },
+  card: { padding: Spacing.two + 4, gap: Spacing.two },
+  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  main: { flex: 1 },
 });

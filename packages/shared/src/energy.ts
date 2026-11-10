@@ -130,3 +130,22 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals }: DayEnerg
     },
   };
 }
+
+/** Cómo va el día respecto a lo que se gasta: en déficit, en mantenimiento o en superávit. */
+export type BalanceZone = "deficit" | "maintenance" | "surplus";
+
+/** Mínimo de la banda de mantenimiento (kcal): por debajo de esto no se habla de déficit ni de superávit. */
+export const MAINTENANCE_MIN_BAND = 100;
+/** Fracción del gasto del día que se tolera como mantenimiento (±5 %). */
+export const MAINTENANCE_BAND_FRACTION = 0.05;
+
+/** Media anchura (kcal) de la banda de mantenimiento: ±5 % del gasto del día, y nunca menos de 100. */
+export function maintenanceBand(burn: number): number {
+  return Math.max(MAINTENANCE_MIN_BAND, Math.round(burn * MAINTENANCE_BAND_FRACTION));
+}
+
+/** En qué zona está un balance (consumo − gasto) dado el gasto del día. */
+export function balanceZone(balance: number, burn: number): BalanceZone {
+  const band = maintenanceBand(burn);
+  return balance < -band ? "deficit" : balance > band ? "surplus" : "maintenance";
+}

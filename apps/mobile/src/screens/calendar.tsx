@@ -10,12 +10,14 @@ import { MealLogSection } from '@/components/meal-log-section';
 import { Screen } from '@/components/screen';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
+import { WAVES_HEIGHT_COMPACT } from '@/components/waves';
 import { WeighInSheet } from '@/components/weigh-in-card';
 import { Spacing } from '@/constants/theme';
 import { confirmAction } from '@/lib/confirm';
 import { addDays, currentDay, dayStart, formatLongDay, formatTime, mondayOf, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
+import { useTrainings } from '@/lib/trainings';
 import { useWeekEvents, type DayEvent } from '@/lib/week-events';
 
 /** Qué se está haciendo con una comida: la que se edita (o ninguna, si es nueva) y su formulario. */
@@ -106,10 +108,20 @@ export function CalendarScreen() {
   const [meal, setMeal] = useState<MealEditing | null>(null);
   const [weighAt, setWeighAt] = useState<string | null>(null);
 
-  // Avisos del día: la dieta rige sin fin desde que se activa.
-  const dietChange = settings.dietSchedule.find((e) => e.from === day);
-  const startingDiet = dietChange?.dietId ? dietOn(day) : null;
-  const stoppedDiet = dietChange && !dietChange.dietId;
+  // Marcas discretas al principio del día: cuándo empieza una dieta (rige sin fin desde que se activa) o un
+  // entrenamiento. Solo se guarda el día, no la hora, así que van al principio.
+  const { trainings } = useTrainings();
+  const marks = useMemo(() => {
+    const list: string[] = [];
+    if (settings.dietSchedule.some((e) => e.from === day && e.dietId)) {
+      const diet = dietOn(day);
+      if (diet) list.push(`Comienza la dieta «${diet.name}»`);
+    }
+    for (const training of trainings) {
+      if (training.startDate === day) list.push(`Comienza el entrenamiento «${training.name}»`);
+    }
+    return list;
+  }, [settings.dietSchedule, dietOn, trainings, day]);
 
   async function onPressEvent(event: DayEvent) {
     // De momento solo las pesadas se pueden borrar desde aquí; los entrenos se verán en un historial.
@@ -172,7 +184,8 @@ export function CalendarScreen() {
 
   return (
     <Screen
-      scroll={false}
+      fullBleed
+      wavesHeight={WAVES_HEIGHT_COMPACT}
       fixedTop={
         <>
           <View style={styles.dayNav}>
@@ -200,102 +213,101 @@ export function CalendarScreen() {
               </ThemedText>
             </Pressable>
           </View>
-          {day !== today && <LinkButton centered title="Ir a hoy" onPress={() => setPicked(null)} />}
+          {/* Siempre ocupa su sitio (invisible en hoy): si apareciera y desapareciera, la cabecera cambiaría de alto y el día daría un salto. */}
+          <View style={day === today ? styles.hidden : undefined} pointerEvents={day === today ? 'none' : 'auto'}>
+            <LinkButton centered title="Ir a hoy" onPress={() => setPicked(null)} />
+          </View>
+          <ErrorText message={error ?? loadError} />
         </>
       }>
-      <ErrorText message={error ?? loadError} />
-      {startingDiet && (
-        <ThemedText type="small" themeColor="primaryText" style={styles.notice}>
-          {day === today ? 'Desde hoy' : 'Desde este día'} sigues la dieta «{startingDiet.name}».
-        </ThemedText>
-      )}
-      {stoppedDiet && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.notice}>
-          {day === today ? 'Desde hoy' : 'Desde este día'} no sigues ninguna dieta.
-        </ThemedText>
-      )}
-      <DayTimeline
-        day={day}
-        events={dayEvents}
-        onPressEvent={onPressEvent}
-        onEditEvent={onEditEvent}
-        onMoveEvent={moveEvent}
-        onPressSlot={setSlot}
-        energy={energy}
-        startMinutes={dayStartMinutes}
-      />
-      <View style={styles.bottom}>
-        <MealLogSection day={day} logs={mealsOf(day)} planned={planned} energy={energy} />
-      </View>
+      {(topInset) => (
+        <>
+          <DayTimeline
+            day={day}
+            events={dayEvents}
+            onPressEvent={onPressEvent}
+            onEditEvent={onEditEvent}
+            onMoveEvent={moveEvent}
+            onPressSlot={setSlot}
+            energy={energy}
+            startMinutes={dayStartMinutes}
+            topInset={topInset}
+            marks={marks}
+          />
+          <View style={styles.bottom}>
+            <MealLogSection day={day} logs={mealsOf(day)} planned={planned} energy={energy} />
+          </View>
 
-      {/* Añadir algo a la hora tocada. */}
-      <Sheet visible={slot !== null} onClose={closeSlot}>
-        {slot && !choosingWorkout && (
-          <>
-            <ThemedText type="smallBold">Añadir a las {formatTime(slot)}</ThemedText>
-            <Button
-              variant="secondary"
-              title="Comida"
-              onPress={() => {
-                setMeal({ target: null, form: { name: '', time: formatTime(slot), items: [] } });
-                closeSlot();
-              }}
-            />
-            <Button
-              variant="secondary"
-              title="Peso"
-              onPress={() => {
-                setWeighAt(formatTime(slot));
-                closeSlot();
-              }}
-            />
-            <Button variant="secondary" title="Entrenamiento" onPress={() => setChoosingWorkout(true)} />
-            <LinkButton centered title="Cancelar" onPress={closeSlot} />
-          </>
-        )}
-        {slot && choosingWorkout && (
-          <>
-            <ThemedText type="smallBold">¿Qué entrenas a las {formatTime(slot)}?</ThemedText>
-            {activeTraining && activeTraining.routines.length > 0 ? (
-              activeTraining.routines.map((routine) => (
+          {/* Añadir algo a la hora tocada. */}
+          <Sheet visible={slot !== null} onClose={closeSlot}>
+            {slot && !choosingWorkout && (
+              <>
+                <ThemedText type="smallBold">Añadir a las {formatTime(slot)}</ThemedText>
                 <Button
-                  key={routine.id}
                   variant="secondary"
-                  title={routineTitle(activeTraining.routines, routine.id)}
-                  onPress={() => startWorkout(activeTraining.id, routine.id)}
+                  title="Comida"
+                  onPress={() => {
+                    setMeal({ target: null, form: { name: '', time: formatTime(slot), items: [] } });
+                    closeSlot();
+                  }}
                 />
-              ))
-            ) : (
-              <ThemedText type="small" themeColor="textSecondary">
-                No tienes un entrenamiento actual con rutinas. Elígelo en Entrenos.
-              </ThemedText>
+                <Button
+                  variant="secondary"
+                  title="Peso"
+                  onPress={() => {
+                    setWeighAt(formatTime(slot));
+                    closeSlot();
+                  }}
+                />
+                <Button variant="secondary" title="Entrenamiento" onPress={() => setChoosingWorkout(true)} />
+                <LinkButton centered title="Cancelar" onPress={closeSlot} />
+              </>
             )}
-            <LinkButton centered title="Atrás" onPress={() => setChoosingWorkout(false)} />
-          </>
-        )}
-      </Sheet>
+            {slot && choosingWorkout && (
+              <>
+                <ThemedText type="smallBold">¿Qué entrenas a las {formatTime(slot)}?</ThemedText>
+                {activeTraining && activeTraining.routines.length > 0 ? (
+                  activeTraining.routines.map((routine) => (
+                    <Button
+                      key={routine.id}
+                      variant="secondary"
+                      title={routineTitle(activeTraining.routines, routine.id)}
+                      onPress={() => startWorkout(activeTraining.id, routine.id)}
+                    />
+                  ))
+                ) : (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    No tienes un entrenamiento actual con rutinas. Elígelo en Entrenos.
+                  </ThemedText>
+                )}
+                <LinkButton centered title="Atrás" onPress={() => setChoosingWorkout(false)} />
+              </>
+            )}
+          </Sheet>
 
-      <MealEditor
-        visible={meal !== null}
-        day={day}
-        initial={meal?.form ?? { name: '', time: '12:00', items: [] }}
-        diet={dietOn(day)}
-        canDelete={meal?.target != null}
-        onSave={onSaveMeal}
-        onDelete={onDeleteMeal}
-        onClose={() => setMeal(null)}
-      />
+          <MealEditor
+            visible={meal !== null}
+            day={day}
+            initial={meal?.form ?? { name: '', time: '12:00', items: [] }}
+            diet={dietOn(day)}
+            canDelete={meal?.target != null}
+            onSave={onSaveMeal}
+            onDelete={onDeleteMeal}
+            onClose={() => setMeal(null)}
+          />
 
-      <WeighInSheet visible={weighAt !== null} day={day} time={weighAt ?? '08:00'} onClose={() => setWeighAt(null)} />
+          <WeighInSheet visible={weighAt !== null} day={day} time={weighAt ?? '08:00'} onClose={() => setWeighAt(null)} />
+        </>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  bottom: { flexGrow: 0, flexShrink: 0 },
+  bottom: { flexGrow: 0, flexShrink: 0, paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
+  hidden: { opacity: 0 },
   dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dayTitle: { flex: 1, alignItems: 'center' },
   dayText: { textAlign: 'center' },
-  notice: { textAlign: 'center' },
   arrow: { paddingHorizontal: Spacing.three, lineHeight: 36 },
 });
