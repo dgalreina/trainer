@@ -3,6 +3,7 @@ import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BACK_BUTTON_SIZE, BackButton } from '@/components/back-button';
+import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,6 +25,8 @@ interface ScreenProps {
   onBack?: () => void;
   /** false si el contenido gestiona su propio scroll (una FlatList). */
   scroll?: boolean;
+  /** Con scroll, difumina el contenido en los bordes que tienen más por ver (también sobre las ondas). */
+  fade?: boolean;
   /** true en pantallas fuera de las pestañas: sin hueco para la barra inferior. */
   stacked?: boolean;
   /** Contenido fijo arriba, bajo la barra de pestañas: no se desplaza con el resto. */
@@ -42,7 +45,7 @@ const FOOTER_SPACE = 200;
  * mientras ellas siguen ondeando); en el resto (móvil nativo, pantallas fuera de las
  * pestañas) las pone cada pantalla.
  */
-export function Screen({ title, subtitle, action, onBack, scroll = true, stacked, footer, fixedTop, children }: ScreenProps) {
+export function Screen({ title, subtitle, action, onBack, scroll = true, fade, stacked, footer, fixedTop, children }: ScreenProps) {
   const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
@@ -94,7 +97,11 @@ export function Screen({ title, subtitle, action, onBack, scroll = true, stacked
           {fixedTop}
         </View>
       ) : null}
-      {scroll ? (
+      {scroll && fade ? (
+        <FadingScroll mask keyboardShouldPersistTaps="handled" contentContainerStyle={contentStyle}>
+          {children}
+        </FadingScroll>
+      ) : scroll ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

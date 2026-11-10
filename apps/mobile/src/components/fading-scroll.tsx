@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   Animated,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -20,12 +21,20 @@ const EDGE_PX = 4;
  * Scroll vertical con un ligero difuminado en el borde de arriba y en el de abajo, solo cuando
  * hay más contenido por ese lado: al empezar no se ve el de arriba, y al llegar al final se
  * quita el de abajo. Pensado para listas sobre fondo liso (el degradado es del color de fondo).
+ *
+ * Con `mask`, en la web el difuminado es una máscara que vuelve transparente el propio contenido, así
+ * que vale también sobre las ondas u otro fondo que no sea liso. En nativo sigue siendo el degradado.
  */
 export function FadingScroll({
   children,
   scrollRef,
+  mask = false,
   ...props
-}: ScrollViewProps & { children: ReactNode; scrollRef?: Ref<ComponentRef<typeof ScrollView>> }) {
+}: ScrollViewProps & {
+  children: ReactNode;
+  scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
+  mask?: boolean;
+}) {
   const theme = useTheme();
   const [top, setTop] = useState(false);
   const [bottom, setBottom] = useState(false);
@@ -53,8 +62,10 @@ export function FadingScroll({
     props.onContentSizeChange?.(w, h);
   };
 
+  const masked = mask && Platform.OS === 'web';
+
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, masked ? maskStyle(top, bottom) : null]}>
       <ScrollView
         {...props}
         ref={scrollRef}
@@ -65,10 +76,18 @@ export function FadingScroll({
         onContentSizeChange={onContentSizeChange}>
         {children}
       </ScrollView>
-      <Fade edge="top" visible={top} color={theme.background} />
-      <Fade edge="bottom" visible={bottom} color={theme.background} />
+      {!masked && <Fade edge="top" visible={top} color={theme.background} />}
+      {!masked && <Fade edge="bottom" visible={bottom} color={theme.background} />}
     </View>
   );
+}
+
+/** Máscara CSS: transparente en los bordes con más contenido detrás, opaca en el resto. */
+function maskStyle(top: boolean, bottom: boolean) {
+  const from = top ? `transparent 0, #000 ${FADE_HEIGHT}px` : '#000 0';
+  const to = bottom ? `#000 calc(100% - ${FADE_HEIGHT}px), transparent 100%` : '#000 100%';
+  const image = `linear-gradient(to bottom, ${from}, ${to})`;
+  return { maskImage: image, WebkitMaskImage: image } as object;
 }
 
 function Fade({ edge, visible, color }: { edge: 'top' | 'bottom'; visible: boolean; color: string }) {

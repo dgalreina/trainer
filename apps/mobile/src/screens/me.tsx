@@ -14,12 +14,15 @@ export function MeScreen() {
   const [section, setSection] = useState<Section>('datos');
 
   return (
-    <Screen>
-      <View style={styles.sections}>
-        <Chip label="Mis datos" active={section === 'datos'} onPress={() => setSection('datos')} />
-        <Chip label="Mi cuenta" active={section === 'cuenta'} onPress={() => setSection('cuenta')} />
-      </View>
-
+    // Los dos botones quedan fijos arriba; solo se desplaza lo de debajo, con difuminado en los bordes.
+    <Screen
+      fade
+      fixedTop={
+        <View style={styles.sections}>
+          <Chip label="Mis datos" active={section === 'datos'} onPress={() => setSection('datos')} />
+          <Chip label="Mi cuenta" active={section === 'cuenta'} onPress={() => setSection('cuenta')} />
+        </View>
+      }>
       {section === 'datos' ? <ProfileForm /> : <AccountSection />}
     </Screen>
   );
