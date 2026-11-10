@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   PanResponder,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
   type GestureResponderEvent,
@@ -10,6 +9,10 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import type { DayEnergy } from '@trainer/shared';
+
+import { DayEnergyChart } from '@/components/day-energy-chart';
+import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,6 +31,12 @@ const SNAP_MINUTES = 5;
 const DAY_MINUTES = 24 * 60;
 const HANDLE_WIDTH = 30;
 const EDIT_WIDTH = 34;
+/** Las tarjetas dejan ver las gráficas de detrás: opacidad de su fondo. */
+const CARD_OPACITY = 0.82;
+
+/** Un color #RRGGBB con transparencia. */
+const withAlpha = (hex: string, alpha: number) =>
+  hex.length === 7 ? hex + Math.round(alpha * 255).toString(16).padStart(2, '0') : hex;
 /** Al tocar un hueco del día para añadir algo, la hora se redondea hacia abajo a múltiplos de esto. */
 const SLOT_MINUTES = 15;
 
@@ -85,9 +94,12 @@ export function DayTimeline({
   onEditEvent,
   onMoveEvent,
   onPressSlot,
+  energy,
 }: {
   day: string;
   events: DayEvent[];
+  /** Gasto, consumo y balance del día para las gráficas de fondo; sin él no se dibujan. */
+  energy?: DayEnergy | null;
   onPressEvent?: (event: DayEvent) => void;
   /** Se llama al pulsar el lápiz de una comida. */
   onEditEvent?: (event: DayEvent) => void;
@@ -101,6 +113,7 @@ export function DayTimeline({
   const isToday = day === todayISO();
   const dayStart = startOfDay(day).getTime();
   const [now, setNow] = useState(() => Date.now());
+  const [areaWidth, setAreaWidth] = useState(0);
 
   // La línea de "ahora" avanza cada minuto, solo en el día de hoy.
   useEffect(() => {
@@ -128,6 +141,8 @@ export function DayTimeline({
   }, [day, focusHour]);
 
   const nowTop = ((now - dayStart) / HOUR_MS) * HOUR_HEIGHT;
+  // Lo que aún no ha pasado se dibuja tenue: hoy, desde ahora; un día futuro, entero.
+  const dimFrom = day > todayISO() ? 0 : isToday ? nowTop : 24 * HOUR_HEIGHT;
 
   return (
     <View style={styles.wrapper}>
@@ -136,8 +151,16 @@ export function DayTimeline({
           Nada registrado este día. Toca una hora para añadir algo.
         </ThemedText>
       )}
-      <ScrollView ref={scroll} style={styles.scroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+      {/* Difuminado arriba y abajo cuando hay más por ver; por máscara, para que valga sobre las gráficas y las ondas. */}
+      <FadingScroll mask scrollRef={scroll} style={styles.scroll} nestedScrollEnabled>
         <View style={{ height: 24 * HOUR_HEIGHT }}>
+          {/* Gráficas del día, por debajo de todo lo demás. */}
+          <View pointerEvents="none" style={styles.chart}>
+            {energy && areaWidth > 0 ? (
+              <DayEnergyChart energy={energy} width={areaWidth} height={24 * HOUR_HEIGHT} dimFrom={dimFrom} />
+            ) : null}
+          </View>
+
           {HOURS.map((hour) => (
             <View key={hour} pointerEvents="none" style={[styles.hourRow, { top: hour * HOUR_HEIGHT }]}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.hourLabel}>
@@ -158,7 +181,10 @@ export function DayTimeline({
           )}
 
           {/* Zona de eventos, a la derecha de las horas. Solo las tarjetas capturan el toque. */}
-          <View pointerEvents="box-none" style={styles.events}>
+          <View
+            pointerEvents="box-none"
+            style={styles.events}
+            onLayout={(e) => setAreaWidth(e.nativeEvent.layout.width)}>
             {placed.map(({ event, column }) => (
               <EventCard
                 key={event.id}
@@ -180,7 +206,7 @@ export function DayTimeline({
             </View>
           )}
         </View>
-      </ScrollView>
+      </FadingScroll>
     </View>
   );
 }
@@ -269,7 +295,7 @@ function EventCard({
           height,
           left: `${(column / columns) * 100}%`,
           width: `${100 / columns}%`,
-          backgroundColor: background,
+          backgroundColor: withAlpha(background, CARD_OPACITY),
         },
         dragging && styles.dragging,
       ]}>
@@ -327,6 +353,7 @@ const styles = StyleSheet.create({
   hourLabel: { width: LABEL_WIDTH, marginTop: -9 },
   hourLine: { flex: 1, height: 1 },
   events: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
+  chart: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
   // Cubre todo el día a la derecha de las horas, por debajo de las tarjetas.
   slots: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
   edit: { width: EDIT_WIDTH, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },

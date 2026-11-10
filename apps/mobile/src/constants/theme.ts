@@ -26,6 +26,8 @@ export const Colors = {
     pink: '#FFA9BA',
     /** Melocotón/naranja suave: último recurso, para el balance acumulado. */
     orange: '#FFB98A',
+    /** Amarillo anaranjado: el balance acumulado del día en las gráficas del calendario. */
+    amber: '#FFB020',
     /** Azul cielo y azul verdoso: acentos, sobre todo el gasto de calorías. */
     sky: '#8ED3F2',
     /** Azul cielo muy suave: fondo de lo que es gasto (los entrenos en el calendario). */
@@ -49,6 +51,7 @@ export const Colors = {
     onPrimary: '#2B2024',
     pink: '#FFB3C2',
     orange: '#FFC49A',
+    amber: '#FFC04D',
     sky: '#8ED3F2',
     skySoft: '#1E3039',
     teal: '#6FD3C8',

@@ -1,6 +1,6 @@
-import { routineTitle } from '@trainer/shared';
+import { calculateTargets, dayEnergy, loggedMacros, routineTitle } from '@trainer/shared';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DayTimeline } from '@/components/day-timeline';
@@ -13,7 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { WeighInSheet } from '@/components/weigh-in-card';
 import { Spacing } from '@/constants/theme';
 import { confirmAction } from '@/lib/confirm';
-import { addDays, formatLongDay, formatTime, mondayOf, todayISO } from '@/lib/dates';
+import { addDays, formatLongDay, formatTime, mondayOf, startOfDay, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import { useWeekEvents, type DayEvent } from '@/lib/week-events';
@@ -27,7 +27,7 @@ interface MealEditing {
 /** Calendario del día: qué hice y a qué hora (entrenos, comidas y pesadas). */
 export function CalendarScreen() {
   const router = useRouter();
-  const { removeWeight } = useMe();
+  const { removeWeight, profile, latestWeight } = useMe();
   const [day, setDay] = useState(todayISO);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,8 +41,42 @@ export function CalendarScreen() {
     moveEvent,
   } = useWeekEvents(mondayOf(day));
   const { settings, dietOn, activeTraining } = useSettings();
-  const planned = plannedOf(day);
-  const dayEvents = [...eventsOf(day), ...planned].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const planned = useMemo(() => plannedOf(day), [plannedOf, day]);
+  const dayEvents = useMemo(
+    () => [...eventsOf(day), ...planned].sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [eventsOf, planned, day],
+  );
+
+  // Gasto, consumo y balance del día para las gráficas: el basal sale del perfil (Mifflin-St Jeor, con el
+  // último peso y la edad de hoy, también en días pasados) y los entrenos se estiman; lo comido es lo
+  // registrado más lo de la dieta que se da por comido. Un entreno en curso no gasta hasta finalizarlo.
+  const weightKg = latestWeight?.weightKg ?? null;
+  const bmr =
+    calculateTargets({
+      ...profile,
+      weightKg,
+      goal: profile.goal ?? dietOn(day)?.goal ?? 'mantener',
+      today: todayISO(),
+    })?.bmr ?? null;
+  const energy = useMemo(
+    () =>
+      dayEnergy({
+        dayStart: startOfDay(day).getTime(),
+        bmr,
+        weightKg,
+        workouts: dayEvents
+          .filter((e) => e.kind === 'workout' && !e.inProgress)
+          .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
+        meals: dayEvents.flatMap((e) =>
+          e.kind === 'meal' && e.log
+            ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
+            : e.kind === 'plan' && e.macros
+              ? [{ at: e.start.getTime(), kcal: e.macros.kcal }]
+              : [],
+        ),
+      }),
+    [day, dayEvents, bmr, weightKg],
+  );
 
   // Tocar un hueco del día abre «añadir»; de ahí sale la comida, la pesada o el entreno.
   const [slot, setSlot] = useState<Date | null>(null);
@@ -166,9 +200,10 @@ export function CalendarScreen() {
         onEditEvent={onEditEvent}
         onMoveEvent={moveEvent}
         onPressSlot={setSlot}
+        energy={energy}
       />
       <View style={styles.bottom}>
-        <MealLogSection day={day} logs={mealsOf(day)} planned={planned} />
+        <MealLogSection day={day} logs={mealsOf(day)} planned={planned} energy={energy} />
       </View>
 
       {/* Añadir algo a la hora tocada. */}
