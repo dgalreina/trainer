@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { CreateWorkoutSession, UpdateWorkoutSession, WorkoutSession } from "@trainer/shared";
+import { legacyTechnique, type CreateWorkoutSession, type Technique, type UpdateWorkoutSession, type WorkoutSession } from "@trainer/shared";
 import { isValidObjectId, type Model } from "mongoose";
 import { ExercisesService } from "../exercises/exercises.service.js";
 import { SessionDoc, type SessionDocument } from "./session.schema.js";
@@ -19,8 +19,7 @@ function toSession(doc: SessionDocument): WorkoutSession {
     entries: doc.entries.map((e) => ({
       exerciseId: e.exerciseId,
       sets: e.sets.map((s) => ({ reps: s.reps, weightKg: s.weightKg, rpe: s.rpe })),
-      linkedToNext: e.linkedToNext,
-      restPause: e.restPause,
+      technique: (e.technique as Technique | undefined) ?? legacyTechnique(e),
       notes: e.notes,
     })),
     notes: doc.notes,

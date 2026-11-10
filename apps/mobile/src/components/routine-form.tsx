@@ -1,11 +1,15 @@
 import {
   exerciseNameKey,
+  legacyTechnique,
   REST_SECONDS_OPTIONS,
+  TECHNIQUES,
+  TECHNIQUE_LABELS,
   type Exercise,
   type Routine,
+  type Technique,
   type UpdateRoutine,
 } from '@trainer/shared';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ExercisePicker } from '@/components/exercise-picker';
@@ -26,8 +30,10 @@ interface EditorSlot {
   /** Nulo: hueco libre donde escribir el siguiente ejercicio (nunca se guarda). */
   exerciseId: string | null;
   sets: EditorSet[];
-  linkedToNext: boolean;
-  restPause: boolean;
+  /** Técnica especial; sin ella, serie normal. */
+  technique?: Technique;
+  /** Descanso propio del ejercicio; sin él, el de la rutina. */
+  restSeconds?: number;
   notes?: string;
 }
 
@@ -43,8 +49,6 @@ const emptySlot = (): EditorSlot => ({
   key: newKey(),
   exerciseId: null,
   sets: Array.from({ length: DEFAULT_SETS }, () => ({ reps: '', weightKg: '' })),
-  linkedToNext: false,
-  restPause: false,
 });
 
 const toText = (n?: number) => (n === undefined ? '' : String(n));
@@ -65,8 +69,8 @@ function fromRoutine(routine: Routine): EditorSlot[] {
       key: newKey(),
       exerciseId: slot.exerciseId,
       sets: slot.sets.map((s) => ({ reps: toText(s.reps), weightKg: toText(s.weightKg) })),
-      linkedToNext: slot.linkedToNext,
-      restPause: slot.restPause,
+      technique: slot.technique ?? legacyTechnique(slot as { linkedToNext?: boolean; restPause?: boolean }),
+      restSeconds: slot.restSeconds,
       notes: slot.notes,
     })),
   );
@@ -84,9 +88,9 @@ function toPayload(name: string, restSeconds: number, slots: EditorSlot[]): Upda
         return { reps: reps === undefined ? undefined : Math.round(reps), weightKg: toNumber(s.weightKg) };
       }),
       // El último no puede ir encadenado con «el siguiente».
-      linkedToNext: index < filled.length - 1 && slot.linkedToNext,
-      restPause: slot.restPause,
-      notes: slot.notes,
+      technique: slot.technique === 'ss' && index === filled.length - 1 ? undefined : slot.technique,
+      restSeconds: slot.restSeconds,
+      notes: slot.notes?.trim() || undefined,
     })),
   };
 }
@@ -133,8 +137,8 @@ export function RoutineForm({
       const at = prev.findIndex((s) => s.key === key);
       const next = prev.filter((s) => s.key !== key);
       // Si el anterior iba encadenado con el que se borra, se queda suelto.
-      if (at > 0 && prev[at - 1].linkedToNext && next[at - 1]) {
-        next[at - 1] = { ...next[at - 1], linkedToNext: false };
+      if (at > 0 && prev[at - 1].technique === 'ss' && next[at - 1]) {
+        next[at - 1] = { ...next[at - 1], technique: undefined };
       }
       return withTrailingEmpty(next);
     });
@@ -170,7 +174,7 @@ export function RoutineForm({
       next.splice(to, 0, moved);
       // Las superseries dependen de quién queda a continuación: se sueltan las que tocan el movimiento.
       const touched = new Set([key, prev[from - 1]?.key, next[to - 1]?.key]);
-      return next.map((s) => (touched.has(s.key) && s.linkedToNext ? { ...s, linkedToNext: false } : s));
+      return next.map((s) => (touched.has(s.key) && s.technique === 'ss' ? { ...s, technique: undefined } : s));
     });
   };
 
@@ -180,10 +184,10 @@ export function RoutineForm({
       const at = prev.findIndex((s) => s.key === key);
       if (at < 0) return prev;
       const next = [...prev];
-      if (next[at].linkedToNext) {
-        next[at] = { ...next[at], linkedToNext: false };
+      if (next[at].technique === 'ss') {
+        next[at] = { ...next[at], technique: undefined };
       } else {
-        next[at] = { ...next[at], linkedToNext: true };
+        next[at] = { ...next[at], technique: 'ss' };
         if (next[at + 1]?.exerciseId == null) next.splice(at + 1, 0, emptySlot());
       }
       return withTrailingEmpty(next);
@@ -237,6 +241,7 @@ export function RoutineForm({
               onDragMove={(dy) => setDrag({ key: slot.key, dy })}
               onDragEnd={(dy) => dropSlot(slot.key, dy)}
               onToggleSuperset={() => toggleSuperset(slot.key)}
+              routineRest={restSeconds}
               exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
             />
           </View>
@@ -273,6 +278,7 @@ function SlotRow({
   onDragMove,
   onDragEnd,
   onToggleSuperset,
+  routineRest,
 }: {
   slot: EditorSlot;
   label: string;
@@ -284,9 +290,13 @@ function SlotRow({
   onDragMove: (dy: number) => void;
   onDragEnd: (dy: number) => void;
   onToggleSuperset: () => void;
+  /** Descanso de la rutina: el que se hereda si el ejercicio no tiene uno propio. */
+  routineRest: number;
 }) {
   const theme = useTheme();
   const { exercises, create } = useExercises();
+  const [noteOpen, setNoteOpen] = useState(Boolean(slot.notes));
+  const [restOpen, setRestOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -467,14 +477,61 @@ function SlotRow({
           </ScrollView>
           </View>
 
-          <View style={styles.chips}>
-            <Chip label="SS" active={slot.linkedToNext} onPress={onToggleSuperset} />
+          <ChipRow>
+            {/* Una sola técnica a la vez: elegir otra quita la anterior; pulsar la activa, la quita. */}
+            {TECHNIQUES.map((technique) => (
+              <Chip
+                compact
+                key={technique}
+                label={technique.toUpperCase()}
+                active={slot.technique === technique}
+                onPress={() =>
+                  technique === 'ss'
+                    ? onToggleSuperset()
+                    : onChange((s) => ({ ...s, technique: s.technique === technique ? undefined : technique }))
+                }
+              />
+            ))}
+            <Chip compact label="Nota" active={Boolean(slot.notes)} onPress={() => setNoteOpen((open) => !open)} />
             <Chip
-              label="RP"
-              active={slot.restPause}
-              onPress={() => onChange((s) => ({ ...s, restPause: !s.restPause }))}
+              compact
+              label={slot.restSeconds === undefined ? 'Descanso' : slot.restSeconds === 0 ? 'Sin descanso' : `${slot.restSeconds} s`}
+              active={slot.restSeconds !== undefined}
+              onPress={() => setRestOpen((open) => !open)}
             />
-          </View>
+          </ChipRow>
+          {slot.technique && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.techniqueHint}>
+              {TECHNIQUE_LABELS[slot.technique]}
+              {slot.technique === 'ss' ? ': encadenado con el siguiente ejercicio' : ''}
+            </ThemedText>
+          )}
+          {noteOpen && (
+            <TextInput
+              accessibilityLabel="Nota del ejercicio"
+              value={slot.notes ?? ''}
+              onChangeText={(text) => onChange((s) => ({ ...s, notes: text }))}
+              multiline
+              maxLength={500}
+              placeholder="Nota: al fallo, tempo, agarre…"
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.noteInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+            />
+          )}
+          {restOpen && (
+            <ChipRow>
+              <Chip compact label="Rutina" active={slot.restSeconds === undefined} onPress={() => onChange((s) => ({ ...s, restSeconds: undefined }))} />
+              {REST_SECONDS_OPTIONS.map((seconds) => (
+                <Chip
+                  compact
+                  key={seconds}
+                  label={seconds === 0 ? 'Sin' : String(seconds)}
+                  active={slot.restSeconds === seconds}
+                  onPress={() => onChange((s) => ({ ...s, restSeconds: seconds }))}
+                />
+              ))}
+            </ChipRow>
+          )}
         </>
       )}
       <ExercisePicker
@@ -486,6 +543,15 @@ function SlotRow({
         }}
       />
     </View>
+  );
+}
+
+/** Una fila de chips siempre en una sola línea; si no caben, se desplaza en horizontal. */
+function ChipRow({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipRow}>
+      {children}
+    </ScrollView>
   );
 }
 
@@ -529,7 +595,11 @@ const styles = StyleSheet.create({
   gridCol: { gap: Spacing.two },
   addSet: { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
   removeSet: { height: 28, justifyContent: 'center', paddingHorizontal: Spacing.one },
-  chips: { flexDirection: 'row', gap: Spacing.two, paddingLeft: 36 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingLeft: 36 },
+  chipScroll: { marginLeft: 36, flexGrow: 0 },
+  chipRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  techniqueHint: { paddingLeft: 36 },
+  noteInput: { marginLeft: 36, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 15, minHeight: 40 },
   rest: { gap: Spacing.two, borderTopWidth: 0 },
   restChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

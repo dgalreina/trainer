@@ -7,6 +7,31 @@ export const MAX_REST_SECONDS = 600;
 
 const restSecondsSchema = z.number().int().min(0).max(MAX_REST_SECONDS);
 
+/**
+ * Técnica de una serie especial, excluyentes entre sí (sin técnica = serie normal):
+ * - `ss` superserie: va encadenado con el siguiente ejercicio de la lista, sin descanso entre ambos.
+ * - `rp` rest-pause.
+ * - `desc` serie descendente: se baja el peso y se sigue sin descanso.
+ */
+export const TECHNIQUES = ["ss", "rp", "desc"] as const;
+export const techniqueSchema = z.enum(TECHNIQUES);
+export type Technique = z.infer<typeof techniqueSchema>;
+
+/** Cómo se llama cada técnica en pantalla. */
+export const TECHNIQUE_LABELS: Record<Technique, string> = {
+  ss: "Superserie",
+  rp: "Rest-pause",
+  desc: "Descendente",
+};
+
+/**
+ * La técnica de un ejercicio guardado con el formato antiguo (dos booleanos). Una superserie con rest-pause
+ * se queda en superserie.
+ */
+export function legacyTechnique(flags: { linkedToNext?: boolean; restPause?: boolean }): Technique | undefined {
+  return flags.linkedToNext ? "ss" : flags.restPause ? "rp" : undefined;
+}
+
 /** Una serie planificada: reps y peso son orientativos y opcionales. */
 export const plannedSetSchema = z.object({
   reps: z.number().int().min(0).optional(),
@@ -19,9 +44,10 @@ export const routineSlotSchema = z.object({
   exerciseId: z.string(),
   /** Una entrada por serie, en orden. */
   sets: z.array(plannedSetSchema).default([]),
-  /** Superserie: va encadenado con el siguiente slot de la lista. */
-  linkedToNext: z.boolean().default(false),
-  restPause: z.boolean().default(false),
+  /** Técnica especial; ausente = serie normal. */
+  technique: techniqueSchema.optional(),
+  /** Descanso entre series de este ejercicio; ausente = el de la rutina. En una superserie cuenta el del último ejercicio. */
+  restSeconds: restSecondsSchema.optional(),
   notes: z.string().trim().max(500).optional(),
 });
 export type RoutineSlot = z.infer<typeof routineSlotSchema>;

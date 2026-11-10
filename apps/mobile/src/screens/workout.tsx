@@ -1,4 +1,4 @@
-import { routineTitle, type PerformedSet, type WorkoutSession } from '@trainer/shared';
+import { routineTitle, TECHNIQUE_LABELS, type PerformedSet, type WorkoutSession } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Vibration, View } from 'react-native';
@@ -60,6 +60,8 @@ export function WorkoutScreen() {
   const title = training && routine ? routineTitle(training.routines, routine.id) : 'Entreno';
   // El descanso se define en la rutina, no mientras se entrena.
   const restSeconds = routine?.restSeconds ?? 0;
+  /** El descanso de un ejercicio: el suyo si lo tiene, y si no el de la rutina. */
+  const entryRest = (entry: { restSeconds?: number }) => entry.restSeconds ?? restSeconds;
   const key = draftKey(id, rid);
 
   const [draft, setDraft] = useState<WorkoutDraft | null>(null);
@@ -179,9 +181,10 @@ export function WorkoutScreen() {
         entries,
         // Marcar una serie empieza el entreno si no se había empezado.
         startedAt: d.startedAt ?? (becomesDone ? at : null),
-        // En una superserie no se descansa entre sus ejercicios, solo al acabar la ronda.
+        // En una superserie no se descansa entre sus ejercicios, solo al acabar la ronda (con el descanso del
+        // último). Cada ejercicio puede traer el suyo; si no, el de la rutina.
         restEndsAt:
-          becomesDone && restSeconds > 0 && !entry.linkedToNext ? at + restSeconds * 1000 : d.restEndsAt,
+          becomesDone && entryRest(entry) > 0 && entry.technique !== 'ss' ? at + entryRest(entry) * 1000 : d.restEndsAt,
       };
     });
   }
@@ -356,13 +359,21 @@ export function WorkoutScreen() {
         return (
           <Card key={`${entry.exerciseId}-${entryIndex}`} style={styles.exercise}>
             <ThemedText type="smallBold">{byId.get(entry.exerciseId)?.name ?? 'Ejercicio eliminado'}</ThemedText>
-            {(entry.linkedToNext || entry.restPause) && (
+            {entry.technique && (
               <ThemedText type="small" themeColor="primaryText">
-                {[entry.linkedToNext ? 'Superserie con el siguiente' : null, entry.restPause ? 'Rest-pause' : null]
-                  .filter(Boolean)
-                  .join(' · ')}
+                {entry.technique === 'ss' ? 'Superserie con el siguiente' : TECHNIQUE_LABELS[entry.technique]}
               </ThemedText>
             )}
+            {entry.notes ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {entry.notes}
+              </ThemedText>
+            ) : null}
+            {entry.restSeconds !== undefined && entry.restSeconds !== restSeconds ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {entry.restSeconds === 0 ? 'Sin descanso en este ejercicio' : `Descanso de este ejercicio: ${entry.restSeconds} s`}
+              </ThemedText>
+            ) : null}
             {last && last.length > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
                 Última vez: {last.slice(0, 4).map((s) => `${s.reps} × ${s.weightKg} kg`).join(' · ')}

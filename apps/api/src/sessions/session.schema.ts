@@ -22,11 +22,16 @@ export class SessionEntryDoc {
   @Prop({ type: [PerformedSetSchema], default: [] })
   sets!: PerformedSetDoc[];
 
-  @Prop({ type: Boolean, default: false })
-  linkedToNext!: boolean;
+  // Técnica especial: "ss" | "rp" | "desc"; sin valor = serie normal.
+  @Prop({ type: String, enum: ["ss", "rp", "desc"] })
+  technique?: string;
 
-  @Prop({ type: Boolean, default: false })
-  restPause!: boolean;
+  // Formato antiguo (solo se lee, ya no se escribe): se traduce a `technique`.
+  @Prop({ type: Boolean })
+  linkedToNext?: boolean;
+
+  @Prop({ type: Boolean })
+  restPause?: boolean;
 
   @Prop({ type: String })
   notes?: string;

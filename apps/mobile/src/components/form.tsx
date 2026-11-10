@@ -41,6 +41,7 @@ export function NumberInput({
   placeholder,
   accessibilityLabel,
   compact,
+  field,
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -48,6 +49,8 @@ export function NumberInput({
   accessibilityLabel: string;
   /** Estrecho (una columna de serie): varias caben en una fila. */
   compact?: boolean;
+  /** Con el aspecto de un campo de formulario (como el nombre o la hora), no el de una celda de serie. */
+  field?: boolean;
 }) {
   const theme = useTheme();
   // El texto de ayuda («kg», «reps») se quita en cuanto se pincha el campo.
@@ -63,7 +66,12 @@ export function NumberInput({
       placeholderTextColor={theme.textSecondary}
       keyboardType="decimal-pad"
       selectTextOnFocus
-      style={[styles.number, compact && styles.numberCompact, { backgroundColor: theme.backgroundSelected, color: theme.text }]}
+      style={[
+        styles.number,
+        compact && styles.numberCompact,
+        field && styles.numberField,
+        { backgroundColor: field ? theme.backgroundElement : theme.backgroundSelected, color: theme.text },
+      ]}
     />
   );
 }
@@ -143,10 +151,13 @@ export function Chip({
   label,
   active,
   onPress,
+  compact,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
+  /** Más estrecho, para meter varios en una sola línea. */
+  compact?: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -154,7 +165,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      style={[styles.chip, { backgroundColor: active ? theme.primary : theme.backgroundSelected }]}>
+      style={[styles.chip, compact && styles.chipCompact, { backgroundColor: active ? theme.primary : theme.backgroundSelected }]}>
       <ThemedText type="small" style={{ color: active ? theme.onPrimary : theme.text }}>
         {label}
       </ThemedText>
@@ -170,6 +181,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   numberCompact: { width: 56, minWidth: 0 },
+  numberField: { minHeight: 48, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three - 2, textAlign: 'left' },
   number: {
     borderRadius: Radius.control,
     minWidth: 64,
@@ -191,4 +203,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: Radius.pill,
   },
+  chipCompact: { paddingHorizontal: 10 },
 });

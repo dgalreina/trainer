@@ -534,5 +534,21 @@
   {
     "name": "Press francés con mancuerna",
     "category": "triceps"
+  },
+  {
+    "name": "Remo Dorian",
+    "category": "espalda"
+  },
+  {
+    "name": "Curl Scott inverso",
+    "category": "biceps"
+  },
+  {
+    "name": "Elevaciones laterales sentado",
+    "category": "hombros"
+  },
+  {
+    "name": "Prensa de piernas con pies altos",
+    "category": "piernas"
   }
 ]

@@ -533,6 +533,22 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/dragon-flag_0.webp'),
     require('../../assets/exercises/dragon-flag_1.webp'),
   ],
+  'remo dorian': [
+    require('../../assets/exercises/remo-dorian_0.webp'),
+    require('../../assets/exercises/remo-dorian_1.webp'),
+  ],
+  'curl scott inverso': [
+    require('../../assets/exercises/curl-scott-inverso_0.webp'),
+    require('../../assets/exercises/curl-scott-inverso_1.webp'),
+  ],
+  'elevaciones laterales sentado': [
+    require('../../assets/exercises/elevaciones-laterales-sentado_0.webp'),
+    require('../../assets/exercises/elevaciones-laterales-sentado_1.webp'),
+  ],
+  'prensa de piernas con pies altos': [
+    require('../../assets/exercises/prensa-de-piernas-con-pies-altos_0.webp'),
+    require('../../assets/exercises/prensa-de-piernas-con-pies-altos_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */

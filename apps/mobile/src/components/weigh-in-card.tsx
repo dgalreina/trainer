@@ -100,7 +100,7 @@ export function WeighInSheet({
           <ThemedText type="smallBold" themeColor="textSecondary">
             Peso
           </ThemedText>
-          <NumberInput accessibilityLabel="Peso en kilos" placeholder="kg" value={kg} onChangeText={setKg} />
+          <NumberInput field accessibilityLabel="Peso en kilos" placeholder="kg" value={kg} onChangeText={setKg} />
         </View>
         <View style={styles.time}>
           <TimeField label="Hora" value={time} onChange={setTime} />
@@ -115,7 +115,7 @@ export function WeighInSheet({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'flex-end' },
+  row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'flex-start' },
   kg: { width: 110, gap: Spacing.two },
   time: { flex: 1, gap: Spacing.two },
 });

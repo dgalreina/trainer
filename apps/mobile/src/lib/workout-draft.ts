@@ -1,8 +1,10 @@
-import type {
-  CreateWorkoutSession,
-  PerformedSet,
-  Routine,
-  WorkoutSession,
+import {
+  legacyTechnique,
+  type CreateWorkoutSession,
+  type PerformedSet,
+  type Routine,
+  type Technique,
+  type WorkoutSession,
 } from '@trainer/shared';
 
 // Estado de un entreno en curso. Los números van como texto porque se editan en campos de
@@ -19,8 +21,12 @@ export interface DraftSet {
 export interface DraftEntry {
   exerciseId: string;
   sets: DraftSet[];
-  linkedToNext: boolean;
-  restPause: boolean;
+  /** Técnica especial; sin ella, serie normal. */
+  technique?: Technique;
+  /** Descanso propio del ejercicio; sin él, el de la rutina. */
+  restSeconds?: number;
+  /** Nota de la rutina para este ejercicio. */
+  notes?: string;
 }
 
 export interface WorkoutDraft {
@@ -69,13 +75,15 @@ export function buildDraft(
     startedAt: null,
     restEndsAt: null,
     planSig: routineSignature(routine),
-    entries: routine.slots.map((slot) => {
+    entries: routine.slots.map((slot, slotIndex) => {
       const previous = last.get(slot.exerciseId) ?? [];
       const planned = slot.sets.length > 0 ? slot.sets : previous;
       return {
         exerciseId: slot.exerciseId,
-        linkedToNext: slot.linkedToNext,
-        restPause: slot.restPause,
+        // Una superserie en el último ejercicio (datos antiguos) no tiene «siguiente»: es una serie normal.
+        technique: slot.technique === 'ss' && slotIndex === routine.slots.length - 1 ? undefined : slot.technique,
+        restSeconds: slot.restSeconds,
+        notes: slot.notes,
         sets: (planned.length > 0 ? planned : [{}]).map((set, i) => ({
           reps: toText(set.reps ?? previous[i]?.reps),
           weightKg: toText(set.weightKg ?? previous[i]?.weightKg),
@@ -90,7 +98,12 @@ export function parseDraft(raw: string | null): WorkoutDraft | null {
   if (!raw) return null;
   try {
     const draft = JSON.parse(raw) as WorkoutDraft;
-    return Array.isArray(draft.entries) && typeof draft.routineId === 'string' ? draft : null;
+    if (!Array.isArray(draft.entries) || typeof draft.routineId !== 'string') return null;
+    // Borradores guardados con el formato antiguo (dos booleanos): se traducen a la técnica.
+    draft.entries = draft.entries.map((e) =>
+      e.technique === undefined ? { ...e, technique: legacyTechnique(e as { linkedToNext?: boolean; restPause?: boolean }) } : e,
+    );
+    return draft;
   } catch {
     return null;
   }
@@ -124,8 +137,7 @@ export function toSessionPayload(
   const entries = draft.entries
     .map((entry) => ({
       exerciseId: entry.exerciseId,
-      linkedToNext: entry.linkedToNext,
-      restPause: entry.restPause,
+      technique: entry.technique,
       sets: entry.sets.filter(useSet).flatMap((s) => {
         const reps = parseNumber(s.reps);
         // Sin repeticiones no hay serie; sin peso es peso corporal (0 kg).

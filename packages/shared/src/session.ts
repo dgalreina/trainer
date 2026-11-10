@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { techniqueSchema } from "./routine";
+
 /** Una serie realizada. */
 export const performedSetSchema = z.object({
   reps: z.number().int().min(0),
@@ -13,8 +15,8 @@ export type PerformedSet = z.infer<typeof performedSetSchema>;
 export const sessionEntrySchema = z.object({
   exerciseId: z.string(),
   sets: z.array(performedSetSchema).min(1),
-  linkedToNext: z.boolean().default(false),
-  restPause: z.boolean().default(false),
+  /** Técnica con la que se hizo; ausente = serie normal. */
+  technique: techniqueSchema.optional(),
   notes: z.string().trim().max(500).optional(),
 });
 export type SessionEntry = z.infer<typeof sessionEntrySchema>;

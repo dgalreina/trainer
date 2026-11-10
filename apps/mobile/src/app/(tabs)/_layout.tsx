@@ -1,15 +1,14 @@
 import { usePathname } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, View } from 'react-native';
 
 import AppTabs from '@/components/app-tabs';
 import { ThemedView } from '@/components/themed-view';
 import { Waves, WAVES_HEIGHT } from '@/components/waves';
-import { useSmoothValue } from '@/hooks/use-smooth-value';
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
 
-/** Lo que tardan las ondas en subir o bajar: lo mismo que el deslizamiento de las pestañas. */
-const WAVES_TRANSITION_MS = 380;
+/** Lo que tardan las ondas en subir o bajar. Más lento que el deslizamiento de las pestañas: se nota como un gesto aparte. */
+const WAVES_TRANSITION_MS = 750;
 
 /**
  * Las ondas de la web. Son un componente aparte a propósito: su posición se anima a cada fotograma y, si el
@@ -26,10 +25,46 @@ function TabsWaves() {
     if (index >= 0) lastTab.current = index;
   }, [index]);
   const tab = index >= 0 ? index : lastTab.current;
-  // 0 = a la vista, 1 = subidas fuera de la pantalla.
-  const hidden = useSmoothValue(TABS[tab].noWaves ? 1 : 0, WAVES_TRANSITION_MS);
-  if (hidden >= 1) return null;
-  return <Waves height={WAVES_HEIGHT} style={{ top: -WAVES_HEIGHT * hidden }} />;
+  const hide = Boolean(TABS[tab].noWaves);
+
+  // El movimiento lo hace el navegador con una transición CSS de `transform` (en la tarjeta gráfica, sin
+  // repintar nada a cada fotograma): un temporizador por fotograma competía con la animación de las propias
+  // ondas y se veía a saltos. `shown` pasa a true un par de fotogramas después de montar para que al volver
+  // se anime desde arriba; `mounted` deja de pintarlas del todo cuando ya están fuera.
+  const [mounted, setMounted] = useState(!hide);
+  const [shown, setShown] = useState(!hide);
+  useEffect(() => {
+    if (hide) {
+      setShown(false);
+      const timer = setTimeout(() => setMounted(false), WAVES_TRANSITION_MS + 60);
+      return () => clearTimeout(timer);
+    }
+    setMounted(true);
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setShown(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [hide]);
+
+  if (!mounted) return null;
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        { position: 'absolute', top: 0, left: 0, right: 0, height: WAVES_HEIGHT, transform: [{ translateY: shown ? 0 : -WAVES_HEIGHT }] },
+        {
+          transitionProperty: 'transform',
+          transitionDuration: `${WAVES_TRANSITION_MS}ms`,
+          transitionTimingFunction: 'cubic-bezier(0.45, 0, 0.2, 1)',
+        } as object,
+      ]}>
+      <Waves height={WAVES_HEIGHT} />
+    </View>
+  );
 }
 
 export default function TabsLayout() {

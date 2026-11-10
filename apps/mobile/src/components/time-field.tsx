@@ -61,8 +61,18 @@ const webInput = {
   // La misma pila de fuentes que usa React Native Web para el resto del texto.
   fontFamily: 'System, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   minHeight: 48,
+  height: 48,
   boxSizing: 'border-box' as const,
   width: '100%',
+  // Safari de iOS pinta el selector de hora con medidas propias y se salía de la caja: se anula su aspecto
+  // nativo y se le impide crecer más que el contenedor.
+  display: 'block',
+  minWidth: 0,
+  maxWidth: '100%',
+  textAlign: 'left' as const,
+  WebkitAppearance: 'none' as const,
+  appearance: 'none' as const,
+  margin: 0,
 };
 
 const styles = StyleSheet.create({

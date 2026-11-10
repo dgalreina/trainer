@@ -2,9 +2,11 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import {
   DEFAULT_REST_SECONDS,
+  legacyTechnique,
   type CreateRoutine,
   type CreateTraining,
   type Routine,
+  type Technique,
   type Training,
   type UpdateRoutine,
   type UpdateTraining,
@@ -25,8 +27,8 @@ function toRoutine(doc: RoutineDocument & { id?: string }, legacyRestSeconds?: n
     slots: doc.slots.map((s) => ({
       exerciseId: s.exerciseId,
       sets: s.sets.map((set) => ({ reps: set.reps, weightKg: set.weightKg })),
-      linkedToNext: s.linkedToNext,
-      restPause: s.restPause,
+      technique: (s.technique as Technique | undefined) ?? legacyTechnique(s),
+      restSeconds: s.restSeconds,
       notes: s.notes,
     })),
   };
