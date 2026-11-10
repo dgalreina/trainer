@@ -83,7 +83,7 @@ export function DayEnergyChart({
   const theme = useTheme();
   // Ids únicos por instancia: los degradados y recortes son globales en el documento.
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const ids = { blue: `energy-blue-${uid}`, pink: `energy-pink-${uid}`, past: `energy-past-${uid}`, future: `energy-future-${uid}` };
+  const ids = { blue: `energy-blue-${uid}`, amber: `energy-amber-${uid}`, pink: `energy-pink-${uid}`, past: `energy-past-${uid}`, future: `energy-future-${uid}` };
 
   const shapes = useMemo(() => {
     const x0 = width / 2;
@@ -127,6 +127,13 @@ export function DayEnergyChart({
     <>
       {/* Las áreas: degradado que se aviva hacia el borde, como las ondas de la cabecera. */}
       {/* El borde va aparte del área: si no, también se pintaría a lo largo de la línea central. */}
+      {/* El balance va el primero: queda por detrás del azul y del rosa. */}
+      {shapes.balance && (
+        <>
+          <Path d={area(shapes.balance, x0)} fill={`url(#${ids.amber})`} />
+          <Path d={curve(shapes.balance)} fill="none" stroke={theme.amber} strokeWidth={2} strokeOpacity={0.75} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
       {shapes.blue && (
         <>
           <Path d={area(shapes.blue, x0, leftSide)} fill={`url(#${ids.blue})`} />
@@ -135,12 +142,6 @@ export function DayEnergyChart({
       )}
       <Path d={area(shapes.pink, x0, rightSide)} fill={`url(#${ids.pink})`} />
       <Path d={curve(shapes.pink, rightSide)} fill="none" stroke={theme.primary} strokeWidth={1.5} strokeOpacity={0.8} />
-      {shapes.balance && (
-        <>
-          <Path d={area(shapes.balance, x0)} fill={theme.amber} fillOpacity={0.16} />
-          <Path d={curve(shapes.balance)} fill="none" stroke={theme.amber} strokeWidth={2} strokeOpacity={0.75} strokeLinecap="round" strokeLinejoin="round" />
-        </>
-      )}
     </>
   );
 
@@ -155,6 +156,12 @@ export function DayEnergyChart({
         <LinearGradient id={ids.pink} gradientUnits="userSpaceOnUse" x1={x0} y1={0} x2={x0 + reach} y2={0}>
           <Stop offset="0" stopColor={theme.pink} stopOpacity={0.12} />
           <Stop offset="1" stopColor={theme.primary} stopOpacity={0.5} />
+        </LinearGradient>
+        {/* El balance cruza la línea central: más suave junto a ella y más vivo hacia los lados, sin llegar a blanco. */}
+        <LinearGradient id={ids.amber} gradientUnits="userSpaceOnUse" x1={x0 - reach} y1={0} x2={x0 + reach} y2={0}>
+          <Stop offset="0" stopColor={theme.amber} stopOpacity={0.34} />
+          <Stop offset="0.5" stopColor={theme.amber} stopOpacity={0.12} />
+          <Stop offset="1" stopColor={theme.amber} stopOpacity={0.34} />
         </LinearGradient>
         <ClipPath id={ids.past}>
           <Rect x={0} y={0} width={width} height={dim} />

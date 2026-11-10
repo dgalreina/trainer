@@ -7,25 +7,35 @@ import { ThemedText } from '@/components/themed-text';
 import { TimeField } from '@/components/time-field';
 import { Spacing } from '@/constants/theme';
 import { formatDay, startOfDay } from '@/lib/dates';
+import { confirmAction } from '@/lib/confirm';
 import { useMe } from '@/lib/me';
 
 const MIN_KG = 20;
 const MAX_KG = 400;
 
-/** Ventana para registrar una pesada en un día y a una hora concretos (la hora llega propuesta). */
+/**
+ * Ventana para registrar una pesada en un día y a una hora concretos (la hora llega propuesta) o, si llega
+ * `weightId`, para editar una que ya existe: cambiar los kilos y la hora, o borrarla.
+ */
 export function WeighInSheet({
   visible,
   day,
   time: initialTime,
+  weightId,
+  kg: initialKg = '',
   onClose,
 }: {
   visible: boolean;
   day: string;
   /** "HH:MM" con el que se abre. */
   time: string;
+  /** La pesada que se edita; sin él, se crea una nueva. */
+  weightId?: string;
+  /** Los kilos con los que se abre (al editar). */
+  kg?: string;
   onClose: () => void;
 }) {
-  const { addWeight } = useMe();
+  const { addWeight, updateWeight, removeWeight } = useMe();
   const [kg, setKg] = useState('');
   const [time, setTime] = useState(initialTime);
   const [saving, setSaving] = useState(false);
@@ -34,7 +44,7 @@ export function WeighInSheet({
   // La hora se propone al abrir: no se arrastra la de una vez anterior.
   useEffect(() => {
     if (!visible) return;
-    setKg('');
+    setKg(initialKg);
     setTime(initialTime);
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,10 +66,27 @@ export function WeighInSheet({
     setSaving(true);
     setError(null);
     try {
-      await addWeight({ date: moment.toISOString(), weightKg: Math.round(weight * 10) / 10 });
+      const weightKg = Math.round(weight * 10) / 10;
+      if (weightId) await updateWeight(weightId, { date: moment.toISOString(), weightKg });
+      else await addWeight({ date: moment.toISOString(), weightKg });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar la pesada');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove() {
+    if (!weightId) return;
+    const ok = await confirmAction('Borrar pesada', 'Se borrará esta pesada.', 'Borrar');
+    if (!ok) return;
+    setSaving(true);
+    try {
+      await removeWeight(weightId);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se ha podido borrar la pesada');
     } finally {
       setSaving(false);
     }
@@ -81,6 +108,7 @@ export function WeighInSheet({
       </View>
       <ErrorText message={error} />
       <Button title="Guardar pesada" onPress={save} loading={saving} />
+      {weightId ? <Button variant="danger" title="Borrar pesada" onPress={remove} disabled={saving} /> : null}
       <Button variant="secondary" title="Cancelar" onPress={onClose} />
     </Sheet>
   );

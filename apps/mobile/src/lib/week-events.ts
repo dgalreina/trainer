@@ -36,6 +36,8 @@ export interface DayEvent {
   sessionId?: string;
   /** Solo en pesadas: el id, para poder moverla o borrarla. */
   weightId?: string;
+  /** Solo en pesadas: los kilos, para poder editarla. */
+  weightKg?: number;
   /** Solo en comidas: el id del registro, para poder moverlo. */
   mealId?: string;
   /** Solo en comidas registradas: el registro entero, para poder editarlo. */
@@ -179,7 +181,7 @@ export function useWeekEvents(weekStart: string) {
         start,
         end: new Date(start.getTime() + minutes * MINUTE_MS),
         title: routineOf && routine ? routineTitle(routineOf.routines, routine.id) : 'Entreno',
-        subtitle: `${sets} ${sets === 1 ? 'serie' : 'series'} · ${volume.toLocaleString('es-ES')} kg`,
+        subtitle: `${sets} ${sets === 1 ? 'serie' : 'series'}`,
       };
     });
     const weighIns = weights.map((entry): DayEvent => {
@@ -191,6 +193,7 @@ export function useWeekEvents(weekStart: string) {
         end: new Date(start.getTime() + POINT_EVENT_MINUTES * MINUTE_MS),
         title: `${entry.weightKg.toLocaleString('es-ES')} kg`,
         weightId: entry.id,
+        weightKg: entry.weightKg,
       };
     });
     // Las comidas de la dieta descartadas ese día no se muestran (solo evitan que reaparezcan).

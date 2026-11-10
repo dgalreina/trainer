@@ -11,15 +11,16 @@ import {
 import {
   FlatList,
   PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
+  Vibration,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import type { DayEnergy } from '@trainer/shared';
 
@@ -32,23 +33,26 @@ import type { DayEvent } from '@/lib/week-events';
 
 const HOUR_HEIGHT = 56;
 const LABEL_WIDTH = 48;
-// Alto mínimo de cada tipo: un entreno lleva dos líneas de texto; una pesada, una.
-const MIN_HEIGHT = { workout: 52, weight: 34, meal: 52, plan: 52 } as const;
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * HOUR_MS;
 /** Al soltar un evento arrastrado, la hora se ajusta a múltiplos de estos minutos. */
 const SNAP_MINUTES = 5;
 const DAY_MINUTES = 24 * 60;
-const HANDLE_WIDTH = 30;
-const EDIT_WIDTH = 34;
+/** Diámetro de los círculos de comidas, pesadas y entrenos, y separación entre carriles. */
+const CIRCLE = 64;
+const LANE_GAP = 6;
+/** Último carril que cabe en un móvil estrecho (zona de eventos ≈ 340 px). */
+const MAX_LANE = 3;
+/** Cuánto hay que mantener pulsado un círculo para poder arrastrarlo. */
+const LONG_PRESS_MS = 350;
+/** Lo que puede moverse el dedo (px) y seguir contando como pulsación. */
+const TAP_SLOP = 10;
 /** Alto de la tarjeta «Día X» al empezar cada día y de cada marca que la sigue. */
 const DAY_CARD_HEIGHT = 28;
 const MARK_HEIGHT = 22;
-/** Las tarjetas dejan ver las gráficas de detrás: opacidad de su fondo. */
-const CARD_OPACITY = 0.82;
-/** Lo mínimo que se ve de una tarjeta pegada al final del día. */
-const CARD_MIN_VISIBLE = 24;
+/** Los círculos dejan ver algo de la gráfica de detrás: opacidad de su fondo. */
+const CIRCLE_OPACITY = 0.94;
 /** Al tocar un hueco del día para añadir algo, la hora se redondea hacia abajo a múltiplos de esto. */
 const SLOT_MINUTES = 15;
 
@@ -79,24 +83,33 @@ export interface DayModel {
 
 interface Placed {
   event: DayEvent;
-  column: number;
+  /** Carril horizontal: 0 pegado al margen izquierdo; los círculos que se pisan en vertical van al siguiente. */
+  lane: number;
 }
 
-/** Reparte en columnas los eventos que se pisan, para que no se tapen entre sí. */
-function placeEvents(events: DayEvent[]): { placed: Placed[]; columns: number } {
-  const columnEnds: number[] = [];
-  const placed = events.map((event): Placed => {
-    const start = event.start.getTime();
-    let column = columnEnds.findIndex((end) => end <= start);
-    if (column === -1) {
-      column = columnEnds.length;
-      columnEnds.push(0);
+/** Altura (px) del borde de arriba de un círculo: centrado en la hora del evento, sin salirse de su día. */
+function circleTop(startMs: number, dayStart: number): number {
+  const centre = ((startMs - dayStart) / HOUR_MS) * HOUR_HEIGHT;
+  return Math.min(Math.max(centre - CIRCLE / 2, 0), DAY_HEIGHT - CIRCLE);
+}
+
+/**
+ * Reparte en carriles los círculos que se pisan en vertical, para que no se tapen entre sí: apoyados en el
+ * margen izquierdo, el primero pegado a él y los siguientes, uno tras otro, hacia la derecha.
+ */
+function placeCircles(events: DayEvent[], dayStart: number): Placed[] {
+  const laneEnds: number[] = [];
+  return events.map((event): Placed => {
+    const top = circleTop(event.start.getTime(), dayStart);
+    let lane = laneEnds.findIndex((end) => end <= top);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(0);
     }
-    const minMs = (MIN_HEIGHT[event.kind] / HOUR_HEIGHT) * HOUR_MS;
-    columnEnds[column] = Math.max(event.end.getTime(), start + minMs);
-    return { event, column };
+    laneEnds[lane] = top + CIRCLE + 2;
+    // Más allá del último carril que cabe en pantalla, los círculos se apilan en él (mejor pisados que fuera).
+    return { event, lane: Math.min(lane, MAX_LANE) };
   });
-  return { placed, columns: Math.max(1, columnEnds.length) };
 }
 
 /**
@@ -120,6 +133,15 @@ function slotAt(event: GestureResponderEvent, dayStart: number): Date {
   return new Date(dayStart + Math.min(Math.max(minutes, 0), DAY_MINUTES - SLOT_MINUTES) * MINUTE_MS);
 }
 
+/**
+ * Difuminado de arriba: lo que pasa por detrás de la barra de pestañas se desvanece, y justo debajo ya se ve
+ * entero. Es una máscara CSS sobre la lista, así que vale sobre las gráficas y lo que haya detrás.
+ */
+function topFade(inset: number): object {
+  const image = `linear-gradient(to bottom, transparent 0, transparent ${Math.round(inset * 0.55)}px, #000 ${inset + 14}px)`;
+  return { maskImage: image, WebkitMaskImage: image };
+}
+
 /** Lo que se puede pedir a la lista desde fuera. */
 export interface DayListHandle {
   /** Lleva el scroll al día indicado, a la hora que interesa (la de ahora si es hoy; las 7 si no). */
@@ -127,9 +149,8 @@ export interface DayListHandle {
 }
 
 interface Handlers {
+  /** Se llama al tocar un círculo (comida, pesada o entreno). */
   onPressEvent?: (event: DayEvent) => void;
-  /** Se llama al pulsar el lápiz de una comida. */
-  onEditEvent?: (event: DayEvent) => void;
   /** Se llama al soltar un evento arrastrado, con su nueva hora de inicio. */
   onMoveEvent?: (event: DayEvent, newStart: Date) => void;
   /** Se llama al tocar un hueco de un día, con la hora tocada. */
@@ -225,7 +246,7 @@ export const DayList = forwardRef<
     setHeight(event.nativeEvent.layout.height);
   }, []);
 
-  const { onPressEvent, onEditEvent, onMoveEvent, onPressSlot } = handlers;
+  const { onPressEvent, onMoveEvent, onPressSlot } = handlers;
   const renderItem = useCallback(
     ({ item }: { item: number }) => (
       <DayColumn
@@ -233,15 +254,15 @@ export const DayList = forwardRef<
         today={today}
         modelOf={modelOf}
         onPressEvent={onPressEvent}
-        onEditEvent={onEditEvent}
         onMoveEvent={onMoveEvent}
         onPressSlot={onPressSlot}
       />
     ),
-    [dayOfIndex, today, modelOf, onPressEvent, onEditEvent, onMoveEvent, onPressSlot],
+    [dayOfIndex, today, modelOf, onPressEvent, onMoveEvent, onPressSlot],
   );
 
   return (
+    <View style={[styles.list, Platform.OS === 'web' ? topFade(topInset) : null]}>
     <FlatList
       ref={list}
       data={INDEXES}
@@ -261,6 +282,7 @@ export const DayList = forwardRef<
       style={styles.list}
       renderItem={renderItem}
     />
+    </View>
   );
 });
 
@@ -270,7 +292,6 @@ const DayColumn = memo(function DayColumn({
   today,
   modelOf,
   onPressEvent,
-  onEditEvent,
   onMoveEvent,
   onPressSlot,
 }: {
@@ -293,7 +314,7 @@ const DayColumn = memo(function DayColumn({
     return () => clearInterval(timer);
   }, [isToday]);
 
-  const { placed, columns } = useMemo(() => placeEvents(events), [events]);
+  const placed = useMemo(() => placeCircles(events, dayStart), [events, dayStart]);
 
   const nowTop = ((now - dayStart) / HOUR_MS) * HOUR_HEIGHT;
   // Lo que aún no ha pasado se dibuja tenue: hoy, desde ahora; un día futuro, entero.
@@ -360,20 +381,18 @@ const DayColumn = memo(function DayColumn({
           />
         )}
 
-        {/* Zona de eventos, a la derecha de las horas. Solo las tarjetas capturan el toque. */}
+        {/* Zona de eventos, a la derecha de las horas. Solo los círculos capturan el toque. */}
         <View
           pointerEvents="box-none"
           style={styles.events}
           onLayout={(e) => setAreaWidth(e.nativeEvent.layout.width)}>
-          {placed.map(({ event, column }) => (
-            <EventCard
+          {placed.map(({ event, lane }) => (
+            <EventCircle
               key={event.id}
               event={event}
               dayStart={dayStart}
-              column={column}
-              columns={columns}
+              lane={lane}
               onPress={onPressEvent}
-              onEdit={onEditEvent}
               onMove={onMoveEvent}
             />
           ))}
@@ -390,135 +409,157 @@ const DayColumn = memo(function DayColumn({
   );
 });
 
+/** Para que una pulsación larga no seleccione texto ni abra el menú del navegador (solo web). */
+const NO_SELECT = {
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitTouchCallout: 'none',
+} as object;
+
 /**
- * Una tarjeta del calendario. Se toca (las pesadas se pueden borrar) y se mueve arrastrando el
- * asa de la derecha: solo el asa captura el gesto, así que el resto de la tarjeta, y el hueco entre
- * tarjetas, siguen haciendo scroll del día.
+ * Una comida, una pesada o un entreno, como un círculo pequeño: el nombre y debajo lo que cuenta (las
+ * calorías, los kilos, las series). Tocarlo lo abre. Pulsándolo un rato (con una pequeña vibración donde el
+ * dispositivo la permite) se agarra y se arrastra de arriba abajo; si el dedo se mueve antes, es un scroll
+ * normal. En la web, una vez agarrado se impide que el navegador haga scroll con ese mismo movimiento.
  */
-function EventCard({
+function EventCircle({
   event,
   dayStart,
-  column,
-  columns,
+  lane,
   onPress,
-  onEdit,
   onMove,
 }: {
   event: DayEvent;
   dayStart: number;
-  column: number;
-  columns: number;
+  lane: number;
   onPress?: (event: DayEvent) => void;
-  onEdit?: (event: DayEvent) => void;
   onMove?: (event: DayEvent, newStart: Date) => void;
 }) {
   const theme = useTheme();
+  const node = useRef<unknown>(null);
   const [dragDy, setDragDy] = useState<number | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** La pulsación larga ya se ha cumplido: a partir de ahí, el movimiento arrastra. */
+  const armed = useRef(false);
 
-  // El gesto se crea una sola vez; lee siempre los datos más recientes desde aquí.
-  const latest = useRef({ event, dayStart, onMove });
+  // Los gestos se crean una sola vez; leen siempre los datos más recientes desde aquí.
+  const latest = useRef({ event, dayStart, onPress, onMove });
   useEffect(() => {
-    latest.current = { event, dayStart, onMove };
+    latest.current = { event, dayStart, onPress, onMove };
   });
+
+  const clearHold = useCallback(() => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  }, []);
+  useEffect(() => clearHold, [clearHold]);
+
+  // Web: una vez agarrado, el navegador no debe empezar a hacer scroll con el movimiento del dedo. Hay que
+  // cancelarlo en el propio evento táctil, y para eso el escuchador no puede ser pasivo.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const element = node.current as unknown as HTMLElement | null;
+    if (!element) return;
+    const block = (e: TouchEvent) => {
+      if (armed.current && e.cancelable) e.preventDefault();
+    };
+    element.addEventListener('touchmove', block, { passive: false });
+    // Al soltar, se evita el clic «fantasma» que el navegador genera después: caería sobre la ventana que
+    // se acaba de abrir con el toque y la cerraría al instante.
+    const swallowClick = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    element.addEventListener('touchend', swallowClick, { passive: false });
+    return () => {
+      element.removeEventListener('touchmove', block);
+      element.removeEventListener('touchend', swallowClick);
+    };
+  }, []);
 
   const responder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        // Una vez agarrada, nadie (ni el scroll ni el paginador de pestañas) se la quita.
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: () => setDragDy(0),
-        onPanResponderMove: (_e, g) => setDragDy(g.dy),
-        onPanResponderRelease: (_e, g) => {
-          const { event: current, dayStart: start, onMove: move } = latest.current;
-          const minutes = dragMinutes(g.dy, current, start);
-          setDragDy(null);
-          if (minutes !== 0) move?.(current, new Date(current.start.getTime() + minutes * MINUTE_MS));
+        onMoveShouldSetPanResponder: () => armed.current,
+        // Ya agarrado, nadie (ni el scroll ni el paginador de pestañas) se lo quita.
+        onPanResponderTerminationRequest: () => !armed.current,
+        onPanResponderGrant: () => {
+          armed.current = false;
+          clearHold();
+          holdTimer.current = setTimeout(() => {
+            armed.current = true;
+            Vibration.vibrate(15);
+            setDragDy(0);
+          }, LONG_PRESS_MS);
         },
-        onPanResponderTerminate: () => setDragDy(null),
+        onPanResponderMove: (_e, g) => {
+          if (armed.current) setDragDy(g.dy);
+          // Si el dedo se mueve antes de tiempo, no es una pulsación larga: se deja el scroll en paz.
+          else if (Math.hypot(g.dx, g.dy) > TAP_SLOP) clearHold();
+        },
+        onPanResponderRelease: (_e, g) => {
+          clearHold();
+          const { event: current, dayStart: start, onPress: press, onMove: move } = latest.current;
+          if (armed.current) {
+            const minutes = dragMinutes(g.dy, current, start);
+            if (minutes !== 0) move?.(current, new Date(current.start.getTime() + minutes * MINUTE_MS));
+          } else if (Math.hypot(g.dx, g.dy) <= TAP_SLOP) {
+            press?.(current);
+          }
+          armed.current = false;
+          setDragDy(null);
+        },
+        onPanResponderTerminate: () => {
+          clearHold();
+          armed.current = false;
+          setDragDy(null);
+        },
       }),
-    [],
+    [clearHold],
   );
 
   const dragging = dragDy !== null;
   const minutes = dragging ? dragMinutes(dragDy, event, dayStart) : 0;
   const start = new Date(event.start.getTime() + minutes * MINUTE_MS);
-
-  // Una tarjeta no sale por el final de su día (la parte que sobresaldría quedaría tapada por el día siguiente).
   const top = Math.min(
-    ((event.start.getTime() - dayStart) / HOUR_MS) * HOUR_HEIGHT + (minutes / 60) * HOUR_HEIGHT,
-    DAY_HEIGHT - CARD_MIN_VISIBLE,
+    Math.max(circleTop(event.start.getTime(), dayStart) + (minutes / 60) * HOUR_HEIGHT, 0),
+    DAY_HEIGHT - CIRCLE,
   );
-  const height = Math.min(
-    Math.max(MIN_HEIGHT[event.kind], ((event.end.getTime() - event.start.getTime()) / HOUR_MS) * HOUR_HEIGHT - 2),
-    DAY_HEIGHT - Math.max(0, top),
-  );
-  // Salmón para lo que entra (comidas) y azul cielo para lo que se gasta (entrenos).
-  const background =
-    event.kind === 'meal' || event.kind === 'plan'
-      ? theme.primarySoft
-      : event.kind === 'workout'
-        ? theme.skySoft
-        : theme.backgroundElement;
-  // Una comida de la dieta se ve y se trata como una comida más: se puede mover y editar, y al hacerlo
-  // se crea la versión de ese día sin tocar la dieta.
-  const canMove = Boolean(onMove);
-  const canEdit = Boolean(onEdit) && (event.kind === 'meal' || event.kind === 'plan');
+
+  // Salmón para lo que entra (comidas), azul cielo para lo que se gasta (entrenos) y neutro para el peso.
+  const tone = event.kind === 'workout' ? theme.sky : event.kind === 'weight' ? theme.textSecondary : theme.primary;
+  const fill =
+    event.kind === 'workout' ? theme.skySoft : event.kind === 'weight' ? theme.backgroundElement : theme.primarySoft;
 
   return (
-    <Pressable
-      accessibilityRole={onPress && event.kind === 'weight' ? 'button' : undefined}
-      disabled={!onPress || event.kind !== 'weight' || dragging}
-      onPress={() => onPress?.(event)}
+    <View
+      ref={node as never}
+      {...responder.panHandlers}
+      accessibilityRole="button"
+      accessibilityLabel={event.subtitle ? `${event.title}, ${event.subtitle}` : event.title}
       style={[
-        styles.event,
-        {
-          top: Math.max(0, top),
-          height,
-          left: `${(column / columns) * 100}%`,
-          width: `${100 / columns}%`,
-          backgroundColor: withAlpha(background, CARD_OPACITY),
-        },
+        styles.circle,
+        { top, left: lane * (CIRCLE + LANE_GAP) + 2, backgroundColor: withAlpha(fill, CIRCLE_OPACITY), borderColor: tone },
         dragging && styles.dragging,
+        NO_SELECT,
       ]}>
-      <View style={styles.eventText}>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {formatTime(start)} · {event.title}
+      <ThemedText type="smallBold" numberOfLines={1} style={styles.circleTitle}>
+        {event.title}
+      </ThemedText>
+      {event.subtitle ? (
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.circleSub}>
+          {event.subtitle}
         </ThemedText>
-        {event.subtitle ? (
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            {event.subtitle}
-          </ThemedText>
-        ) : null}
-      </View>
-      {canEdit && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Editar ${event.title}`}
-          hitSlop={6}
-          onPress={() => onEdit?.(event)}
-          disabled={dragging}
-          style={styles.edit}>
-          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={theme.primaryText} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
-            <Path d="M13.5 6.5l4 4" />
-          </Svg>
-        </Pressable>
-      )}
-      {canMove && (
-        <View
-          accessibilityRole="button"
-          accessibilityLabel={`Mover ${event.title}`}
-          {...responder.panHandlers}
-          // `touch-action: none` en el asa: el navegador no hace scroll mientras se arrastra.
-          style={[styles.handle, { touchAction: 'none' } as object]}>
-          <ThemedText themeColor="textSecondary" style={styles.grip}>
-            ≡
+      ) : null}
+      {/* Mientras se arrastra, la hora a la que quedaría. */}
+      {dragging ? (
+        <View pointerEvents="none" style={[styles.timeTip, { backgroundColor: theme.text }]}>
+          <ThemedText type="smallBold" style={{ color: theme.background }}>
+            {formatTime(start)}
           </ThemedText>
         </View>
-      )}
-    </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -581,27 +622,33 @@ const styles = StyleSheet.create({
   chart: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
   // Cubre todo el día a la derecha de las horas, por debajo de las tarjetas.
   slots: { position: 'absolute', top: 0, bottom: 0, left: LABEL_WIDTH, right: 0 },
-  edit: { width: EDIT_WIDTH, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
-  event: {
+  // Un círculo: pequeño, con el nombre arriba y debajo lo que cuenta. Solo él capta el toque.
+  circle: {
     position: 'absolute',
-    borderRadius: Radius.control,
-    paddingLeft: Spacing.two + 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  // Mientras se arrastra: por encima del resto y con sombra.
-  dragging: { zIndex: 10, ...({ boxShadow: '0 6px 18px rgba(0, 0, 0, 0.22)' } as object) },
-  eventText: { flex: 1, justifyContent: 'center' },
-  handle: {
-    width: HANDLE_WIDTH,
-    alignSelf: 'stretch',
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    // Cursor de agarrar en la web: se ve que se puede mover.
-    ...({ cursor: 'grab' } as object),
+    paddingHorizontal: 4,
   },
-  grip: { fontSize: 20, lineHeight: 22 },
+  circleTitle: { fontSize: 11, lineHeight: 14, textAlign: 'center', maxWidth: CIRCLE - 8 },
+  circleSub: { fontSize: 10, lineHeight: 13, textAlign: 'center', maxWidth: CIRCLE - 8 },
+  // La hora a la que quedaría, justo encima del círculo mientras se arrastra.
+  timeTip: {
+    position: 'absolute',
+    top: -26,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
+  },
+  // Mientras se arrastra: por encima del resto, un poco más grande y con sombra.
+  dragging: {
+    zIndex: 10,
+    transform: [{ scale: 1.1 }],
+    ...({ boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)' } as object),
+  },
   nowLine: {
     position: 'absolute',
     left: LABEL_WIDTH - 5,

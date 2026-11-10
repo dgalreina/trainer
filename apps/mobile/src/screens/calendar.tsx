@@ -63,14 +63,13 @@ export function CalendarScreen() {
   const router = useRouter();
   const theme = useTheme();
   const list = useRef<DayListHandle>(null);
-  const { removeWeight, profile, latestWeight } = useMe();
+  const { profile, latestWeight } = useMe();
   const { settings, dietOn, activeTraining } = useSettings();
   const { trainings } = useTrainings();
   const today = todayISO();
   // El día que se está mostrando (el del centro de la pantalla): la tarjeta de abajo habla de él y de él
   // cuelga qué semanas se cargan.
   const [visibleDay, setVisibleDay] = useState(today);
-  const [error, setError] = useState<string | null>(null);
 
   const {
     eventsOf,
@@ -138,6 +137,8 @@ export function CalendarScreen() {
   const [choosingWorkout, setChoosingWorkout] = useState(false);
   const [meal, setMeal] = useState<MealEditing | null>(null);
   const [weighAt, setWeighAt] = useState<string | null>(null);
+  /** La pesada que se edita (si se abrió desde un círculo); sin ella, la ventana crea una nueva. */
+  const [weighEdit, setWeighEdit] = useState<{ id: string; kg: string } | null>(null);
   // Alto de la tarjeta de abajo: el «centro» de lo visible (el día que se muestra) queda por encima de ella.
   const [summaryHeight, setSummaryHeight] = useState(0);
 
@@ -146,33 +147,34 @@ export function CalendarScreen() {
     setSlot(time);
   }, []);
 
+  /** Tocar un círculo: la comida abre su editor, la pesada su ventana y el entreno en curso su pantalla. */
   const onPressEvent = useCallback(
-    async (event: DayEvent) => {
-      // De momento solo las pesadas se pueden borrar desde aquí; los entrenos se verán en un historial.
-      if (event.kind !== 'weight' || !event.weightId) return;
-      const ok = await confirmAction(
-        'Borrar pesada',
-        `Se borrará la pesada de ${event.title} de las ${formatTime(event.start)}.`,
-        'Borrar',
-      );
-      if (!ok) return;
-      try {
-        await removeWeight(event.weightId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'No se ha podido borrar');
+    (event: DayEvent) => {
+      if (event.kind === 'weight' && event.weightId) {
+        setActionDay(isoOf(event.start));
+        setWeighEdit({ id: event.weightId, kg: String(event.weightKg ?? '') });
+        setWeighAt(formatTime(event.start));
+        return;
       }
+      if (event.kind === 'workout') {
+        // Los entrenos terminados no hacen nada por ahora (irán a un historial).
+        if (event.inProgress && event.draftOf) {
+          router.push({
+            pathname: '/entreno/[id]/[rid]',
+            params: { id: event.draftOf.trainingId, rid: event.draftOf.routineId },
+          });
+        }
+        return;
+      }
+      // Comida: se abre su editor con lo que tiene (la de la dieta, con lo de la dieta).
+      const items = event.plan
+        ? event.plan.meal.items
+        : (event.log?.items ?? []).map(({ foodId, grams }) => ({ foodId, grams }));
+      setActionDay(isoOf(event.start));
+      setMeal({ target: event, form: { name: event.title, time: formatTime(event.start), items } });
     },
-    [removeWeight],
+    [router],
   );
-
-  /** El lápiz de una comida: se abre su editor con lo que tiene (la de la dieta, con lo de la dieta). */
-  const onEditEvent = useCallback((event: DayEvent) => {
-    const items = event.plan
-      ? event.plan.meal.items
-      : (event.log?.items ?? []).map(({ foodId, grams }) => ({ foodId, grams }));
-    setActionDay(isoOf(event.start));
-    setMeal({ target: event, form: { name: event.title, time: formatTime(event.start), items } });
-  }, []);
 
   async function onSaveMeal(draft: MealDraft) {
     await saveMeal(meal?.target ?? null, draft);
@@ -221,15 +223,14 @@ export function CalendarScreen() {
             bottomInset={summaryHeight}
             onVisibleDay={setVisibleDay}
             onPressEvent={onPressEvent}
-            onEditEvent={onEditEvent}
             onMoveEvent={moveEvent}
             onPressSlot={onPressSlot}
           />
 
           {/* Un fallo al cargar o borrar, justo bajo la barra de pestañas. */}
-          {error ?? loadError ? (
+          {loadError ? (
             <View pointerEvents="none" style={[styles.error, { top: topInset }]}>
-              <ErrorText message={error ?? loadError} />
+              <ErrorText message={loadError} />
             </View>
           ) : null}
 
@@ -276,6 +277,7 @@ export function CalendarScreen() {
                   variant="secondary"
                   title="Peso"
                   onPress={() => {
+                    setWeighEdit(null);
                     setWeighAt(formatTime(slot));
                     closeSlot();
                   }}
@@ -317,7 +319,14 @@ export function CalendarScreen() {
             onClose={() => setMeal(null)}
           />
 
-          <WeighInSheet visible={weighAt !== null} day={actionDay} time={weighAt ?? '08:00'} onClose={() => setWeighAt(null)} />
+          <WeighInSheet
+            visible={weighAt !== null}
+            day={actionDay}
+            time={weighAt ?? '08:00'}
+            weightId={weighEdit?.id}
+            kg={weighEdit?.kg}
+            onClose={() => setWeighAt(null)}
+          />
         </>
       )}
     </Screen>
