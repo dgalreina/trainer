@@ -1,9 +1,9 @@
 import { calculateTargets, loggedMacros, sumMacros, type DayEnergy, type MealLog } from '@trainer/shared';
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { BalanceBar } from '@/components/balance-bar';
+import { BalanceBar, BalanceLabel } from '@/components/balance-bar';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -14,10 +14,11 @@ import { useSettings } from '@/lib/settings';
 import type { DayEvent } from '@/lib/week-events';
 
 /**
- * Resumen del día, fijo abajo: una sola línea con lo comido y una flecha que lo abre para leer todo
- * (objetivo, gasto y balance), y siempre debajo una barra que dice cómo va el día: en déficit, en
- * mantenimiento o en superávit. Cuenta lo registrado y también las comidas de la dieta que siguen en
- * pie ese día: se da por hecho que se comen, salvo que se editen o se quiten.
+ * Resumen del día, flotando abajo. Cerrado son dos líneas: las calorías y, debajo, cómo vas (déficit,
+ * mantenimiento o superávit con su cifra), con una flecha que lo abre; abierto se desglosa en proteínas,
+ * hidratos y grasas, el objetivo y el gasto. Siempre debajo, una línea fina de progreso. Cuenta lo
+ * registrado y también las comidas de la dieta que siguen en pie ese día: se da por hecho que se comen,
+ * salvo que se editen o se quiten.
  */
 export function MealLogSection({
   day,
@@ -59,9 +60,14 @@ export function MealLogSection({
         onPress={() => setOpen((value) => !value)}
         hitSlop={8}
         style={styles.header}>
-        <ThemedText type="smallBold" numberOfLines={1} style={styles.main}>
-          {eaten.kcal} kcal · P {eaten.protein} · H {eaten.carbs} · G {eaten.fat}
-        </ThemedText>
+        <View style={styles.lines}>
+          <ThemedText type="smallBold" numberOfLines={1}>
+            {eaten.kcal} kcal
+          </ThemedText>
+          {energy?.hasBurn ? (
+            <BalanceLabel balance={energy.totals.balance} burn={energy.totals.burn} projected={projected} />
+          ) : null}
+        </View>
         {/* La flecha mira a la derecha con el resumen cerrado y hacia abajo con él abierto. */}
         <Svg
           width={18}
@@ -79,6 +85,9 @@ export function MealLogSection({
 
       {open && (
         <>
+          <ThemedText type="small" themeColor="textSecondary">
+            Proteínas {eaten.protein} g · Hidratos {eaten.carbs} g · Grasas {eaten.fat} g
+          </ThemedText>
           {targets ? (
             <ThemedText type="small" themeColor="textSecondary">
               Objetivo: {targets.kcal} kcal ·{' '}
@@ -116,5 +125,5 @@ const styles = StyleSheet.create({
   // Sombra suave: la tarjeta flota sobre la gráfica y debe despegarse de ella.
   card: { padding: Spacing.two + 4, gap: Spacing.two, ...({ boxShadow: '0 4px 18px rgba(0, 0, 0, 0.12)' } as object) },
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  main: { flex: 1 },
+  lines: { flex: 1, gap: Spacing.half },
 });

@@ -10,7 +10,6 @@ import { MealLogSection } from '@/components/meal-log-section';
 import { Screen } from '@/components/screen';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
-import { WAVES_HEIGHT_COMPACT } from '@/components/waves';
 import { WeighInSheet } from '@/components/weigh-in-card';
 import { Spacing } from '@/constants/theme';
 import { confirmAction } from '@/lib/confirm';
@@ -187,7 +186,7 @@ export function CalendarScreen() {
   return (
     <Screen
       fullBleed
-      wavesHeight={WAVES_HEIGHT_COMPACT}
+      noWaves
       fixedTop={
         <>
           <View style={styles.dayNav}>

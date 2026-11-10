@@ -4,18 +4,18 @@ import { Platform } from 'react-native';
 
 import AppTabs from '@/components/app-tabs';
 import { ThemedView } from '@/components/themed-view';
-import { Waves, WAVES_HEIGHT, WAVES_HEIGHT_COMPACT } from '@/components/waves';
+import { Waves, WAVES_HEIGHT } from '@/components/waves';
 import { useSmoothValue } from '@/hooks/use-smooth-value';
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
 
-/** Lo que tarda la altura de las ondas en cambiar: lo mismo que el deslizamiento de las pestañas. */
+/** Lo que tardan las ondas en subir o bajar: lo mismo que el deslizamiento de las pestañas. */
 const WAVES_TRANSITION_MS = 380;
 
 /**
- * Las ondas de la web. Son un componente aparte a propósito: la altura se anima a cada fotograma y, si el
+ * Las ondas de la web. Son un componente aparte a propósito: su posición se anima a cada fotograma y, si el
  * estado viviera en el layout, cada fotograma volvería a pintar las cinco pestañas (y su contenido) mientras
- * se deslizan. Así solo se pinta esto. En las pestañas con `compactWaves` suben hasta la altura del menú; al
- * ir a otra bajan de nuevo, y suben otra vez al volver. Siempre con transición suave.
+ * se deslizan. Así solo se pinta esto. En las pestañas con `noWaves` suben fuera de la pantalla hasta
+ * desaparecer; al ir a otra bajan de nuevo. Siempre con transición suave. Ocultas del todo, ni se pintan.
  */
 function TabsWaves() {
   const pathname = usePathname();
@@ -26,8 +26,10 @@ function TabsWaves() {
     if (index >= 0) lastTab.current = index;
   }, [index]);
   const tab = index >= 0 ? index : lastTab.current;
-  const height = useSmoothValue(TABS[tab].compactWaves ? WAVES_HEIGHT_COMPACT : WAVES_HEIGHT, WAVES_TRANSITION_MS);
-  return <Waves height={height} />;
+  // 0 = a la vista, 1 = subidas fuera de la pantalla.
+  const hidden = useSmoothValue(TABS[tab].noWaves ? 1 : 0, WAVES_TRANSITION_MS);
+  if (hidden >= 1) return null;
+  return <Waves height={WAVES_HEIGHT} style={{ top: -WAVES_HEIGHT * hidden }} />;
 }
 
 export default function TabsLayout() {

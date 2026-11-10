@@ -2,7 +2,6 @@ import { balanceZone, maintenanceBand, type BalanceZone } from '@trainer/shared'
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /** La barra va, como mucho, de −este balance (vacía) a +este balance (llena); más allá se queda en el extremo. */
@@ -19,12 +18,31 @@ const LABELS: Record<BalanceZone, string> = {
   surplus: 'Superávit',
 };
 
+/** «Déficit · -300 kcal»: la zona y la cifra en texto (el color de la barra solo no basta para quien no distingue colores). */
+export function BalanceLabel({
+  balance,
+  burn,
+  projected = false,
+}: {
+  balance: number;
+  burn: number;
+  /** El día no ha acabado: es lo que saldría a las 24:00 si todo sigue el plan. */
+  projected?: boolean;
+}) {
+  const zone = balanceZone(balance, burn);
+  return (
+    <ThemedText type="small">
+      <ThemedText type="smallBold">{`${LABELS[zone]}${projected ? ' previsto' : ''}`}</ThemedText>
+      {` · ${balance > 0 ? '+' : ''}${balance} kcal`}
+    </ThemedText>
+  );
+}
+
 /**
  * Cómo va el día de consumo, discreto: una línea fina vacía (marrón oscuro apagado) que se va llenando de
  * izquierda a derecha según el balance (consumo − gasto): casi vacía con un déficit grande, por la mitad en
  * mantenimiento y llena con un superávit grande. El relleno cambia de color con la zona: azul en déficit,
- * verde azulado en mantenimiento y rojizo en superávit. Debajo, la zona y la cifra en texto: el color solo no
- * basta para quien no distingue los colores.
+ * verde azulado en mantenimiento y rojizo en superávit.
  */
 export function BalanceBar({
   balance,
@@ -33,7 +51,6 @@ export function BalanceBar({
 }: {
   balance: number;
   burn: number;
-  /** El día no ha acabado: es lo que saldría a las 24:00 si todo sigue el plan. */
   projected?: boolean;
 }) {
   const theme = useTheme();
@@ -50,22 +67,14 @@ export function BalanceBar({
     <View
       accessible
       accessibilityLabel={`${LABELS[zone]}${projected ? ' previsto' : ''}: ${balance > 0 ? '+' : ''}${balance} kilocalorías`}
-      style={styles.wrapper}>
-      <View style={[styles.track, { backgroundColor: theme.text + TRACK_ALPHA }]}>
-        <View style={[styles.fill, { width: `${filled * 100}%`, backgroundColor: colors[zone] }]} />
-      </View>
-      <ThemedText type="small" style={styles.label}>
-        <ThemedText type="smallBold">{`${LABELS[zone]}${projected ? ' previsto' : ''}`}</ThemedText>
-        {` · ${balance > 0 ? '+' : ''}${balance} kcal`}
-      </ThemedText>
+      style={[styles.track, { backgroundColor: theme.text + TRACK_ALPHA }]}>
+      <View style={[styles.fill, { width: `${filled * 100}%`, backgroundColor: colors[zone] }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { gap: Spacing.one + 2 },
   // La parte vacía: un marrón oscuro apagado (el color del texto con transparencia) que no llama la atención.
   track: { height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: TRACK_HEIGHT / 2 },
-  label: { textAlign: 'center' },
 });

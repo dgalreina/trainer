@@ -40,8 +40,8 @@ interface ScreenProps {
    * se usan en este modo (el contenido gestiona su propio scroll). En nativo respeta las zonas seguras.
    */
   fullBleed?: boolean;
-  /** Alto de las ondas de la cabecera donde las dibuja la propia pantalla (nativo). */
-  wavesHeight?: number;
+  /** Sin las ondas de la cabecera (donde las dibuja la propia pantalla: nativo). En la web las pone el layout. */
+  noWaves?: boolean;
   children: ReactNode | ((topInset: number) => ReactNode);
 }
 
@@ -68,7 +68,7 @@ export function Screen({
   footer,
   fixedTop,
   fullBleed,
-  wavesHeight = WAVES_HEIGHT,
+  noWaves,
   children,
 }: ScreenProps) {
   // Hasta medir la cabecera se parte de una estimación (barra de pestañas + fila de fecha), para que el
@@ -166,7 +166,7 @@ export function Screen({
 
   return (
     <ThemedView style={styles.root}>
-      <Waves height={wavesHeight} />
+      {!noWaves && <Waves height={WAVES_HEIGHT} />}
       {body}
     </ThemedView>
   );

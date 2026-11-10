@@ -10,9 +10,8 @@ import { useTheme } from '@/hooks/use-theme';
 
 const WIDTH = 400;
 
-/** Alto de las ondas de la cabecera de las pantallas, y el reducido de la pestaña Calendario (justo a la altura del menú). */
+/** Alto de las ondas de la cabecera de las pantallas. */
 export const WAVES_HEIGHT = 230;
-export const WAVES_HEIGHT_COMPACT = 100;
 // Con la animación se redibuja la curva a cada fotograma: pasos más grandes que en
 // estático, pero a este tamaño de pantalla la curva se sigue viendo lisa.
 const STEP = 4;

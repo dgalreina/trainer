@@ -1,8 +1,8 @@
 /** Pestañas de la app, de izquierda a derecha. Fuente única para la barra y el paginador. */
-export const TABS: readonly { key: string; path: string; label: string; compactWaves?: boolean }[] = [
+export const TABS: readonly { key: string; path: string; label: string; noWaves?: boolean }[] = [
   { key: 'index', path: '/', label: 'Hoy' },
-  // Las ondas de la cabecera suben hasta la altura del menú (la línea de tiempo ocupa toda la pantalla).
-  { key: 'calendario', path: '/calendario', label: 'Calendario', compactWaves: true },
+  // Sin ondas: suben fuera de la pantalla al entrar (la línea de tiempo ocupa toda la pantalla) y bajan al salir.
+  { key: 'calendario', path: '/calendario', label: 'Calendario', noWaves: true },
   { key: 'entrenamientos', path: '/entrenamientos', label: 'Entrenos' },
   { key: 'dieta', path: '/dieta', label: 'Dietas' },
   { key: 'yo', path: '/yo', label: 'Yo' },
