@@ -113,7 +113,8 @@ export function MealLogSection({
 }
 
 const styles = StyleSheet.create({
-  card: { padding: Spacing.two + 4, gap: Spacing.two },
+  // Sombra suave: la tarjeta flota sobre la gráfica y debe despegarse de ella.
+  card: { padding: Spacing.two + 4, gap: Spacing.two, ...({ boxShadow: '0 4px 18px rgba(0, 0, 0, 0.12)' } as object) },
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   main: { flex: 1 },
 });

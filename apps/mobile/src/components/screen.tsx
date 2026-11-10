@@ -129,7 +129,8 @@ export function Screen({
       ) : null}
       {fullBleed ? (
         <>
-          <View style={[styles.fill, { paddingBottom: bottomInset }]}>{content}</View>
+          {/* En la web llega hasta el borde de abajo (lo que quiera flotar encima lo pone el propio contenido). */}
+          <View style={[styles.fill, { paddingBottom: Platform.OS === 'web' ? 0 : bottomInset }]}>{content}</View>
           {hasFixed ? (
             <View
               pointerEvents="box-none"

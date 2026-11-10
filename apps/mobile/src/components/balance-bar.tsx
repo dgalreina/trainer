@@ -5,9 +5,13 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** La barra llega, como mucho, a este balance (kcal) por cada lado; más allá el marcador se queda en el extremo. */
+/** La barra va, como mucho, de −este balance (vacía) a +este balance (llena); más allá se queda en el extremo. */
 const MIN_RANGE = 600;
-const MARKER = 14;
+const TRACK_HEIGHT = 3;
+/** Lo mínimo que se llena la barra (fracción): con un déficit enorme el relleno seguiría viéndose, en azul, y no saldría vacía. */
+const MIN_FILL = 0.07;
+/** Transparencia del carril vacío (hex, ≈ 35 %): solo el fondo, para que el relleno conserve su color pleno. */
+const TRACK_ALPHA = '59';
 
 const LABELS: Record<BalanceZone, string> = {
   deficit: 'Déficit',
@@ -16,9 +20,11 @@ const LABELS: Record<BalanceZone, string> = {
 };
 
 /**
- * Cómo va el día de consumo: una barra con tres zonas (déficit, mantenimiento y superávit) y un marcador
- * donde cae el balance (consumo − gasto), con la zona y la cifra debajo. Azul para el gasto que pesa más,
- * verde azulado para el mantenimiento y salmón para lo que se come de más (los colores de la app).
+ * Cómo va el día de consumo, discreto: una línea fina vacía (marrón oscuro apagado) que se va llenando de
+ * izquierda a derecha según el balance (consumo − gasto): casi vacía con un déficit grande, por la mitad en
+ * mantenimiento y llena con un superávit grande. El relleno cambia de color con la zona: azul en déficit,
+ * verde azulado en mantenimiento y rojizo en superávit. Debajo, la zona y la cifra en texto: el color solo no
+ * basta para quien no distingue los colores.
  */
 export function BalanceBar({
   balance,
@@ -32,18 +38,12 @@ export function BalanceBar({
 }) {
   const theme = useTheme();
   const zone = balanceZone(balance, burn);
-  const band = maintenanceBand(burn);
-  const range = Math.max(MIN_RANGE, band * 3);
-  const position = (Math.min(Math.max(balance, -range), range) + range) / (2 * range);
+  const range = Math.max(MIN_RANGE, maintenanceBand(burn) * 3);
+  const filled = Math.max(MIN_FILL, (Math.min(Math.max(balance, -range), range) + range) / (2 * range));
   const colors: Record<BalanceZone, string> = {
     deficit: theme.sky,
     maintenance: theme.teal,
-    surplus: theme.primary,
-  };
-  const widths: Record<BalanceZone, number> = {
-    deficit: range - band,
-    maintenance: 2 * band,
-    surplus: range - band,
+    surplus: theme.primaryText,
   };
 
   return (
@@ -51,26 +51,8 @@ export function BalanceBar({
       accessible
       accessibilityLabel={`${LABELS[zone]}${projected ? ' previsto' : ''}: ${balance > 0 ? '+' : ''}${balance} kilocalorías`}
       style={styles.wrapper}>
-      <View style={styles.track}>
-        {(['deficit', 'maintenance', 'surplus'] as const).map((key) => (
-          <View
-            key={key}
-            style={[
-              { flex: widths[key], backgroundColor: colors[key], opacity: key === zone ? 1 : 0.35 },
-              // La barra no recorta a sus hijos (el marcador sobresale): las puntas se redondean a mano.
-              key === 'deficit' && styles.leftEnd,
-              key === 'surplus' && styles.rightEnd,
-            ]}
-          />
-        ))}
-        {/* El marcador va encima de la barra: un punto con borde para que se vea sobre cualquier color. */}
-        <View
-          pointerEvents="none"
-          style={[
-            styles.marker,
-            { left: `${position * 100}%`, backgroundColor: theme.background, borderColor: colors[zone] },
-          ]}
-        />
+      <View style={[styles.track, { backgroundColor: theme.text + TRACK_ALPHA }]}>
+        <View style={[styles.fill, { width: `${filled * 100}%`, backgroundColor: colors[zone] }]} />
       </View>
       <ThemedText type="small" style={styles.label}>
         <ThemedText type="smallBold">{`${LABELS[zone]}${projected ? ' previsto' : ''}`}</ThemedText>
@@ -81,19 +63,9 @@ export function BalanceBar({
 }
 
 const styles = StyleSheet.create({
-  wrapper: { gap: Spacing.one },
-  // Sin `overflow: hidden` en la barra: el marcador sobresale por arriba y por abajo.
-  track: { flexDirection: 'row', height: 8, borderRadius: 4, marginVertical: (MARKER - 8) / 2 },
-  marker: {
-    position: 'absolute',
-    top: -(MARKER - 8) / 2,
-    width: MARKER,
-    height: MARKER,
-    marginLeft: -MARKER / 2,
-    borderRadius: MARKER / 2,
-    borderWidth: 3,
-  },
-  leftEnd: { borderTopLeftRadius: 4, borderBottomLeftRadius: 4 },
-  rightEnd: { borderTopRightRadius: 4, borderBottomRightRadius: 4 },
+  wrapper: { gap: Spacing.one + 2 },
+  // La parte vacía: un marrón oscuro apagado (el color del texto con transparencia) que no llama la atención.
+  track: { height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: TRACK_HEIGHT / 2 },
   label: { textAlign: 'center' },
 });

@@ -98,6 +98,7 @@ export function DayTimeline({
   energy,
   startMinutes = 0,
   topInset = 0,
+  bottomInset = 0,
   marks,
 }: {
   day: string;
@@ -105,6 +106,8 @@ export function DayTimeline({
   topInset?: number;
   /** Marcas discretas al principio del día («Comienza la dieta…»): una línea fina con una etiqueta pequeña en el centro. */
   marks?: string[];
+  /** Alto (px) de lo que flota encima por abajo (el resumen): el día puede subirse por encima de ello. */
+  bottomInset?: number;
   events: DayEvent[];
   /** A qué hora empieza el día del usuario, en minutos desde las 00:00: el día va de ahí a la misma hora del siguiente. */
   startMinutes?: number;
@@ -176,7 +179,7 @@ export function DayTimeline({
         fadeBottom={false}
         scrollRef={scroll}
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
         nestedScrollEnabled>
         {/* Hueco de lo que flota encima: con el scroll arriba del todo, el día empieza justo debajo. */}
         <View style={{ height: topInset }} />

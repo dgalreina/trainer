@@ -107,6 +107,8 @@ export function CalendarScreen() {
   const [choosingWorkout, setChoosingWorkout] = useState(false);
   const [meal, setMeal] = useState<MealEditing | null>(null);
   const [weighAt, setWeighAt] = useState<string | null>(null);
+  // Alto del resumen que flota abajo: la línea de tiempo deja ese hueco al final para poder verlo todo.
+  const [summaryHeight, setSummaryHeight] = useState(0);
 
   // Marcas discretas al principio del día: cuándo empieza una dieta (rige sin fin desde que se activa) o un
   // entrenamiento. Solo se guarda el día, no la hora, así que van al principio.
@@ -233,8 +235,10 @@ export function CalendarScreen() {
             startMinutes={dayStartMinutes}
             topInset={topInset}
             marks={marks}
+            bottomInset={summaryHeight}
           />
-          <View style={styles.bottom}>
+          {/* El resumen flota sobre la gráfica, que llega hasta el borde de abajo. Solo la tarjeta capta toques. */}
+          <View pointerEvents="box-none" style={styles.floating} onLayout={(e) => setSummaryHeight(e.nativeEvent.layout.height)}>
             <MealLogSection day={day} logs={mealsOf(day)} planned={planned} energy={energy} />
           </View>
 
@@ -304,7 +308,7 @@ export function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  bottom: { flexGrow: 0, flexShrink: 0, paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
+  floating: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.four, paddingBottom: Spacing.four },
   hidden: { opacity: 0 },
   dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dayTitle: { flex: 1, alignItems: 'center' },

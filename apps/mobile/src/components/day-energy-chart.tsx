@@ -138,7 +138,7 @@ export function DayEnergyChart({
       {shapes.balance && (
         <>
           <Path d={area(shapes.balance, x0)} fill={theme.amber} fillOpacity={0.16} />
-          <Path d={curve(shapes.balance)} fill="none" stroke={theme.amber} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d={curve(shapes.balance)} fill="none" stroke={theme.amber} strokeWidth={2} strokeOpacity={0.75} strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
     </>
