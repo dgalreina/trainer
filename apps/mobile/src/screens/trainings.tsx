@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
 import { Screen } from '@/components/screen';
+import { SectionTabs, TemplatesPlaceholder } from '@/components/section-tabs';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { todayISO } from '@/lib/dates';
@@ -29,66 +30,83 @@ export function TrainingsScreen() {
   const today = todayISO();
   const newTraining = useNewTraining();
   const [createError, setCreateError] = useState<string | null>(null);
+  const [section, setSection] = useState<'mis' | 'plantillas'>('mis');
 
   return (
-    <Screen title="Entrenos" scroll>
-      <Button
-        title="Nuevo entrenamiento"
-        onPress={() =>
-          newTraining().then(
-            () => setCreateError(null),
-            (err) => setCreateError(err instanceof Error ? err.message : 'No se ha podido crear'),
-          )
-        }
-      />
-      <ErrorText message={error ?? createError} />
-
-      {!loading && trainings.length === 0 && !error && (
-        <ThemedText themeColor="textSecondary">
-          Todavía no tienes ningún entrenamiento. Crea el primero con el botón de arriba y añádele
-          las rutinas de cada día.
-        </ThemedText>
-      )}
-
-      {trainings.map((training) => {
-        const progress = trainingProgress(training, today);
-        const isActive = settings.activeTrainingId === training.id;
-        return (
-          <Card
-            key={training.id}
-            tone={isActive ? 'primarySoft' : 'backgroundElement'}
+    <Screen
+      fade
+      fixedTop={
+        <SectionTabs
+          options={[
+            { key: 'mis', label: 'Mis entrenos' },
+            { key: 'plantillas', label: 'Plantillas' },
+          ]}
+          value={section}
+          onChange={setSection}
+        />
+      }>
+      {section === 'plantillas' ? (
+        <TemplatesPlaceholder text="Pronto habrá plantillas de entreno de ejemplo para empezar." />
+      ) : (
+        <>
+          <Button
+            title="Nuevo entrenamiento"
             onPress={() =>
-              router.push({ pathname: '/entrenamiento/[id]', params: { id: training.id } })
+              newTraining().then(
+                () => setCreateError(null),
+                (err) => setCreateError(err instanceof Error ? err.message : 'No se ha podido crear'),
+              )
             }
-            style={styles.card}>
-            <View style={styles.header}>
-              <ThemedText type="smallBold" style={styles.name}>
-                {training.name}
-              </ThemedText>
-              {/* El punto marca el entrenamiento actual; tocar fuera de él abre el entrenamiento. */}
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isActive }}
-                accessibilityLabel={`Usar ${training.name} como entrenamiento actual`}
-                hitSlop={8}
-                onPress={() => {
-                  if (!isActive) setActiveTraining(training.id).catch(() => {});
-                }}
-                style={styles.dotHit}>
-                <View style={[styles.dot, { borderColor: theme.primaryText }, isActive && { backgroundColor: theme.primary }]} />
-              </Pressable>
-            </View>
-            <ThemedText type="small" themeColor="textSecondary">
-              {progressLabel(training, progress)} · {training.routines.length}{' '}
-              {training.routines.length === 1 ? 'rutina' : 'rutinas'}
-            </ThemedText>
-            {training.routines.length > 0 && (
-              <ThemedText type="small">{training.routines.map((r) => routineTitle(training.routines, r.id)).join(' · ')}</ThemedText>
-            )}
-          </Card>
-        );
-      })}
+          />
+          <ErrorText message={error ?? createError} />
 
+          {!loading && trainings.length === 0 && !error && (
+            <ThemedText themeColor="textSecondary">
+              Todavía no tienes ningún entrenamiento. Crea el primero con el botón de arriba y añádele
+              las rutinas de cada día.
+            </ThemedText>
+          )}
+
+          {trainings.map((training) => {
+            const progress = trainingProgress(training, today);
+            const isActive = settings.activeTrainingId === training.id;
+            return (
+              <Card
+                key={training.id}
+                tone={isActive ? 'primarySoft' : 'backgroundElement'}
+                onPress={() =>
+                  router.push({ pathname: '/entrenamiento/[id]', params: { id: training.id } })
+                }
+                style={styles.card}>
+                <View style={styles.header}>
+                  <ThemedText type="smallBold" style={styles.name}>
+                    {training.name}
+                  </ThemedText>
+                  {/* El punto marca el entrenamiento actual; tocar fuera de él abre el entrenamiento. */}
+                  <Pressable
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                    accessibilityLabel={`Usar ${training.name} como entrenamiento actual`}
+                    hitSlop={8}
+                    onPress={() => {
+                      if (!isActive) setActiveTraining(training.id).catch(() => {});
+                    }}
+                    style={styles.dotHit}>
+                    <View style={[styles.dot, { borderColor: theme.primaryText }, isActive && { backgroundColor: theme.primary }]} />
+                  </Pressable>
+                </View>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {progressLabel(training, progress)} · {training.routines.length}{' '}
+                  {training.routines.length === 1 ? 'rutina' : 'rutinas'}
+                </ThemedText>
+                {training.routines.length > 0 && (
+                  <ThemedText type="small">{training.routines.map((r) => routineTitle(training.routines, r.id)).join(' · ')}</ThemedText>
+                )}
+              </Card>
+            );
+          })}
+        </>
+      )}
     </Screen>
   );
 }

@@ -42,7 +42,7 @@ export function TodayScreen() {
 
   return (
     <Screen
-      title="Hoy"
+      title="¿Qué vas a entrenar hoy?"
       action={
         activeTraining ? (
           <TrainingBadge
@@ -93,7 +93,6 @@ export function TodayScreen() {
             </Card>
           ) : (
             <>
-              <ThemedText type="smallBold">¿Qué entrenas hoy?</ThemedText>
               {activeTraining.routines.map((routine, index) => {
                 const summary = routineSummary(routine, byId);
                 return (

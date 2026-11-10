@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
 import { AccountSection } from '@/components/account-section';
-import { Chip } from '@/components/form';
 import { ProfileForm } from '@/components/profile-form';
 import { Screen } from '@/components/screen';
-import { Spacing } from '@/constants/theme';
+import { SectionTabs } from '@/components/section-tabs';
 
 type Section = 'datos' | 'cuenta';
 
@@ -18,16 +16,16 @@ export function MeScreen() {
     <Screen
       fade
       fixedTop={
-        <View style={styles.sections}>
-          <Chip label="Mis datos" active={section === 'datos'} onPress={() => setSection('datos')} />
-          <Chip label="Mi cuenta" active={section === 'cuenta'} onPress={() => setSection('cuenta')} />
-        </View>
+        <SectionTabs
+          options={[
+            { key: 'datos', label: 'Mis datos' },
+            { key: 'cuenta', label: 'Mi cuenta' },
+          ]}
+          value={section}
+          onChange={setSection}
+        />
       }>
       {section === 'datos' ? <ProfileForm /> : <AccountSection />}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  sections: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
-});
