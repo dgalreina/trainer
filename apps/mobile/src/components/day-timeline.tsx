@@ -70,6 +70,12 @@ const withAlpha = (hex: string, alpha: number) =>
 const dayDiff = (from: string, to: string) =>
   Math.round((parseISO(to).getTime() - parseISO(from).getTime()) / DAY_MS);
 
+/** Un evento que se está arrastrando y la hora provisional a la que quedaría: las gráficas la siguen en vivo. */
+export interface DragPreview {
+  id: string;
+  start: Date;
+}
+
 /** Lo que se dibuja en un día: sus tarjetas, sus gráficas y las marcas del principio. */
 export interface DayModel {
   events: DayEvent[];
@@ -169,7 +175,7 @@ export const DayList = forwardRef<
     /** El día de hoy («AAAA-MM-DD»). */
     today: string;
     /** Lo que se pinta en cada día. */
-    modelOf: (day: string) => DayModel;
+    modelOf: (day: string, preview?: DragPreview) => DayModel;
     /** Alto (px) de lo que flota por encima (la barra de pestañas): el día de interés se coloca justo debajo. */
     topInset: number;
     /** Alto (px) de lo que flota por debajo (la tarjeta de calorías): el «centro» de lo visible queda por encima de ella. */
@@ -247,18 +253,28 @@ export const DayList = forwardRef<
   }, []);
 
   const { onPressEvent, onMoveEvent, onPressSlot } = handlers;
+  // El evento que se arrastra ahora mismo (solo uno a la vez): su día recalcula las gráficas con su hora provisional.
+  const [drag, setDrag] = useState<(DragPreview & { day: string }) | null>(null);
+  const onDragEvent = useCallback((day: string, preview: DragPreview | null) => {
+    setDrag((prev) => (preview ? { ...preview, day } : prev === null ? prev : null));
+  }, []);
   const renderItem = useCallback(
-    ({ item }: { item: number }) => (
+    ({ item }: { item: number }) => {
+      const day = dayOfIndex(item);
+      return (
       <DayColumn
-        day={dayOfIndex(item)}
+        day={day}
         today={today}
         modelOf={modelOf}
+        preview={drag && drag.day === day ? drag : null}
+        onDragEvent={onDragEvent}
         onPressEvent={onPressEvent}
         onMoveEvent={onMoveEvent}
         onPressSlot={onPressSlot}
       />
-    ),
-    [dayOfIndex, today, modelOf, onPressEvent, onMoveEvent, onPressSlot],
+      );
+    },
+    [dayOfIndex, today, modelOf, drag, onDragEvent, onPressEvent, onMoveEvent, onPressSlot],
   );
 
   return (
@@ -291,16 +307,21 @@ const DayColumn = memo(function DayColumn({
   day,
   today,
   modelOf,
+  preview,
+  onDragEvent,
   onPressEvent,
   onMoveEvent,
   onPressSlot,
 }: {
   day: string;
   today: string;
-  modelOf: (day: string) => DayModel;
+  modelOf: (day: string, preview?: DragPreview) => DayModel;
+  /** El evento de este día que se está arrastrando, con su hora provisional (para las gráficas). */
+  preview: DragPreview | null;
+  onDragEvent: (day: string, preview: DragPreview | null) => void;
 } & Handlers) {
   const theme = useTheme();
-  const { events, energy, marks, loaded } = useMemo(() => modelOf(day), [modelOf, day]);
+  const { events, energy, marks, loaded } = useMemo(() => modelOf(day, preview ?? undefined), [modelOf, day, preview]);
   const isToday = day === today;
   const dayStart = startOfDay(day).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -394,6 +415,7 @@ const DayColumn = memo(function DayColumn({
               lane={lane}
               onPress={onPressEvent}
               onMove={onMoveEvent}
+              onDrag={(preview) => onDragEvent(day, preview)}
             />
           ))}
         </View>
@@ -428,12 +450,15 @@ function EventCircle({
   lane,
   onPress,
   onMove,
+  onDrag,
 }: {
   event: DayEvent;
   dayStart: number;
   lane: number;
   onPress?: (event: DayEvent) => void;
   onMove?: (event: DayEvent, newStart: Date) => void;
+  /** Mientras se arrastra, la hora provisional (con el ajuste a 5 min); `null` al soltar. */
+  onDrag?: (preview: DragPreview | null) => void;
 }) {
   const theme = useTheme();
   const node = useRef<unknown>(null);
@@ -521,6 +546,19 @@ function EventCircle({
   const dragging = dragDy !== null;
   const minutes = dragging ? dragMinutes(dragDy, event, dayStart) : 0;
   const start = new Date(event.start.getTime() + minutes * MINUTE_MS);
+
+  // Las gráficas siguen al círculo: se avisa solo cuando cambia la hora ajustada, no a cada píxel.
+  const wasDragging = useRef(false);
+  const onDragRef = useRef(onDrag);
+  useEffect(() => {
+    onDragRef.current = onDrag;
+  });
+  useEffect(() => {
+    if (!dragging && !wasDragging.current) return;
+    wasDragging.current = dragging;
+    onDragRef.current?.(dragging ? { id: event.id, start: new Date(event.start.getTime() + minutes * MINUTE_MS) } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging, minutes]);
   const top = Math.min(
     Math.max(circleTop(event.start.getTime(), dayStart) + (minutes / 60) * HOUR_HEIGHT, 0),
     DAY_HEIGHT - CIRCLE,

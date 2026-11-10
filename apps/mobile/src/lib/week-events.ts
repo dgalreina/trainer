@@ -170,10 +170,6 @@ export function useWeekEvents(weekStart: string) {
       const minutes = session.durationSeconds ? session.durationSeconds / 60 : FALLBACK_WORKOUT_MINUTES;
       const routineOf = trainings.find((t) => t.id === session.trainingId);
       const routine = routineOf?.routines.find((r) => r.id === session.routineId);
-      const sets = session.entries.reduce((total, e) => total + e.sets.length, 0);
-      const volume = Math.round(
-        session.entries.reduce((total, e) => total + e.sets.reduce((v, s) => v + s.reps * s.weightKg, 0), 0),
-      );
       return {
         id: `workout-${session.id}`,
         kind: 'workout',
@@ -181,7 +177,6 @@ export function useWeekEvents(weekStart: string) {
         start,
         end: new Date(start.getTime() + minutes * MINUTE_MS),
         title: routineOf && routine ? routineTitle(routineOf.routines, routine.id) : 'Entreno',
-        subtitle: `${sets} ${sets === 1 ? 'serie' : 'series'}`,
       };
     });
     const weighIns = weights.map((entry): DayEvent => {

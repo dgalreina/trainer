@@ -1,9 +1,9 @@
-import { calculateTargets, dayEnergy, loggedMacros, routineTitle } from '@trainer/shared';
+import { calculateTargets, dayEnergy, loggedMacros, routineTitle, workoutExtraKcal } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { DayList, type DayListHandle, type DayModel } from '@/components/day-timeline';
+import { DayList, type DayListHandle, type DayModel, type DragPreview } from '@/components/day-timeline';
 import { Button, ErrorText, LinkButton } from '@/components/form';
 import { MealEditor, type MealDraft, type MealForm } from '@/components/meal-editor';
 import { MealLogSection } from '@/components/meal-log-section';
@@ -93,7 +93,7 @@ export function CalendarScreen() {
 
   /** Todo lo de un día: sus tarjetas, sus gráficas y sus marcas. Se calcula día a día, solo para los que se pintan. */
   const modelOf = useCallback(
-    (day: string): DayModel & { planned: DayEvent[]; logs: ReturnType<typeof mealsOf> } => {
+    (day: string, preview?: DragPreview): DayModel & { planned: DayEvent[]; logs: ReturnType<typeof mealsOf> } => {
       // Marcas discretas al principio del día: cuándo empieza una dieta (rige sin fin desde que se activa) o un
       // entrenamiento. Solo se guarda el día, no la hora, así que van al principio.
       const marks: string[] = [];
@@ -108,15 +108,33 @@ export function CalendarScreen() {
       // comidas editadas o quitadas ese día).
       if (!isLoaded(day)) return { events: [], planned: [], logs: [], energy: null, marks, loaded: false };
       const planned = plannedOf(day);
-      const events = [...eventsOf(day), ...planned].sort((a, b) => a.start.getTime() - b.start.getTime());
+      // El entreno terminado muestra lo que se estima que gasta (por encima del basal; es orientativo).
+      const events = [...eventsOf(day), ...planned]
+        .map((e) =>
+          e.kind === 'workout' && !e.inProgress && weightKg && weightKg > 0
+            ? {
+                ...e,
+                subtitle: `~${Math.round(workoutExtraKcal(weightKg, (e.end.getTime() - e.start.getTime()) / 60_000))} kcal`,
+              }
+            : e,
+        )
+        .sort((a, b) => a.start.getTime() - b.start.getTime());
+      // Mientras se arrastra un círculo, las gráficas lo cuentan ya en su hora provisional (los eventos no se tocan).
+      const counted = preview
+        ? events.map((e) =>
+            e.id === preview.id
+              ? { ...e, start: preview.start, end: new Date(preview.start.getTime() + (e.end.getTime() - e.start.getTime())) }
+              : e,
+          )
+        : events;
       const energy = dayEnergy({
         dayStart: startOfDay(day).getTime(),
         bmr,
         weightKg,
-        workouts: events
+        workouts: counted
           .filter((e) => e.kind === 'workout' && !e.inProgress)
           .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
-        meals: events.flatMap((e) =>
+        meals: counted.flatMap((e) =>
           e.kind === 'meal' && e.log
             ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
             : e.kind === 'plan' && e.macros
