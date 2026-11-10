@@ -1,12 +1,13 @@
-import { routineTitle, trainingProgress } from '@trainer/shared';
+import { routineTitle, trainingProgress, type TrainingTemplate } from '@trainer/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { SectionTabs, TemplatesPlaceholder } from '@/components/section-tabs';
+import { TemplateCard } from '@/components/template-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { todayISO } from '@/lib/dates';
@@ -18,7 +19,7 @@ import { useTrainings } from '@/lib/trainings';
 
 export function TrainingsScreen() {
   const router = useRouter();
-  const { trainings, loading, error, refresh } = useTrainings();
+  const { trainings, templates, templatesError, reloadTemplates, loading, error, refresh, applyTemplate } = useTrainings();
   // Al entrar se vuelve a pedir al servidor: el entrenamiento pudo cambiar desde otro sitio.
   useFocusEffect(
     useCallback(() => {
@@ -31,6 +32,28 @@ export function TrainingsScreen() {
   const newTraining = useNewTraining();
   const [createError, setCreateError] = useState<string | null>(null);
   const [section, setSection] = useState<'mis' | 'plantillas'>('mis');
+  const [usingId, setUsingId] = useState<string | null>(null);
+  // Cerrojo síncrono: dos pulsaciones seguidas (aunque sea en otra tarjeta) no crean dos entrenamientos.
+  const using = useRef(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+
+  // «Usar»: copia la plantilla a los entrenos propios, desde hoy, y la abre para ajustarla.
+  async function onUseTemplate(template: TrainingTemplate) {
+    if (using.current) return;
+    using.current = true;
+    setUsingId(template.id);
+    setTemplateError(null);
+    try {
+      const training = await applyTemplate(template.id, todayISO());
+      setSection('mis');
+      router.push({ pathname: '/entrenamiento/[id]', params: { id: training.id } });
+    } catch (err) {
+      setTemplateError(err instanceof Error ? err.message : 'No se ha podido usar la plantilla');
+    } finally {
+      using.current = false;
+      setUsingId(null);
+    }
+  }
 
   return (
     <Screen
@@ -46,7 +69,30 @@ export function TrainingsScreen() {
         />
       }>
       {section === 'plantillas' ? (
-        <TemplatesPlaceholder text="Pronto habrá plantillas de entreno de ejemplo para empezar." />
+        templates.length === 0 ? (
+          <>
+            <TemplatesPlaceholder
+              text={templatesError ? 'No se han podido cargar las plantillas.' : 'No hay plantillas de entreno disponibles ahora mismo.'}
+            />
+            {templatesError ? <Button title="Reintentar" variant="secondary" onPress={reloadTemplates} /> : null}
+          </>
+        ) : (
+          <>
+            <ThemedText type="small" themeColor="textSecondary">
+              Entrenamientos de ejemplo para empezar. «Usar» te copia uno a Mis entrenos, desde hoy; luego lo ajustas a tu gusto (los pesos los pones tú).
+            </ThemedText>
+            <ErrorText message={templateError} />
+            {templates.map((template) => (
+              <TemplateCard
+                key={template.id}
+                template={template}
+                using={usingId === template.id}
+                disabled={usingId !== null}
+                onUse={() => onUseTemplate(template)}
+              />
+            ))}
+          </>
+        )
       ) : (
         <>
           <Button

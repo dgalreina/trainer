@@ -1,0 +1,655 @@
+[
+  {
+    "key": "pre-competicion",
+    "name": "Pre-competición",
+    "description": "Ejemplo de preparación en cinco días: pecho, pierna, hombro, brazos y espalda, con series de 12-10-8-8 al fallo y descansos de 1 minuto (2 en pierna).",
+    "durationWeeks": 8,
+    "routines": [
+      {
+        "name": "Pecho - Abdomen",
+        "restSeconds": 60,
+        "slots": [
+          {
+            "exercise": "Press de banca inclinado con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Press de banca con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Aperturas con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "technique": "ss",
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Contractora (pec deck)",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Cruces en polea (cable crossover)",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "technique": "ss",
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Fondos en paralelas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          }
+        ]
+      },
+      {
+        "name": "Pierna - Gemelo",
+        "restSeconds": 120,
+        "slots": [
+          {
+            "exercise": "Prensa de piernas",
+            "sets": [
+              {
+                "reps": 20
+              },
+              {
+                "reps": 30
+              },
+              {
+                "reps": 40
+              },
+              {
+                "reps": 50
+              }
+            ],
+            "notes": "La última serie con el 100 % de tu peso corporal"
+          },
+          {
+            "exercise": "Sentadilla con barra",
+            "sets": [
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              }
+            ]
+          },
+          {
+            "exercise": "Zancadas caminando",
+            "sets": [
+              {
+                "reps": 25
+              },
+              {
+                "reps": 25
+              }
+            ]
+          },
+          {
+            "exercise": "Extensión de cuádriceps",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "desc",
+            "notes": "5 bajadas de 10 repeticiones"
+          },
+          {
+            "exercise": "Prensa de piernas con pies altos",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Curl femoral tumbado",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Elevación de gemelos de pie",
+            "sets": [
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Hombro - Abdomen",
+        "restSeconds": 60,
+        "slots": [
+          {
+            "exercise": "Press militar con barra",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Elevaciones laterales sentado",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Elevaciones laterales en polea",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Elevaciones laterales con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Elevaciones frontales con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Encogimientos de hombros con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          }
+        ]
+      },
+      {
+        "name": "Brazos",
+        "restSeconds": 60,
+        "slots": [
+          {
+            "exercise": "Curl de bíceps con barra",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Curl de bíceps con mancuernas",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Curl en banco Scott (predicador)",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "technique": "ss",
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Curl Scott inverso",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Curl martillo",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Extensión de tríceps en polea (cuerda)",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Press de banca con agarre cerrado",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Press francés con barra",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Fondos en paralelas (tríceps)",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "technique": "ss",
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Patada de tríceps con mancuerna",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          }
+        ]
+      },
+      {
+        "name": "Espalda - Abdomen",
+        "restSeconds": 60,
+        "slots": [
+          {
+            "exercise": "Remo con barra",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Remo con mancuerna a una mano",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Remo Dorian",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Jalón al pecho agarre cerrado",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Pájaros (elevación posterior)",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Hiperextensiones",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Al fallo"
+          }
+        ]
+      }
+    ]
+  }
+]

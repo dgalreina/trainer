@@ -67,6 +67,21 @@ export class TrainingsService {
     return toTraining(await this.model.create({ userId, ...dto }));
   }
 
+  /** Crea un entrenamiento ya con sus rutinas (lo usan las plantillas). Los ejercicios deben existir y ser visibles. */
+  async createWithRoutines(userId: string, dto: CreateTraining, routines: CreateRoutine[]): Promise<Training> {
+    await this.exercises.assertVisible(userId, routines.flatMap((r) => (r.slots ?? []).map((s) => s.exerciseId)));
+    const doc = await this.model.create({
+      userId,
+      ...dto,
+      routines: routines.map((r) => ({
+        name: r.name ?? "",
+        slots: r.slots ?? [],
+        restSeconds: r.restSeconds ?? DEFAULT_REST_SECONDS,
+      })),
+    });
+    return toTraining(doc);
+  }
+
   async update(userId: string, id: string, dto: UpdateTraining): Promise<Training> {
     const doc = await this.findOwn(userId, id);
     if (dto.name !== undefined) doc.name = dto.name;

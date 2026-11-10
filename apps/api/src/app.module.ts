@@ -11,6 +11,7 @@ import { ProfileModule } from "./profile/profile.module.js";
 import { SessionsModule } from "./sessions/sessions.module.js";
 import { SettingsModule } from "./settings/settings.module.js";
 import { TrainingsModule } from "./trainings/trainings.module.js";
+import { TrainingTemplatesModule } from "./training-templates/training-templates.module.js";
 import { MealLogsModule } from "./meal-logs/meal-logs.module.js";
 import { WeightsModule } from "./weights/weights.module.js";
 
@@ -33,6 +34,7 @@ import { WeightsModule } from "./weights/weights.module.js";
     FoodsModule,
     MealLogsModule,
     TrainingsModule,
+    TrainingTemplatesModule,
     SettingsModule,
     SessionsModule,
     ProfileModule,

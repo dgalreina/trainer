@@ -7,6 +7,7 @@ export * from "./energy";
 export * from "./meal-log";
 export * from "./routine";
 export * from "./training";
+export * from "./training-template";
 export * from "./profile";
 export * from "./session";
 export * from "./health";

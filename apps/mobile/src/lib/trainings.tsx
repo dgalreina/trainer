@@ -2,6 +2,7 @@ import type {
   CreateRoutine,
   CreateTraining,
   Training,
+  TrainingTemplate,
   UpdateRoutine,
   UpdateTraining,
 } from '@trainer/shared';
@@ -21,11 +22,19 @@ import { useAuth } from '@/lib/auth';
 
 interface TrainingsValue {
   trainings: Training[];
+  /** Plantillas de entrenamiento (compartidas por todos), cargadas una vez. */
+  templates: TrainingTemplate[];
+  /** Si falló la carga de las plantillas (hasta que se reintente con éxito). */
+  templatesError: boolean;
+  /** Vuelve a pedir las plantillas. */
+  reloadTemplates: () => Promise<void>;
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
   /** Vuelve a pedir la lista al servidor sin mostrar la carga (por si cambió desde otro dispositivo). */
   refresh: () => Promise<void>;
+  /** Copia una plantilla a «Mis entrenos», empezando en `startDate`, y devuelve el entrenamiento creado. */
+  applyTemplate: (templateId: string, startDate: string) => Promise<Training>;
   create: (training: CreateTraining) => Promise<Training>;
   update: (id: string, changes: UpdateTraining) => Promise<Training>;
   remove: (id: string) => Promise<void>;
@@ -40,6 +49,8 @@ const TrainingsContext = createContext<TrainingsValue | null>(null);
 export function TrainingsProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const [trainings, setTrainings] = useState<Training[]>([]);
+  const [templates, setTemplates] = useState<TrainingTemplate[]>([]);
+  const [templatesError, setTemplatesError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +88,23 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
     else setTrainings([]);
   }, [status, reload]);
 
+  // Las plantillas no cambian desde la app: se piden una vez al entrar (y de nuevo si falló y se reintenta).
+  const reloadTemplates = useCallback(async () => {
+    try {
+      setTemplates(await api.get<TrainingTemplate[]>('/training-templates'));
+      setTemplatesError(false);
+    } catch {
+      setTemplatesError(true);
+    }
+  }, []);
+  useEffect(() => {
+    if (status === 'signedIn') reloadTemplates();
+    else {
+      setTemplates([]);
+      setTemplatesError(false);
+    }
+  }, [status, reloadTemplates]);
+
   const replace = useCallback((saved: Training) => {
     setTrainings((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
     return saved;
@@ -85,6 +113,12 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
   const create = useCallback(async (training: CreateTraining) => {
     const saved = await api.post<Training>('/trainings', training);
     // Más reciente primero, como en el servidor.
+    setTrainings((prev) => [saved, ...prev].sort((a, b) => b.startDate.localeCompare(a.startDate)));
+    return saved;
+  }, []);
+
+  const applyTemplate = useCallback(async (templateId: string, startDate: string) => {
+    const saved = await api.post<Training>(`/training-templates/${templateId}/use`, { startDate });
     setTrainings((prev) => [saved, ...prev].sort((a, b) => b.startDate.localeCompare(a.startDate)));
     return saved;
   }, []);
@@ -120,8 +154,8 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<TrainingsValue>(
-    () => ({ trainings, loading, error, reload, refresh, create, update, remove, addRoutine, updateRoutine, removeRoutine }),
-    [trainings, loading, error, reload, refresh, create, update, remove, addRoutine, updateRoutine, removeRoutine],
+    () => ({ trainings, templates, templatesError, reloadTemplates, loading, error, reload, refresh, applyTemplate, create, update, remove, addRoutine, updateRoutine, removeRoutine }),
+    [trainings, templates, templatesError, reloadTemplates, loading, error, reload, refresh, applyTemplate, create, update, remove, addRoutine, updateRoutine, removeRoutine],
   );
 
   return <TrainingsContext.Provider value={value}>{children}</TrainingsContext.Provider>;
