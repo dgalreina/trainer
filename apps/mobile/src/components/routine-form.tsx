@@ -365,7 +365,7 @@ export function RoutineForm({
   return (
     <View style={styles.form}>
       <ThemedText type="smallBold" themeColor="textSecondary">
-        Nombre (opcional)
+        Nombre
       </ThemedText>
       <TextInput
         accessibilityLabel="Nombre de la rutina"

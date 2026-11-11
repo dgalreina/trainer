@@ -96,12 +96,12 @@ export function Screen({
       <BackButton onPress={onBack} />
       <View style={[styles.headerText, styles.headerCentered]}>
         {title ? (
-          <ThemedText type="subtitle" numberOfLines={1} style={[styles.centeredText, styles.centeredTitle]}>
+          <ThemedText type="subtitle" numberOfLines={2} style={[styles.centeredText, styles.centeredTitle]}>
             {title}
           </ThemedText>
         ) : null}
         {subtitle ? (
-          <ThemedText themeColor="textSecondary" numberOfLines={1} style={styles.centeredText}>
+          <ThemedText themeColor="textSecondary" numberOfLines={2} style={styles.centeredText}>
             {subtitle}
           </ThemedText>
         ) : null}
