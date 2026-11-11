@@ -9,6 +9,12 @@ export const WORKOUT_MET = 5;
 /** Una comida se reparte a lo largo de este rato, desde su hora (no es instantánea). */
 export const MEAL_SPREAD_MINUTES = 30;
 
+/**
+ * Parte del nivel que se «olvida» en cada tramo: con 24 h de constante de tiempo. Así el nivel no crece sin límite en
+ * una racha de superávit y, al encadenar varios días, lo que había hace una semana ya no pesa (no hace falta saber dónde empezó).
+ */
+export const LEVEL_LEAK_PER_SLOT = ENERGY_SLOT_MINUTES / (24 * 60);
+
 const SLOT_MS = ENERGY_SLOT_MINUTES * 60_000;
 const MEAL_SPREAD_MS = MEAL_SPREAD_MINUTES * 60_000;
 const DAY_MS = 24 * 3_600_000;
@@ -34,8 +40,8 @@ export interface DayEnergyInput {
   weightKg: number | null;
   workouts: EnergyWorkout[];
   meals: EnergyMeal[];
-  /** El día anterior (sus tramos de gasto y consumo), para la curva de las últimas 24 h. Sin él, la curva solo cuenta el día. */
-  previous?: Pick<DayEnergy, "burn" | "intake"> | null;
+  /** Nivel con el que empieza el día (kcal): el que dejó el día anterior. Sin él, 0. */
+  startLevel?: number;
 }
 
 export interface DayEnergy {
@@ -48,11 +54,10 @@ export interface DayEnergy {
   /** Balance acumulado desde las 00:00 hasta el final de cada tramo (consumo − gasto, kcal). Solo cuenta este día. */
   balance: number[];
   /**
-   * Balance de las últimas 24 h al final de cada tramo (consumo − gasto, kcal): lo que queda del día anterior más lo
-   * de hoy hasta ese momento. Sin salto a medianoche (a las 10:00 todavía cuenta la cena de ayer); es lo que se
-   * dibuja. Sin el día anterior es igual que `balance`.
+   * Nivel de energía al final de cada tramo (kcal): sigue de un día al siguiente (a medianoche no vuelve a 0),
+   * cada comida lo sube, el gasto lo baja y tiende despacio a 0 ({@link LEVEL_LEAK_PER_SLOT}). Es lo que se dibuja.
    */
-  rolling: number[];
+  level: number[];
   totals: {
     basal: number;
     workouts: number;
@@ -101,7 +106,7 @@ function spread(slots: number[], dayStart: number, start: number, end: number, k
  * o una comida fuera del día no cuenta. El día se trata como 24 h fijas (96 tramos): el día del cambio
  * de hora, lo de después de las 23:00 locales queda ±1 h desplazado (igual que las tarjetas del calendario).
  */
-export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, previous }: DayEnergyInput): DayEnergy {
+export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel = 0 }: DayEnergyInput): DayEnergy {
   const hasBurn = bmr !== null && bmr > 0;
   const basalPerSlot = hasBurn ? bmr / ENERGY_SLOTS : 0;
   const burn = Array.from({ length: ENERGY_SLOTS }, () => basalPerSlot);
@@ -123,15 +128,8 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, previous }
   let running = 0;
   const balance = intake.map((eaten, i) => (running += eaten - burn[i]));
 
-  // Lo que sigue dentro de la ventana de 24 h al final del tramo i: los tramos i+1… de ayer.
-  const rolling = balance.slice();
-  if (previous && previous.burn.length === ENERGY_SLOTS && previous.intake.length === ENERGY_SLOTS) {
-    let tail = 0;
-    for (let i = ENERGY_SLOTS - 1; i >= 0; i--) {
-      rolling[i] = balance[i] + tail;
-      tail += previous.intake[i] - previous.burn[i];
-    }
-  }
+  let carried = startLevel;
+  const level = intake.map((eaten, i) => (carried = carried * (1 - LEVEL_LEAK_PER_SLOT) + eaten - burn[i]));
 
   const sum = (list: number[]) => list.reduce((total, value) => total + value, 0);
   return {
@@ -139,7 +137,7 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, previous }
     burn,
     intake,
     balance,
-    rolling,
+    level,
     totals: {
       basal: Math.round(basalPerSlot * ENERGY_SLOTS),
       workouts: Math.round(workoutsKcal),

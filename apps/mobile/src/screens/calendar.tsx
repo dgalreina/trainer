@@ -58,6 +58,9 @@ function useSettled<T>(value: T, ms = 250): T {
  * Calendario en scroll continuo: los días uno debajo de otro (qué hice y a qué hora: entrenos, comidas y
  * pesadas), cada uno con su tarjeta «Día X» al empezar. Abajo, la tarjeta de calorías del día que se muestra.
  */
+/** Días anteriores que se encadenan para saber con qué nivel de energía empieza un día. */
+const CARRY_DAYS = 7;
+
 export function CalendarScreen() {
   useMinuteTick();
   const router = useRouter();
@@ -147,13 +150,16 @@ export function CalendarScreen() {
               : e,
           )
         : events;
-      // La curva cuenta las últimas 24 h: si el día anterior está cargado, se le pide su gasto y consumo.
-      const previousDay = addDays(day, -1);
-      const previousEvents = isLoaded(previousDay) ? [...eventsOf(previousDay), ...plannedOf(previousDay)] : null;
-      const energy = dayEnergy({
-        ...energyInput(day, counted),
-        previous: previousEvents ? dayEnergy(energyInput(previousDay, previousEvents)) : null,
-      });
+      // El nivel sigue de un día al siguiente: se encadenan los días anteriores cargados (como mucho CARRY_DAYS;
+      // el nivel tiende a 0, así que lo de hace una semana ya no pesa).
+      let startDay = day;
+      for (let i = 0; i < CARRY_DAYS && isLoaded(addDays(startDay, -1)); i++) startDay = addDays(startDay, -1);
+      let startLevel = 0;
+      for (let d = startDay; d !== day; d = addDays(d, 1)) {
+        const level = dayEnergy({ ...energyInput(d, [...eventsOf(d), ...plannedOf(d)]), startLevel }).level;
+        startLevel = level[level.length - 1];
+      }
+      const energy = dayEnergy({ ...energyInput(day, counted), startLevel });
       return { events, planned, logs: mealsOf(day), energy, marks, loaded: true };
     },
     [eventsOf, plannedOf, mealsOf, isLoaded, energyInput, weightKg, settings.dietSchedule, dietOn, trainings],

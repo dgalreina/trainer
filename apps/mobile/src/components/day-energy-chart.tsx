@@ -8,8 +8,8 @@ import { useTheme } from '@/hooks/use-theme';
 const MAX_FILL = 0.92;
 /** Los tramos de gasto y consumo se suavizan con un núcleo triangular de este radio (en tramos). */
 const SMOOTH_RADIUS = 2;
-/** El balance se escala al mayor valor absoluto, pero nunca por debajo de esto (kcal): evita ampliar el ruido. */
-const MIN_BALANCE_SCALE = 300;
+/** El nivel llega al borde del gráfico con esta cantidad (kcal). Es igual en todos los días: si no, a medianoche habría un escalón. */
+const LEVEL_SCALE = 1500;
 /** Opacidad de lo que ya ha pasado y de lo que aún no (esto último es proyección: se ve más tenue). */
 const PAST_OPACITY = 0.5;
 const FUTURE_OPACITY = 0.2;
@@ -102,10 +102,11 @@ export function DayEnergyChart({
       return [[body[0][0], 0], ...body, [body[body.length - 1][0], height]];
     };
 
-    const balanceScale = Math.max(MIN_BALANCE_SCALE, ...energy.rolling.map(Math.abs));
+    // El día empieza ya en el nivel que dejó el anterior (no en el centro): así no hay corte a medianoche.
+    const levelX = (v: number) => x0 + Math.max(-1, Math.min(1, v / LEVEL_SCALE)) * reach;
     const balancePoints: Point[] = [
-      [x0, 0],
-      ...energy.rolling.map((v, i): Point => [x0 + (v / balanceScale) * reach, (i + 1) * slotHeight]),
+      [levelX(energy.level[0]), 0],
+      ...energy.level.map((v, i): Point => [levelX(v), (i + 1) * slotHeight]),
     ];
 
     return {
