@@ -7,7 +7,7 @@ import {
   type UpdateMeal,
 } from '@trainer/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Vibration, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
@@ -41,7 +41,7 @@ export function MealCard({
   const theme = useTheme();
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
-  // Alimento cuya cantidad se está cambiando (índice en `meal.items`); se abre manteniendo pulsado.
+  // Alimento cuya cantidad se está cambiando (índice en `meal.items`); se abre con un toque.
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [name, setName] = useState(meal.name);
   const [time, setTime] = useState(meal.time);
@@ -142,13 +142,11 @@ export function MealCard({
         }
         return (
           <View key={`${item.foodId}-${index}`} style={styles.item}>
-            {/* Mantener pulsado abre el cambio de cantidad. Sin selección de texto ni menú del navegador. */}
+            {/* Un toque abre el cambio de cantidad. */}
             <Pressable
-              accessibilityHint="Mantén pulsado para cambiar la cantidad"
-              delayLongPress={350}
-              onLongPress={() => {
+              accessibilityHint="Toca para cambiar la cantidad"
+              onPress={() => {
                 if (!food) return;
-                Vibration.vibrate(15);
                 setAdding(false);
                 setEditingItem(index);
               }}

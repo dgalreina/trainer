@@ -1,4 +1,4 @@
-import { calculateTargets, dietMacros, missingTargetData } from '@trainer/shared';
+import { dietMacros } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -24,7 +24,7 @@ export function DietEditorScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { diets, loading, create, update, remove, addMeal, updateMeal, removeMeal } = useDiets();
-  const { profile, latestWeight } = useMe();
+  const { profile } = useMe();
   const { foods } = useFoods();
   const byId = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
 
@@ -124,12 +124,6 @@ export function DietEditorScreen() {
     );
   }
 
-  const weightKg = latestWeight?.weightKg ?? null;
-  const targetInput = { ...profile, weightKg };
-  const targets = existing
-    ? calculateTargets({ ...targetInput, goal: profile.goal ?? existing.goal, today: todayISO() })
-    : null;
-  const missing = missingTargetData(targetInput);
   const total = existing ? dietMacros(existing, byId) : null;
 
   return (
@@ -195,37 +189,6 @@ export function DietEditorScreen() {
             <ThemedText>
               {total.kcal} kcal · P {total.protein} · H {total.carbs} · G {total.fat}
             </ThemedText>
-            {targets ? (
-              <>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Objetivo calculado: {targets.kcal} kcal · P {targets.protein} · H {targets.carbs} · G{' '}
-                  {targets.fat}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {total.kcal === 0
-                    ? 'Añade comidas para ir llenando el día.'
-                    : total.kcal === targets.kcal
-                      ? 'Justo en el objetivo.'
-                      : total.kcal < targets.kcal
-                        ? `Te faltan ${targets.kcal - total.kcal} kcal para el objetivo.`
-                        : `Te pasas ${total.kcal - targets.kcal} kcal del objetivo.`}
-                </ThemedText>
-                {targets.raisedToSafeMinimum && (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    El objetivo se ha subido al mínimo seguro: no se recomiendan menos calorías.
-                  </ThemedText>
-                )}
-                <ThemedText type="small" themeColor="textSecondary">
-                  Con tu metabolismo basal ({targets.bmr} kcal), tu actividad y tu peso de{' '}
-                  {weightKg} kg. Es una estimación orientativa y no sustituye a un profesional
-                  sanitario.
-                </ThemedText>
-              </>
-            ) : (
-              <ThemedText type="small" themeColor="textSecondary">
-                Para calcular tu objetivo diario faltan en «Yo»: {missing.join(', ')}.
-              </ThemedText>
-            )}
           </Card>
 
           <Button variant="danger" title="Borrar dieta" onPress={onDelete} />
