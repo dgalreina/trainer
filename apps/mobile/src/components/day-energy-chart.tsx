@@ -8,8 +8,10 @@ import { useTheme } from '@/hooks/use-theme';
 const MAX_FILL = 0.92;
 /** Los tramos de gasto y consumo se suavizan con un núcleo triangular de este radio (en tramos). */
 const SMOOTH_RADIUS = 2;
-/** El nivel llega al borde del gráfico con esta cantidad (kcal). Es igual en todos los días: si no, a medianoche habría un escalón. */
-const LEVEL_SCALE = 1500;
+/** El nivel llega al borde del gráfico con este múltiplo del basal diario. Depende solo de la persona (igual en todos los días: si no, a medianoche habría un escalón) y deja sitio a rachas de superávit. */
+const LEVEL_SCALE_BMR = 2;
+/** Escala mínima (kcal), por si el basal es muy bajo. */
+const MIN_LEVEL_SCALE = 1500;
 /** Opacidad de lo que ya ha pasado y de lo que aún no (esto último es proyección: se ve más tenue). */
 const PAST_OPACITY = 0.5;
 const FUTURE_OPACITY = 0.2;
@@ -103,7 +105,8 @@ export function DayEnergyChart({
     };
 
     // El día empieza ya en el nivel que dejó el anterior (no en el centro): así no hay corte a medianoche.
-    const levelX = (v: number) => x0 + Math.max(-1, Math.min(1, v / LEVEL_SCALE)) * reach;
+    const levelScale = Math.max(MIN_LEVEL_SCALE, energy.totals.basal * LEVEL_SCALE_BMR);
+    const levelX = (v: number) => x0 + Math.max(-1, Math.min(1, v / levelScale)) * reach;
     const balancePoints: Point[] = [
       [levelX(energy.level[0]), 0],
       ...energy.level.map((v, i): Point => [levelX(v), (i + 1) * slotHeight]),
