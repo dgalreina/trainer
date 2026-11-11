@@ -549,6 +549,42 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/prensa-de-piernas-con-pies-altos_0.webp'),
     require('../../assets/exercises/prensa-de-piernas-con-pies-altos_1.webp'),
   ],
+  'jalon al pecho agarre inverso': [
+    require('../../assets/exercises/jalon-al-pecho-agarre-inverso_0.webp'),
+    require('../../assets/exercises/jalon-al-pecho-agarre-inverso_1.webp'),
+  ],
+  'remo en polea con barra agarre inverso': [
+    require('../../assets/exercises/remo-en-polea-con-barra-agarre-inverso_0.webp'),
+    require('../../assets/exercises/remo-en-polea-con-barra-agarre-inverso_1.webp'),
+  ],
+  'curl con mancuernas en banco inclinado': [
+    require('../../assets/exercises/curl-con-mancuernas-en-banco-inclinado_0.webp'),
+    require('../../assets/exercises/curl-con-mancuernas-en-banco-inclinado_1.webp'),
+  ],
+  'extension de triceps a una mano en polea agarre inverso': [
+    require('../../assets/exercises/extension-de-triceps-a-una-mano-en-polea-agarre-inverso_0.webp'),
+    require('../../assets/exercises/extension-de-triceps-a-una-mano-en-polea-agarre-inverso_1.webp'),
+  ],
+  'extension de triceps sobre la cabeza en polea': [
+    require('../../assets/exercises/extension-de-triceps-sobre-la-cabeza-en-polea_0.webp'),
+    require('../../assets/exercises/extension-de-triceps-sobre-la-cabeza-en-polea_1.webp'),
+  ],
+  'elevaciones frontales en polea': [
+    require('../../assets/exercises/elevaciones-frontales-en-polea_0.webp'),
+    require('../../assets/exercises/elevaciones-frontales-en-polea_1.webp'),
+  ],
+  'press militar en maquina smith': [
+    require('../../assets/exercises/press-militar-en-maquina-smith_0.webp'),
+    require('../../assets/exercises/press-militar-en-maquina-smith_1.webp'),
+  ],
+  'zancadas en maquina smith': [
+    require('../../assets/exercises/zancadas-en-maquina-smith_0.webp'),
+    require('../../assets/exercises/zancadas-en-maquina-smith_1.webp'),
+  ],
+  'press inclinado en maquina': [
+    require('../../assets/exercises/press-inclinado-en-maquina_0.webp'),
+    require('../../assets/exercises/press-inclinado-en-maquina_1.webp'),
+  ],
 };
 
 /** Las imágenes de un ejercicio, si ya las tiene. */

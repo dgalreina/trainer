@@ -550,5 +550,41 @@
   {
     "name": "Prensa de piernas con pies altos",
     "category": "piernas"
+  },
+  {
+    "name": "Jalón al pecho agarre inverso",
+    "category": "espalda"
+  },
+  {
+    "name": "Remo en polea con barra agarre inverso",
+    "category": "espalda"
+  },
+  {
+    "name": "Curl con mancuernas en banco inclinado",
+    "category": "biceps"
+  },
+  {
+    "name": "Extensión de tríceps a una mano en polea agarre inverso",
+    "category": "triceps"
+  },
+  {
+    "name": "Extensión de tríceps sobre la cabeza en polea",
+    "category": "triceps"
+  },
+  {
+    "name": "Elevaciones frontales en polea",
+    "category": "hombros"
+  },
+  {
+    "name": "Press militar en máquina Smith",
+    "category": "hombros"
+  },
+  {
+    "name": "Zancadas en máquina Smith",
+    "category": "piernas"
+  },
+  {
+    "name": "Press inclinado en máquina",
+    "category": "pecho"
   }
 ]

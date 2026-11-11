@@ -651,5 +651,1245 @@
         ]
       }
     ]
+  },
+  {
+    "key": "fuerza-maxima-ss",
+    "name": "Fuerza máxima (volumen SS)",
+    "description": "Fase 1 de aumento de fuerza máxima en cinco días: pectoral, espalda, tren inferior, hombro, y bíceps y tríceps, con superseries («+») y series de 12-10-8-8, subiendo peso y bajando repeticiones. Si vas solo 4 días, haz pecho con bíceps y hombro con tríceps. El abdomen (2 días a la semana) no está incluido.",
+    "durationWeeks": 8,
+    "routines": [
+      {
+        "name": "Pectoral",
+        "restSeconds": 90,
+        "slots": [
+          {
+            "exercise": "Press de banca inclinado con mancuernas",
+            "sets": [
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Press de banca en máquina Smith",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Aperturas inclinadas con mancuernas",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Fondos en paralelas",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Contractora (pec deck)",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Press en máquina",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Espalda",
+        "restSeconds": 90,
+        "slots": [
+          {
+            "exercise": "Dominadas",
+            "sets": [
+              {},
+              {},
+              {},
+              {},
+              {},
+              {}
+            ],
+            "notes": "Al fallo"
+          },
+          {
+            "exercise": "Jalón al pecho",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Remo en polea baja (sentado)",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Jalón al pecho agarre inverso",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Remo en máquina",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Peso muerto",
+            "sets": [
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Tren inferior",
+        "restSeconds": 90,
+        "slots": [
+          {
+            "exercise": "Sentadilla con barra",
+            "sets": [
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 11
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Sentadilla hack",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Zancadas caminando",
+            "sets": [
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              }
+            ]
+          },
+          {
+            "exercise": "Curl femoral tumbado",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Peso muerto rumano",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Elevación de gemelos de pie",
+            "sets": [
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              }
+            ]
+          },
+          {
+            "exercise": "Elevación de gemelos sentado",
+            "sets": [
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              },
+              {
+                "reps": 20
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Hombro",
+        "restSeconds": 90,
+        "slots": [
+          {
+            "exercise": "Press militar en máquina Smith",
+            "sets": [
+              {
+                "reps": 15
+              },
+              {
+                "reps": 15
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Elevaciones laterales sentado",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Elevaciones laterales con mancuernas",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Elevaciones laterales en polea",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Pájaros (elevación posterior)",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Press militar con mancuernas",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "desc",
+            "notes": "Serie descendente: 3 series seguidas bajando peso (10+10+10)"
+          }
+        ]
+      },
+      {
+        "name": "Bíceps y tríceps",
+        "restSeconds": 90,
+        "slots": [
+          {
+            "exercise": "Curl de bíceps con mancuernas",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Curl en banco Scott (predicador)",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Curl con mancuernas en banco inclinado",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Curl martillo",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ]
+          },
+          {
+            "exercise": "Press francés con barra",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Extensión de tríceps en polea (cuerda)",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ]
+          },
+          {
+            "exercise": "Extensión de tríceps sobre la cabeza en polea",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              }
+            ],
+            "technique": "ss"
+          },
+          {
+            "exercise": "Fondos en banco",
+            "sets": [
+              {},
+              {},
+              {},
+              {}
+            ],
+            "notes": "Al fallo"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "hipertrofia-verano-2017",
+    "name": "Hipertrofia (verano 2017)",
+    "description": "Fase 1 de hipertrofia en cinco días: hombro y tríceps, espalda y bíceps, tren inferior, pectoral y abdomen, y brazo y hombro. Descanso de 2 minutos entre series y ejercicios, pesos altos con técnica correcta y las 2 últimas series de cada ejercicio al fallo.",
+    "durationWeeks": 8,
+    "routines": [
+      {
+        "name": "Hombro y tríceps",
+        "restSeconds": 120,
+        "slots": [
+          {
+            "exercise": "Press militar con mancuernas",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Elevaciones laterales sentado",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Elevación posterior en máquina",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Elevaciones frontales en polea",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Press de banca con agarre cerrado",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Fondos en paralelas (tríceps)",
+            "sets": [
+              {},
+              {},
+              {}
+            ],
+            "notes": "Al fallo. Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Extensión de tríceps en polea (barra)",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          }
+        ]
+      },
+      {
+        "name": "Espalda y bíceps",
+        "restSeconds": 120,
+        "slots": [
+          {
+            "exercise": "Jalón al pecho agarre inverso",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Remo con mancuerna a una mano",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Remo en T",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Remo en polea con barra agarre inverso",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Curl en banco Scott (predicador)",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Curl en polea",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Curl de bíceps con mancuernas",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          }
+        ]
+      },
+      {
+        "name": "Tren inferior",
+        "restSeconds": 120,
+        "slots": [
+          {
+            "exercise": "Sentadilla con barra",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Prensa de piernas",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Zancadas en máquina Smith",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Curl femoral tumbado",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Peso muerto rumano",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Elevación de gemelos de pie",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          }
+        ]
+      },
+      {
+        "name": "Pectoral y abdomen",
+        "restSeconds": 120,
+        "slots": [
+          {
+            "exercise": "Press inclinado en máquina",
+            "sets": [
+              {
+                "reps": 10
+              },
+              {
+                "reps": 10
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Press de banca con mancuernas",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 7
+              },
+              {
+                "reps": 6
+              },
+              {
+                "reps": 6
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Aperturas con mancuernas",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Contractora (pec deck)",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Crunch abdominal",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              }
+            ],
+            "notes": "Con peso. Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Elevación de piernas colgado",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Crunch en polea",
+            "sets": [
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              },
+              {
+                "reps": 12
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          }
+        ]
+      },
+      {
+        "name": "Brazo y hombro",
+        "restSeconds": 120,
+        "slots": [
+          {
+            "exercise": "Curl con mancuernas en banco inclinado",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Curl de bíceps con mancuernas",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Curl en polea",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Extensión de tríceps en polea (barra)",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Press francés con barra",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Extensión de tríceps a una mano en polea agarre inverso",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Elevaciones laterales con mancuernas",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          },
+          {
+            "exercise": "Pájaros (elevación posterior)",
+            "sets": [
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              },
+              {
+                "reps": 8
+              }
+            ],
+            "notes": "Las 2 últimas series al fallo, muy pesadas"
+          }
+        ]
+      }
+    ]
   }
 ]
