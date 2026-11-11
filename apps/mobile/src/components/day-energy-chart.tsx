@@ -102,10 +102,10 @@ export function DayEnergyChart({
       return [[body[0][0], 0], ...body, [body[body.length - 1][0], height]];
     };
 
-    const balanceScale = Math.max(MIN_BALANCE_SCALE, ...energy.balance.map(Math.abs));
+    const balanceScale = Math.max(MIN_BALANCE_SCALE, ...energy.rolling.map(Math.abs));
     const balancePoints: Point[] = [
       [x0, 0],
-      ...energy.balance.map((v, i): Point => [x0 + (v / balanceScale) * reach, (i + 1) * slotHeight]),
+      ...energy.rolling.map((v, i): Point => [x0 + (v / balanceScale) * reach, (i + 1) * slotHeight]),
     ];
 
     return {

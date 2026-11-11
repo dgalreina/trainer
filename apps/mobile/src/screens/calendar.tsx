@@ -14,7 +14,7 @@ import { WeighInSheet } from '@/components/weigh-in-card';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
-import { formatTime, isoOf, mondayOf, startOfDay, todayISO } from '@/lib/dates';
+import { addDays, formatTime, isoOf, mondayOf, startOfDay, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
@@ -91,6 +91,26 @@ export function CalendarScreen() {
   const bmr =
     calculateTargets({ ...profile, weightKg, goal: profile.goal ?? 'mantener', today })?.bmr ?? null;
 
+  /** Lo que alimenta el cálculo de energía de un día a partir de sus eventos. */
+  const energyInput = useCallback(
+    (day: string, list: DayEvent[]) => ({
+      dayStart: startOfDay(day).getTime(),
+      bmr,
+      weightKg,
+      workouts: list
+        .filter((e) => e.kind === 'workout' && !e.inProgress)
+        .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
+      meals: list.flatMap((e) =>
+        e.kind === 'meal' && e.log
+          ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
+          : e.kind === 'plan' && e.macros
+            ? [{ at: e.start.getTime(), kcal: e.macros.kcal }]
+            : [],
+      ),
+    }),
+    [bmr, weightKg],
+  );
+
   /** Todo lo de un día: sus tarjetas, sus gráficas y sus marcas. Se calcula día a día, solo para los que se pintan. */
   const modelOf = useCallback(
     (day: string, preview?: DragPreview): DayModel & { planned: DayEvent[]; logs: ReturnType<typeof mealsOf> } => {
@@ -127,24 +147,16 @@ export function CalendarScreen() {
               : e,
           )
         : events;
+      // La curva cuenta las últimas 24 h: si el día anterior está cargado, se le pide su gasto y consumo.
+      const previousDay = addDays(day, -1);
+      const previousEvents = isLoaded(previousDay) ? [...eventsOf(previousDay), ...plannedOf(previousDay)] : null;
       const energy = dayEnergy({
-        dayStart: startOfDay(day).getTime(),
-        bmr,
-        weightKg,
-        workouts: counted
-          .filter((e) => e.kind === 'workout' && !e.inProgress)
-          .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
-        meals: counted.flatMap((e) =>
-          e.kind === 'meal' && e.log
-            ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
-            : e.kind === 'plan' && e.macros
-              ? [{ at: e.start.getTime(), kcal: e.macros.kcal }]
-              : [],
-        ),
+        ...energyInput(day, counted),
+        previous: previousEvents ? dayEnergy(energyInput(previousDay, previousEvents)) : null,
       });
       return { events, planned, logs: mealsOf(day), energy, marks, loaded: true };
     },
-    [eventsOf, plannedOf, mealsOf, isLoaded, bmr, weightKg, settings.dietSchedule, dietOn, trainings],
+    [eventsOf, plannedOf, mealsOf, isLoaded, energyInput, weightKg, settings.dietSchedule, dietOn, trainings],
   );
   const visible = useMemo(() => modelOf(visibleDay), [modelOf, visibleDay]);
 
