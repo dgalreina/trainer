@@ -1,9 +1,18 @@
-import { useState, type ReactNode } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BACK_BUTTON_SIZE, BackButton } from '@/components/back-button';
 import { FadingScroll } from '@/components/fading-scroll';
+import { ScrollControlContext, type ScrollControl } from '@/components/scroll-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -112,6 +121,38 @@ export function Screen({
 
   const theme = useTheme();
 
+  // Control del scroll para quien lo necesite desde dentro (el arrastre de la rutina desplaza la página al llegar al borde).
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const metrics = useRef({ y: 0, view: 0, content: 0 });
+  const scrollControl = useMemo<ScrollControl>(
+    () => ({
+      getMetrics: () => metrics.current,
+      scrollTo: (y) => {
+        metrics.current.y = y;
+        scrollRef.current?.scrollTo({ y, animated: false });
+      },
+      measureViewport: () =>
+        new Promise((resolve) => {
+          const node = scrollRef.current;
+          if (!node) return resolve(null);
+          node.measureInWindow((_x, top, _w, height) => resolve({ top, bottom: top + height }));
+        }),
+    }),
+    [],
+  );
+  const scrollEvents = {
+    onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      metrics.current.y = e.nativeEvent.contentOffset.y;
+    },
+    onLayout: (e: LayoutChangeEvent) => {
+      metrics.current.view = e.nativeEvent.layout.height;
+    },
+    onContentSizeChange: (_w: number, h: number) => {
+      metrics.current.content = h;
+    },
+    scrollEventThrottle: 16,
+  };
+
   // Título y `fixedTop` quedan fijos arriba; lo único que se desplaza es el contenido.
   const hasFixed = Boolean(header || fixedTop);
   const contentStyle = [
@@ -145,15 +186,22 @@ export function Screen({
           ) : null}
         </>
       ) : scroll && fade ? (
-        <FadingScroll mask keyboardShouldPersistTaps="handled" contentContainerStyle={contentStyle}>
-          {content}
+        <FadingScroll
+          mask
+          scrollRef={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={contentStyle}
+          {...scrollEvents}>
+          <ScrollControlContext.Provider value={scrollControl}>{content}</ScrollControlContext.Provider>
         </FadingScroll>
       ) : scroll ? (
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={contentStyle}>
-          {content}
+          contentContainerStyle={contentStyle}
+          {...scrollEvents}>
+          <ScrollControlContext.Provider value={scrollControl}>{content}</ScrollControlContext.Provider>
         </ScrollView>
       ) : (
         <View style={[contentStyle, styles.fill]}>{content}</View>

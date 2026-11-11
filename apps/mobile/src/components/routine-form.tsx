@@ -9,11 +9,12 @@ import {
   type Technique,
   type UpdateRoutine,
 } from '@trainer/shared';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ExercisePicker } from '@/components/exercise-picker';
 import { Chip, NumberInput } from '@/components/form';
+import { useScrollControl } from '@/components/scroll-control';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -143,38 +144,206 @@ export function RoutineForm({
       return withTrailingEmpty(next);
     });
 
-  // Arrastre vertical: la posición y la altura de cada ejercicio se miden con onLayout, y mientras se
-  // arrastra el asa solo se mueve la tarjeta del dedo (los demás se apartan como vista previa).
-  const layouts = useRef(new Map<string, { y: number; h: number }>());
-  const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
+  // ── Arrastre para reordenar ──────────────────────────────────────────────────────────────────────────
+  // Cómo funciona (lo básico de un arrastre bien hecho):
+  //  · La tarjeta agarrada sigue al dedo exactamente, también cuando la página se desplaza sola.
+  //  · Las demás se apartan con una animación corta en cuanto la tarjeta cruza la mitad de la vecina, y dejan
+  //    el hueco justo (alto de la tarjeta + el espacio entre tarjetas), sea cual sea su tamaño.
+  //  · Con el dedo cerca del borde de arriba o de abajo, la página se desplaza sola, más rápido cuanto más cerca.
+  //  · Al soltar, la tarjeta se asienta en su hueco con una animación y entonces se reordena la lista.
+  // Nada de esto pasa por el estado de React mientras se arrastra: son valores animados y refs.
+  const scroll = useScrollControl();
+  // Solo se guardan las alturas: onLayout avisa cuando cambia el tamaño de una tarjeta, pero no cuando solo
+  // cambia su posición (por ejemplo, al crecer la de arriba), así que las posiciones se calculan sumando alturas.
+  const heights = useRef(new Map<string, number>());
+  const offsets = useRef(new Map<string, Animated.Value>());
+  const offsetOf = (key: string) => {
+    let value = offsets.current.get(key);
+    if (!value) {
+      value = new Animated.Value(0);
+      offsets.current.set(key, value);
+    }
+    return value;
+  };
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const dragRef = useRef<{
+    key: string;
+    from: number;
+    target: number;
+    gestureDy: number;
+    fingerY: number | null;
+    scrollY0: number;
+    viewport: { top: number; bottom: number } | null;
+    frame: number | null;
+    dropping: boolean;
+  } | null>(null);
 
-  /** Hacia qué posición iría el ejercicio arrastrado si se soltara ahora (solo entre los rellenos). */
-  const dropIndex = (key: string, dy: number) => {
-    const from = slots.findIndex((s) => s.key === key);
-    const box = layouts.current.get(key);
-    if (from < 0 || !box) return from;
-    const center = box.y + box.h / 2 + dy;
-    const lastFilled = slots.reduce((last, s, i) => (s.exerciseId !== null ? i : last), 0);
-    let target = 0;
-    for (let i = 0; i <= lastFilled; i++) {
-      const other = layouts.current.get(slots[i].key);
-      if (other && center >= other.y + other.h / 2) target = i;
+  // Tras reordenar (o editar) cada tarjeta ya está en su sitio natural: se borran los desplazamientos.
+  useLayoutEffect(() => {
+    if (dragRef.current) return;
+    offsets.current.forEach((value) => value.setValue(0));
+  }, [slots]);
+  useEffect(
+    () => () => {
+      const st = dragRef.current;
+      if (st?.frame != null) cancelAnimationFrame(st.frame);
+    },
+    [],
+  );
+
+  /** Posición y alto de cada tarjeta en el orden actual, con el espacio fijo que las separa. */
+  const boxes = () => {
+    const out = new Map<string, { y: number; h: number }>();
+    let y = 0;
+    for (const slot of slotsRef.current) {
+      const h = heights.current.get(slot.key) ?? 0;
+      out.set(slot.key, { y, h });
+      y += h + Spacing.three;
+    }
+    return out;
+  };
+
+  /** Posición a la que iría la tarjeta si se soltara ahora: solo entre los ejercicios rellenos. */
+  const targetFor = (from: number, dyTotal: number): number => {
+    const list = slotsRef.current;
+    const all = boxes();
+    const box = all.get(list[from].key);
+    if (!box) return from;
+    const top = box.y + dyTotal;
+    const bottom = top + box.h;
+    const lastFilled = list.reduce((last, s, i) => (s.exerciseId !== null ? i : last), 0);
+    let target = from;
+    // Hacia arriba: cuando el borde de arriba de la tarjeta pasa de la mitad de la vecina, se coloca delante.
+    for (let i = from - 1; i >= 0; i--) {
+      const other = all.get(list[i].key);
+      if (other && top < other.y + other.h / 2) target = i;
+      else break;
+    }
+    // Hacia abajo: lo mismo con el borde de abajo.
+    if (target === from) {
+      for (let i = from + 1; i <= lastFilled; i++) {
+        const other = all.get(list[i].key);
+        if (other && bottom > other.y + other.h / 2) target = i;
+        else break;
+      }
     }
     return target;
   };
 
-  const dropSlot = (key: string, dy: number) => {
-    const to = dropIndex(key, dy);
-    setDrag(null);
-    setSlots((prev) => {
-      const from = prev.findIndex((s) => s.key === key);
-      if (from < 0 || from === to) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      // Las superseries dependen de quién queda a continuación: se sueltan las que tocan el movimiento.
-      const touched = new Set([key, prev[from - 1]?.key, next[to - 1]?.key]);
-      return next.map((s) => (touched.has(s.key) && s.technique === 'ss' ? { ...s, technique: undefined } : s));
+  /** Aparta (con animación) las tarjetas que quedan entre el origen y el destino. */
+  const makeRoom = (from: number, target: number) => {
+    const list = slotsRef.current;
+    const box = boxes().get(list[from].key);
+    if (!box) return;
+    const room = box.h + Spacing.three;
+    list.forEach((slot, i) => {
+      if (i === from) return;
+      let shift = 0;
+      if (from < target && i > from && i <= target) shift = -room;
+      else if (from > target && i >= target && i < from) shift = room;
+      Animated.timing(offsetOf(slot.key), { toValue: shift, duration: 140, useNativeDriver: false }).start();
+    });
+  };
+
+  /** Coloca la tarjeta bajo el dedo y recalcula el destino. Se llama al mover el dedo y en cada fotograma. */
+  const followFinger = () => {
+    const st = dragRef.current;
+    if (!st || st.dropping) return;
+    const dyTotal = st.gestureDy + ((scroll?.getMetrics().y ?? 0) - st.scrollY0);
+    offsetOf(st.key).setValue(dyTotal);
+    const target = targetFor(st.from, dyTotal);
+    if (target !== st.target) {
+      st.target = target;
+      makeRoom(st.from, target);
+    }
+  };
+
+  /** Desplaza la página si el dedo está cerca del borde de arriba o de abajo del área visible. */
+  const autoScroll = () => {
+    const st = dragRef.current;
+    if (!st || !scroll || !st.viewport || st.fingerY === null) return;
+    const zone = 110;
+    let speed = 0;
+    if (st.fingerY < st.viewport.top + zone) speed = -(1 - Math.max(0, st.fingerY - st.viewport.top) / zone);
+    else if (st.fingerY > st.viewport.bottom - zone) speed = 1 - Math.max(0, st.viewport.bottom - st.fingerY) / zone;
+    if (speed === 0) return;
+    const m = scroll.getMetrics();
+    const next = Math.min(Math.max(m.y + speed * 18, 0), Math.max(0, m.content - m.view));
+    if (next !== m.y) scroll.scrollTo(next);
+  };
+
+  const startDrag = (key: string, fingerY: number) => {
+    if (dragRef.current) return;
+    const from = slotsRef.current.findIndex((s) => s.key === key);
+    if (from < 0) return;
+    const st = {
+      key,
+      from,
+      target: from,
+      gestureDy: 0,
+      fingerY,
+      scrollY0: scroll?.getMetrics().y ?? 0,
+      viewport: null as { top: number; bottom: number } | null,
+      frame: null as number | null,
+      dropping: false,
+    };
+    dragRef.current = st;
+    setDraggingKey(key);
+    scroll?.measureViewport().then((viewport) => {
+      st.viewport = viewport;
+    });
+    const tick = () => {
+      if (dragRef.current !== st || st.dropping) return;
+      autoScroll();
+      followFinger();
+      st.frame = requestAnimationFrame(tick);
+    };
+    st.frame = requestAnimationFrame(tick);
+  };
+
+  const moveDrag = (dy: number, fingerY: number) => {
+    const st = dragRef.current;
+    if (!st) return;
+    st.gestureDy = dy;
+    st.fingerY = fingerY;
+    followFinger();
+  };
+
+  const endDrag = (dy: number) => {
+    const st = dragRef.current;
+    if (!st || st.dropping) return;
+    st.gestureDy = dy;
+    followFinger();
+    st.dropping = true;
+    if (st.frame != null) cancelAnimationFrame(st.frame);
+
+    // Asiento: la tarjeta va a su hueco (arriba del hueco si sube; abajo del hueco si baja).
+    const list = slotsRef.current;
+    const all = boxes();
+    const box = all.get(st.key);
+    const dest = all.get(list[st.target]?.key ?? '');
+    let settle = 0;
+    if (box && dest) settle = st.target < st.from ? dest.y - box.y : dest.y + dest.h - box.h - box.y;
+    const { key, from, target } = st;
+    Animated.timing(offsetOf(key), { toValue: settle, duration: 140, useNativeDriver: false }).start(() => {
+      dragRef.current = null;
+      setDraggingKey(null);
+      if (from === target) {
+        offsets.current.forEach((value) => value.setValue(0));
+        return;
+      }
+      setSlots((prev) => {
+        const at = prev.findIndex((s) => s.key === key);
+        if (at < 0) return prev;
+        const next = [...prev];
+        const [moved] = next.splice(at, 1);
+        next.splice(target, 0, moved);
+        // Las superseries dependen de quién queda a continuación: se sueltan las que tocan el movimiento.
+        const touched = new Set([key, prev[at - 1]?.key, next[target - 1]?.key]);
+        return next.map((s) => (touched.has(s.key) && s.technique === 'ss' ? { ...s, technique: undefined } : s));
+      });
     });
   };
 
@@ -209,26 +378,12 @@ export function RoutineForm({
       />
 
       {slots.map((slot, at) => {
-        // Vista previa mientras se arrastra: los que quedan entre origen y destino se apartan.
-        let shift = 0;
-        let dragging = false;
-        if (drag) {
-          const from = slots.findIndex((s) => s.key === drag.key);
-          const to = dropIndex(drag.key, drag.dy);
-          const moved = layouts.current.get(drag.key);
-          if (slot.key === drag.key) {
-            dragging = true;
-            shift = drag.dy;
-          } else if (moved) {
-            if (from < to && at > from && at <= to) shift = -moved.h;
-            else if (from > to && at >= to && at < from) shift = moved.h;
-          }
-        }
+        const dragging = draggingKey === slot.key;
         return (
-          <View
+          <Animated.View
             key={slot.key}
-            onLayout={(e) => layouts.current.set(slot.key, { y: e.nativeEvent.layout.y, h: e.nativeEvent.layout.height })}
-            style={[styles.slotWrap, dragging && styles.slotDragging, { transform: [{ translateY: shift }] }]}>
+            onLayout={(e) => heights.current.set(slot.key, e.nativeEvent.layout.height)}
+            style={[styles.slotWrap, dragging && styles.slotDragging, { transform: [{ translateY: offsetOf(slot.key) }] }]}>
             {/* Al arrastrar, la tarjeta lleva un fondo sólido y redondeado que tapa lo de debajo. */}
             {dragging && <View pointerEvents="none" style={[styles.dragCard, { backgroundColor: theme.background }]} />}
             <SlotRow
@@ -237,14 +392,14 @@ export function RoutineForm({
               onChange={(change) => updateSlot(slot.key, change)}
               onPick={(exercise) => updateSlot(slot.key, (s) => ({ ...s, exerciseId: exercise.id }))}
               onRemove={() => removeSlot(slot.key)}
-              onDragStart={() => setDrag({ key: slot.key, dy: 0 })}
-              onDragMove={(dy) => setDrag({ key: slot.key, dy })}
-              onDragEnd={(dy) => dropSlot(slot.key, dy)}
+              onDragStart={(fingerY) => startDrag(slot.key, fingerY)}
+              onDragMove={moveDrag}
+              onDragEnd={endDrag}
               onToggleSuperset={() => toggleSuperset(slot.key)}
               routineRest={restSeconds}
               exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
             />
-          </View>
+          </Animated.View>
         );
       })}
 
@@ -286,8 +441,9 @@ function SlotRow({
   onChange: (change: (slot: EditorSlot) => EditorSlot) => void;
   onPick: (exercise: Exercise) => void;
   onRemove: () => void;
-  onDragStart: () => void;
-  onDragMove: (dy: number) => void;
+  /** `fingerY`: posición vertical del dedo en la ventana; `dy`: lo que se ha movido desde que se agarró el asa. */
+  onDragStart: (fingerY: number) => void;
+  onDragMove: (dy: number, fingerY: number) => void;
   onDragEnd: (dy: number) => void;
   onToggleSuperset: () => void;
   /** Descanso de la rutina: el que se hereda si el ejercicio no tiene uno propio. */
@@ -311,10 +467,11 @@ function SlotRow({
         onMoveShouldSetPanResponder: () => true,
         // Una vez agarrada el asa, el scroll de la página no se la puede quitar.
         onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: () => dragCallbacks.current.onDragStart(),
-        onPanResponderMove: (_e, g) => dragCallbacks.current.onDragMove(g.dy),
+        onPanResponderGrant: (_e, g) => dragCallbacks.current.onDragStart(g.y0),
+        onPanResponderMove: (_e, g) => dragCallbacks.current.onDragMove(g.dy, g.moveY),
         onPanResponderRelease: (_e, g) => dragCallbacks.current.onDragEnd(g.dy),
-        onPanResponderTerminate: () => dragCallbacks.current.onDragEnd(0),
+        // Si el sistema interrumpe el gesto, la tarjeta se queda donde estaba el dedo (no vuelve de golpe).
+        onPanResponderTerminate: (_e, g) => dragCallbacks.current.onDragEnd(g.dy),
       }),
     [],
   );
@@ -593,8 +750,9 @@ const styles = StyleSheet.create({
   gridLabels: { gap: Spacing.two, paddingVertical: 4, width: 52 },
   gridLabel: { height: 42, lineHeight: 42 },
   gridCol: { gap: Spacing.two },
-  addSet: { width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
-  removeSet: { height: 28, justifyContent: 'center', paddingHorizontal: Spacing.one },
+  // Centrados en vertical con el campo de repeticiones (alto 42): (42 − 28) / 2.
+  addSet: { width: 28, height: 28, marginTop: 7, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  removeSet: { height: 28, marginTop: 7, justifyContent: 'center', paddingHorizontal: Spacing.one },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, paddingLeft: 36 },
   chipScroll: { marginLeft: 36, flexGrow: 0 },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },

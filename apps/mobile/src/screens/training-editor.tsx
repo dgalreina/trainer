@@ -150,7 +150,7 @@ export function TrainingEditorScreen() {
   }
 
   return (
-    <Screen title={isNew ? 'Nuevo entrenamiento' : (existing?.name ?? '')} stacked onBack={goBack}>
+    <Screen title={isNew ? 'Nuevo entrenamiento' : (existing?.name ?? '')} stacked fade onBack={goBack}>
       <Field label="Nombre" value={name} onChangeText={setName} placeholder="Fuerza, Definición…" />
       <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
       <View style={styles.weeks}>
