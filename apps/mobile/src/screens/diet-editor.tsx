@@ -133,7 +133,7 @@ export function DietEditorScreen() {
   const total = existing ? dietMacros(existing, byId) : null;
 
   return (
-    <Screen title={isNew ? 'Nueva dieta' : existing!.name} stacked onBack={goBack}>
+    <Screen title={isNew ? 'Nueva dieta' : existing!.name} stacked fade onBack={goBack}>
       <Field
         label="Nombre"
         accessibilityLabel="Nombre de la dieta"

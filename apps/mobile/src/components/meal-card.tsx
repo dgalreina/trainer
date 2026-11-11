@@ -7,7 +7,7 @@ import {
   type UpdateMeal,
 } from '@trainer/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Vibration, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
@@ -20,6 +20,9 @@ import { useTheme } from '@/hooks/use-theme';
 const MAX_RESULTS = 8;
 
 const toNumber = (text: string) => Number(text.replace(',', '.').trim() || 'NaN');
+
+// Al mantener pulsado, iOS selecciona el texto y abre su menú: se evita con estas propiedades de la web.
+const noSelect = { userSelect: 'none', WebkitTouchCallout: 'none' } as object;
 
 /** Una comida de la dieta: hora, nombre, sus alimentos con gramos y lo que suman. */
 export function MealCard({
@@ -38,6 +41,8 @@ export function MealCard({
   const theme = useTheme();
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  // Alimento cuya cantidad se está cambiando (índice en `meal.items`); se abre manteniendo pulsado.
+  const [editingItem, setEditingItem] = useState<number | null>(null);
   const [name, setName] = useState(meal.name);
   const [time, setTime] = useState(meal.time);
   const [error, setError] = useState<string | null>(null);
@@ -121,9 +126,33 @@ export function MealCard({
       {meal.items.map((item, index) => {
         const food = byId.get(item.foodId);
         const macros = food ? foodMacros(food, item.grams) : null;
+        if (editingItem === index && food) {
+          return (
+            <ItemEditor
+              key={`${item.foodId}-${index}`}
+              food={food}
+              grams={item.grams}
+              onCancel={() => setEditingItem(null)}
+              onSave={async (grams) => {
+                await run({ items: meal.items.map((it, i) => (i === index ? { ...it, grams } : it)) });
+                setEditingItem(null);
+              }}
+            />
+          );
+        }
         return (
           <View key={`${item.foodId}-${index}`} style={styles.item}>
-            <View style={styles.headerText}>
+            {/* Mantener pulsado abre el cambio de cantidad. Sin selección de texto ni menú del navegador. */}
+            <Pressable
+              accessibilityHint="Mantén pulsado para cambiar la cantidad"
+              delayLongPress={350}
+              onLongPress={() => {
+                if (!food) return;
+                Vibration.vibrate(15);
+                setAdding(false);
+                setEditingItem(index);
+              }}
+              style={[styles.headerText, noSelect]}>
               <ThemedText>
                 {item.grams} g · {food?.name ?? 'Alimento no disponible'}
               </ThemedText>
@@ -132,7 +161,7 @@ export function MealCard({
                   {macros.kcal} kcal · P {macros.protein} · H {macros.carbs} · G {macros.fat}
                 </ThemedText>
               )}
-            </View>
+            </Pressable>
             <Pressable
               accessibilityLabel={`Quitar ${food?.name ?? 'alimento'}`}
               hitSlop={10}
@@ -159,10 +188,85 @@ export function MealCard({
           }}
         />
       ) : (
-        <LinkButton title="+ Añadir alimento" onPress={() => setAdding(true)} />
+        <LinkButton
+          title="+ Añadir alimento"
+          onPress={() => {
+            setEditingItem(null);
+            setAdding(true);
+          }}
+        />
       )}
       <ErrorText message={error} />
     </Card>
+  );
+}
+
+/** Cambia la cantidad de un alimento ya añadido a la comida: gramos o una de sus porciones. */
+function ItemEditor({
+  food,
+  grams,
+  onSave,
+  onCancel,
+}: {
+  food: Food;
+  grams: number;
+  onSave: (grams: number) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const theme = useTheme();
+  const [text, setText] = useState(String(grams));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const amount = toNumber(text);
+  const preview = amount > 0 ? foodMacros(food, amount) : null;
+
+  async function save() {
+    if (!(amount > 0 && amount <= 5000)) return setError('Escribe los gramos (entre 1 y 5000)');
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(amount);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se ha podido guardar');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <View style={[styles.picker, { backgroundColor: theme.backgroundSelected }]}>
+      <ThemedText type="smallBold">{food.name}</ThemedText>
+      <Field
+        label="Cantidad (g)"
+        accessibilityLabel="Gramos"
+        value={text}
+        onChangeText={setText}
+        keyboardType="decimal-pad"
+        placeholder="g"
+        autoFocus
+        style={{ backgroundColor: theme.backgroundElement }}
+      />
+      {food.portions.length > 0 && (
+        <View style={styles.chips}>
+          {food.portions.map((p) => (
+            <Chip
+              key={p.name}
+              label={`${p.name} (${p.grams} g)`}
+              active={amount === p.grams}
+              onPress={() => setText(String(p.grams))}
+            />
+          ))}
+        </View>
+      )}
+      {preview && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {preview.kcal} kcal · P {preview.protein} · H {preview.carbs} · G {preview.fat}
+        </ThemedText>
+      )}
+      <ErrorText message={error} />
+      <Button title="Guardar cantidad" onPress={save} loading={saving} />
+      <LinkButton title="Cancelar" onPress={onCancel} centered />
+    </View>
   );
 }
 
