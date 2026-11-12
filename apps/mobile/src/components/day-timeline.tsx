@@ -1,12 +1,16 @@
 import {
+  createContext,
   forwardRef,
   memo,
   useCallback,
+  useContext,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
+  type ComponentRef,
+  type ReactNode,
 } from 'react';
 import {
   FlatList,
@@ -29,7 +33,7 @@ import { EnergyLabels, ScrubReadout, type ReadoutMeal } from '@/components/energ
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { addDays, formatLongDay, formatTime, parseISO, startOfDay } from '@/lib/dates';
+import { addDays, formatLongDay, formatShortDay, formatTime, isoOf, parseISO, startOfDay } from '@/lib/dates';
 import type { DayEvent } from '@/lib/week-events';
 
 const HOUR_HEIGHT = 56;
@@ -75,6 +79,53 @@ const dayDiff = (from: string, to: string) =>
 export interface DragPreview {
   id: string;
   start: Date;
+  /** El evento que se arrastra: el día al que llega lo cuenta aunque aún no sea suyo. */
+  event: DayEvent;
+}
+
+/** Al arrastrar un círculo a otro día, hasta dónde se desplaza la lista sola y qué se vigila (lo gestiona `DayList`). */
+interface DragHub {
+  /** El scroll actual de la lista (px). */
+  getScroll: () => number;
+  /** Posición del día en la lista (0 = el primero). */
+  indexOf: (day: string) => number;
+  /** Un círculo se ha agarrado: empieza el desplazamiento automático; `onScroll` recibe el scroll en cada paso. */
+  begin: (day: string, onScroll: (scrollY: number) => void) => void;
+  /** Dónde está el dedo (px respecto a la ventana). */
+  fingerAt: (pageY: number) => void;
+  end: () => void;
+}
+const DragHubContext = createContext<DragHub | null>(null);
+/** El índice del día cuyo círculo se arrastra: su celda se pinta por encima de las demás para que el círculo se vea al cruzar a otro día. */
+const DragSourceContext = createContext<number | null>(null);
+
+/** Distancia al borde de la zona visible (px) a partir de la cual el arrastre desplaza la lista sola. */
+const EDGE_ZONE = 90;
+/** Velocidad del desplazamiento (px/s): la mínima junto al principio de la zona y la máxima en el borde. */
+const MIN_AUTO_SPEED = 120;
+const MAX_AUTO_SPEED = 1100;
+/** Durante un arrastre se renderizan más días, para que el del círculo no desaparezca al alejarse. */
+const DRAG_WINDOW_SIZE = 11;
+const IDLE_WINDOW_SIZE = 5;
+
+/** La celda de un día de la lista: igual que la de serie, pero la del día del círculo que se arrastra va por encima. */
+function DayCell({
+  index,
+  style,
+  onLayout,
+  children,
+}: {
+  index: number;
+  style?: unknown;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  children?: ReactNode;
+}) {
+  const source = useContext(DragSourceContext);
+  return (
+    <View onLayout={onLayout} style={[style as object, source === index ? styles.sourceCell : null]}>
+      {children}
+    </View>
+  );
 }
 
 /** Lo que se dibuja en un día: sus tarjetas, sus gráficas y las marcas del principio. */
@@ -125,11 +176,13 @@ function placeCircles(events: DayEvent[], dayStart: number): Placed[] {
  * Cuántos minutos se mueve un evento al arrastrarlo `dy` píxeles: en múltiplos de
  * `SNAP_MINUTES` y sin salirse del día.
  */
-function dragMinutes(dy: number, event: DayEvent, dayStart: number): number {
+function dragMinutes(dy: number, event: DayEvent, dayStart: number, dayIndex: number | null): number {
   const startMinute = Math.round((event.start.getTime() - dayStart) / MINUTE_MS);
   const wanted = Math.round(((dy / HOUR_HEIGHT) * 60) / SNAP_MINUTES) * SNAP_MINUTES;
-  const lowest = -startMinute;
-  const highest = DAY_MINUTES - SNAP_MINUTES - startMinute;
+  // Con `dayIndex` el evento puede cruzar a otros días (hasta los extremos de la lista); sin él, se queda en su día.
+  const lowest = dayIndex === null ? -startMinute : -(dayIndex * DAY_MINUTES + startMinute);
+  const highest =
+    dayIndex === null ? DAY_MINUTES - SNAP_MINUTES - startMinute : (INDEXES.length - dayIndex) * DAY_MINUTES - SNAP_MINUTES - startMinute;
   return Math.min(Math.max(wanted, lowest), highest);
 }
 
@@ -299,6 +352,76 @@ export const DayList = forwardRef<
   const [height, setHeight] = useState(0);
   const lastIndex = useRef(RADIUS);
 
+  // Arrastrar un círculo a otro día: la lista se desplaza sola cerca de los bordes y el día de origen sigue pintado.
+  const box = useRef<ComponentRef<typeof View>>(null);
+  const scrollY = useRef(0);
+  const [sourceIndex, setSourceIndex] = useState<number | null>(null);
+  const autoScroll = useRef<{
+    timer: ReturnType<typeof setInterval> | null;
+    notify: ((scrollY: number) => void) | null;
+    finger: number | null;
+    top: number;
+    source: number;
+  }>({ timer: null, notify: null, finger: null, top: 0, source: 0 });
+  const hub = useMemo<DragHub>(() => {
+    const state = autoScroll.current;
+    const stop = () => {
+      if (state.timer) clearInterval(state.timer);
+      state.timer = null;
+      state.notify = null;
+      state.finger = null;
+    };
+    return {
+      getScroll: () => scrollY.current,
+      indexOf: (day) => RADIUS + dayDiff(anchor.current, day),
+      begin: (day, notify) => {
+        stop();
+        state.notify = notify;
+        state.source = RADIUS + dayDiff(anchor.current, day);
+        setSourceIndex(state.source);
+        box.current?.measureInWindow((_x, y) => {
+          state.top = y;
+        });
+        let last = Date.now();
+        state.timer = setInterval(() => {
+          const now = Date.now();
+          const dt = Math.min(now - last, 50) / 1000;
+          last = now;
+          if (state.finger === null) return;
+          const { topInset: inset, bottomInset: bottom, height: viewport } = latest.current;
+          const upper = state.top + inset + EDGE_ZONE;
+          const lower = state.top + viewport - bottom - EDGE_ZONE;
+          const ratio =
+            state.finger < upper
+              ? -Math.min((upper - state.finger) / EDGE_ZONE, 1)
+              : state.finger > lower
+                ? Math.min((state.finger - lower) / EDGE_ZONE, 1)
+                : 0;
+          if (ratio === 0) return;
+          const speed = MIN_AUTO_SPEED + (MAX_AUTO_SPEED - MIN_AUTO_SPEED) * ratio * ratio;
+          // El día del círculo tiene que seguir dentro de lo que se renderiza (ver DRAG_WINDOW_SIZE).
+          const half = (DRAG_WINDOW_SIZE - 1) / 2;
+          const sourceTop = state.source * DAY_HEIGHT;
+          const lowest = Math.max(0, sourceTop - (half + 0.5) * viewport);
+          const highest = Math.min(INDEXES.length * DAY_HEIGHT - viewport, sourceTop + DAY_HEIGHT + (half - 0.5) * viewport);
+          const next = Math.min(Math.max(scrollY.current + Math.sign(ratio) * speed * dt, lowest), highest);
+          if (next === scrollY.current) return;
+          scrollY.current = next;
+          list.current?.scrollToOffset({ offset: next, animated: false });
+          state.notify?.(next);
+        }, 16);
+      },
+      fingerAt: (pageY) => {
+        state.finger = pageY;
+      },
+      end: () => {
+        stop();
+        setSourceIndex(null);
+      },
+    };
+  }, []);
+  useEffect(() => () => hub.end(), [hub]);
+
   /**
    * El scroll al que hay que ir para ver un día: su hora de interés queda justo bajo la barra de pestañas. Con
    * un tope: el centro de lo visible tiene que seguir cayendo dentro de ese día (si no, por la tarde-noche se
@@ -335,6 +458,8 @@ export const DayList = forwardRef<
 
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Mientras la lista se desplaza sola, el scroll lo lleva el propio desplazamiento (los avisos llegan con retraso).
+      if (!autoScroll.current.timer) scrollY.current = event.nativeEvent.contentOffset.y;
       const { topInset: inset, bottomInset: bottom, height: viewport } = latest.current;
       // El día que se muestra es el del centro de la zona visible (entre la barra de pestañas y la tarjeta de abajo).
       const center = event.nativeEvent.contentOffset.y + inset + Math.max(0, viewport - inset - bottom) / 2;
@@ -366,7 +491,7 @@ export const DayList = forwardRef<
         day={day}
         today={today}
         modelOf={modelOf}
-        preview={drag && drag.day === day ? drag : null}
+        preview={drag && (drag.day === day || isoOf(drag.start) === day) ? drag : null}
         onDragEvent={onDragEvent}
         onPressEvent={onPressEvent}
         onMoveEvent={onMoveEvent}
@@ -378,16 +503,19 @@ export const DayList = forwardRef<
   );
 
   return (
-    <View style={[styles.list, Platform.OS === 'web' ? topFade(topInset) : null]}>
+    <View ref={box} style={[styles.list, Platform.OS === 'web' ? topFade(topInset) : null]}>
+    <DragHubContext.Provider value={hub}>
+    <DragSourceContext.Provider value={sourceIndex}>
     <FlatList
       ref={list}
+      CellRendererComponent={DayCell as never}
       data={INDEXES}
       keyExtractor={(index) => String(index)}
       getItemLayout={(_, index) => ({ length: DAY_HEIGHT, offset: DAY_HEIGHT * index, index })}
       initialScrollIndex={RADIUS}
       initialNumToRender={2}
       maxToRenderPerBatch={2}
-      windowSize={5}
+      windowSize={sourceIndex === null ? IDLE_WINDOW_SIZE : DRAG_WINDOW_SIZE}
       showsVerticalScrollIndicator={false}
       scrollEventThrottle={32}
       onScroll={onScroll}
@@ -398,6 +526,8 @@ export const DayList = forwardRef<
       style={styles.list}
       renderItem={renderItem}
     />
+    </DragSourceContext.Provider>
+    </DragHubContext.Provider>
     </View>
   );
 });
@@ -535,6 +665,7 @@ const DayColumn = memo(function DayColumn({
             <EventCircle
               key={event.id}
               event={event}
+              day={day}
               dayStart={dayStart}
               lane={lane}
               onPress={onPressEvent}
@@ -586,6 +717,7 @@ const NO_SELECT = {
  */
 function EventCircle({
   event,
+  day,
   dayStart,
   lane,
   onPress,
@@ -593,6 +725,7 @@ function EventCircle({
   onDrag,
 }: {
   event: DayEvent;
+  day: string;
   dayStart: number;
   lane: number;
   onPress?: (event: DayEvent) => void;
@@ -601,16 +734,23 @@ function EventCircle({
   onDrag?: (preview: DragPreview | null) => void;
 }) {
   const theme = useTheme();
+  const hub = useContext(DragHubContext);
   const node = useRef<unknown>(null);
   const [dragDy, setDragDy] = useState<number | null>(null);
+  /** Lo que se ha desplazado la lista (px) desde que se agarró el círculo: cuenta como movimiento del dedo. */
+  const [scrolled, setScrolled] = useState(0);
+  const scrolledRef = useRef(0);
+  const scrollAtGrab = useRef(0);
+  /** Un entreno en curso no cambia de día (su hora vive en el borrador del dispositivo). */
+  const crossesDays = !event.inProgress && hub !== null;
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** La pulsación larga ya se ha cumplido: a partir de ahí, el movimiento arrastra. */
   const armed = useRef(false);
 
   // Los gestos se crean una sola vez; leen siempre los datos más recientes desde aquí.
-  const latest = useRef({ event, dayStart, onPress, onMove });
+  const latest = useRef({ event, day, dayStart, onPress, onMove, hub, crossesDays });
   useEffect(() => {
-    latest.current = { event, dayStart, onPress, onMove };
+    latest.current = { event, day, dayStart, onPress, onMove, hub, crossesDays };
   });
 
   const clearHold = useCallback(() => {
@@ -618,6 +758,13 @@ function EventCircle({
     holdTimer.current = null;
   }, []);
   useEffect(() => clearHold, [clearHold]);
+  // Si el círculo desaparece a medio arrastre, que el desplazamiento automático no se quede en marcha.
+  useEffect(
+    () => () => {
+      if (armed.current) latest.current.hub?.end();
+    },
+    [],
+  );
 
   // Web: una vez agarrado, el navegador no debe empezar a hacer scroll con el movimiento del dedo. Hay que
   // cancelarlo en el propio evento táctil, y para eso el escuchador no puede ser pasivo.
@@ -654,38 +801,68 @@ function EventCircle({
           holdTimer.current = setTimeout(() => {
             armed.current = true;
             Vibration.vibrate(15);
+            scrolledRef.current = 0;
+            setScrolled(0);
             setDragDy(0);
+            const { hub: h, day: d, crossesDays: cross } = latest.current;
+            if (h && cross) {
+              scrollAtGrab.current = h.getScroll();
+              h.begin(d, (y) => {
+                scrolledRef.current = y - scrollAtGrab.current;
+                setScrolled(scrolledRef.current);
+              });
+            }
           }, LONG_PRESS_MS);
         },
         onPanResponderMove: (_e, g) => {
-          if (armed.current) setDragDy(g.dy);
+          if (armed.current) {
+            setDragDy(g.dy);
+            if (latest.current.crossesDays) latest.current.hub?.fingerAt(g.moveY);
+          }
           // Si el dedo se mueve antes de tiempo, no es una pulsación larga: se deja el scroll en paz.
           else if (Math.hypot(g.dx, g.dy) > TAP_SLOP) clearHold();
         },
         onPanResponderRelease: (_e, g) => {
           clearHold();
-          const { event: current, dayStart: start, onPress: press, onMove: move } = latest.current;
+          const { event: current, day: d, dayStart: start, onPress: press, onMove: move, hub: h, crossesDays: cross } = latest.current;
           if (armed.current) {
-            const minutes = dragMinutes(g.dy, current, start);
+            const minutes = dragMinutes(g.dy + scrolledRef.current, current, start, cross && h ? h.indexOf(d) : null);
             if (minutes !== 0) move?.(current, new Date(current.start.getTime() + minutes * MINUTE_MS));
           } else if (Math.hypot(g.dx, g.dy) <= TAP_SLOP) {
             press?.(current);
           }
+          if (armed.current && cross) h?.end();
           armed.current = false;
           setDragDy(null);
+          setScrolled(0);
         },
         onPanResponderTerminate: () => {
           clearHold();
+          if (armed.current && latest.current.crossesDays) latest.current.hub?.end();
           armed.current = false;
           setDragDy(null);
+          setScrolled(0);
         },
       }),
     [clearHold],
   );
 
   const dragging = dragDy !== null;
-  const minutes = dragging ? dragMinutes(dragDy, event, dayStart) : 0;
+  const minutes = dragging ? dragMinutes(dragDy + scrolled, event, dayStart, crossesDays && hub ? hub.indexOf(day) : null) : 0;
   const start = new Date(event.start.getTime() + minutes * MINUTE_MS);
+  const targetDay = isoOf(start);
+  // Una vibración breve al cruzar a otro día.
+  const lastTarget = useRef(day);
+  useEffect(() => {
+    if (!dragging) {
+      lastTarget.current = day;
+      return;
+    }
+    if (targetDay !== lastTarget.current) {
+      lastTarget.current = targetDay;
+      Vibration.vibrate(10);
+    }
+  }, [dragging, targetDay, day]);
 
   // Las gráficas siguen al círculo: se avisa solo cuando cambia la hora ajustada, no a cada píxel.
   const wasDragging = useRef(false);
@@ -696,13 +873,12 @@ function EventCircle({
   useEffect(() => {
     if (!dragging && !wasDragging.current) return;
     wasDragging.current = dragging;
-    onDragRef.current?.(dragging ? { id: event.id, start: new Date(event.start.getTime() + minutes * MINUTE_MS) } : null);
+    onDragRef.current?.(dragging ? { id: event.id, start: new Date(event.start.getTime() + minutes * MINUTE_MS), event } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragging, minutes]);
-  const top = Math.min(
-    Math.max(circleTop(event.start.getTime(), dayStart) + (minutes / 60) * HOUR_HEIGHT, 0),
-    DAY_HEIGHT - CIRCLE,
-  );
+  // Cruzando días, el círculo sale de su día (la lista se pinta por encima de las demás celdas); si no, se queda dentro.
+  const moved = circleTop(event.start.getTime(), dayStart) + (minutes / 60) * HOUR_HEIGHT;
+  const top = crossesDays && dragging ? moved : Math.min(Math.max(moved, 0), DAY_HEIGHT - CIRCLE);
 
   // Salmón para lo que entra (comidas), azul cielo para lo que se gasta (entrenos) y neutro para el peso.
   const tone = event.kind === 'workout' ? theme.sky : event.kind === 'weight' ? theme.textSecondary : theme.primary;
@@ -731,10 +907,12 @@ function EventCircle({
       ) : null}
       {/* Mientras se arrastra, la hora a la que quedaría. */}
       {dragging ? (
-        <View pointerEvents="none" style={[styles.timeTip, { backgroundColor: theme.text }]}>
-          <ThemedText type="smallBold" style={{ color: theme.background }}>
-            {formatTime(start)}
-          </ThemedText>
+        <View pointerEvents="none" style={styles.timeTipWrap}>
+          <View style={[styles.timeTip, { backgroundColor: theme.text }]}>
+            <ThemedText type="smallBold" numberOfLines={1} style={{ color: theme.background }}>
+              {targetDay !== day ? `${formatShortDay(targetDay)} · ${formatTime(start)}` : formatTime(start)}
+            </ThemedText>
+          </View>
         </View>
       ) : null}
     </View>
@@ -743,6 +921,8 @@ function EventCircle({
 
 const styles = StyleSheet.create({
   list: { flex: 1 },
+  // La celda del día cuyo círculo se está arrastrando: por encima del resto.
+  sourceCell: { zIndex: 30 },
   // Un día entero: alto fijo y los márgenes laterales de la pantalla.
   day: { height: DAY_HEIGHT, paddingHorizontal: Spacing.four },
   grid: { flex: 1 },
@@ -813,10 +993,10 @@ const styles = StyleSheet.create({
   },
   circleTitle: { fontSize: 11, lineHeight: 14, textAlign: 'center', maxWidth: CIRCLE - 8 },
   circleSub: { fontSize: 10, lineHeight: 13, textAlign: 'center', maxWidth: CIRCLE - 8 },
-  // La hora a la que quedaría, justo encima del círculo mientras se arrastra.
+  // La hora (y el día, si cambia) a la que quedaría, junto al círculo mientras se arrastra.
+  // A la derecha del círculo (el día y la hora pueden ser largos y a la izquierda no cabrían: los círculos están en el margen).
+  timeTipWrap: { position: 'absolute', top: CIRCLE / 2 - 12, left: CIRCLE + 6, width: 200, alignItems: 'flex-start' },
   timeTip: {
-    position: 'absolute',
-    top: -26,
     paddingHorizontal: Spacing.two,
     paddingVertical: 2,
     borderRadius: Radius.pill,

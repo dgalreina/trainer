@@ -310,22 +310,41 @@ export function useWeekEvents(weekStart: string, span: { before: number; after: 
   const moveEvent = useCallback(
     async (event: DayEvent, newStart: Date) => {
       const date = newStart.toISOString();
+      const sameDay = isoOf(newStart) === isoOf(event.start);
       setError(null);
       try {
         if (event.kind === 'weight' && event.weightId) {
           setWeights((prev) => prev.map((w) => (w.id === event.weightId ? { ...w, date } : w)));
           await updateWeight(event.weightId, { date });
+        } else if (event.kind === 'meal' && event.mealId && event.log?.dietMealId && !sameDay) {
+          // Una comida de la dieta (ya tocada ese día) que cambia de día: ese día queda como descartada, para que la de la
+          // dieta no reaparezca, y en el nuevo se registra como una comida normal (si no, taparía la que la dieta ya tenga allí).
+          await api.patch(`/me/meals/${event.mealId}`, { skipped: true });
+          await api.post('/me/meals', {
+            date,
+            name: event.title,
+            items: event.log.items.map(({ foodId, grams }) => ({ foodId, grams })),
+          });
+          await load();
         } else if (event.kind === 'meal' && event.mealId) {
           setMeals((prev) => prev.map((m) => (m.id === event.mealId ? { ...m, date } : m)));
           await api.patch(`/me/meals/${event.mealId}`, { date });
         } else if (event.kind === 'plan' && event.plan) {
-          // Mover una comida de la dieta crea la versión de ese día a la nueva hora; la dieta no cambia.
-          await api.post('/me/meals', {
-            date,
-            name: event.plan.meal.name,
-            items: event.plan.meal.items.map(({ foodId, grams }) => ({ foodId, grams })),
-            dietMealId: event.plan.meal.id,
-          });
+          const items = event.plan.meal.items.map(({ foodId, grams }) => ({ foodId, grams }));
+          if (sameDay) {
+            // Mover una comida de la dieta crea la versión de ese día a la nueva hora; la dieta no cambia.
+            await api.post('/me/meals', { date, name: event.plan.meal.name, items, dietMealId: event.plan.meal.id });
+          } else {
+            // A otro día: aquí se descarta (la dieta no cambia) y en el nuevo es una comida normal.
+            await api.post('/me/meals', {
+              date: event.start.toISOString(),
+              name: event.plan.meal.name,
+              items: [],
+              dietMealId: event.plan.meal.id,
+              skipped: true,
+            });
+            await api.post('/me/meals', { date, name: event.plan.meal.name, items });
+          }
           await load();
         } else if (event.inProgress && event.draftOf) {
           // El entreno en curso aún no está guardado: se corrige la hora de inicio de su borrador.

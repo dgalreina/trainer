@@ -152,14 +152,17 @@ export function CalendarScreen() {
             : e,
         )
         .sort((a, b) => a.start.getTime() - b.start.getTime());
-      // Mientras se arrastra un círculo, las gráficas lo cuentan ya en su hora provisional (los eventos no se tocan).
-      const counted = preview
-        ? events.map((e) =>
-            e.id === preview.id
-              ? { ...e, start: preview.start, end: new Date(preview.start.getTime() + (e.end.getTime() - e.start.getTime())) }
-              : e,
-          )
-        : events;
+      // Mientras se arrastra un círculo, las gráficas lo cuentan ya en su hora provisional (los eventos no se tocan):
+      // en su día si sigue en él, quitado si se va a otro y añadido en el día al que llega.
+      let counted = events;
+      if (preview) {
+        const length = preview.event.end.getTime() - preview.event.start.getTime();
+        const moved = (e: DayEvent): DayEvent => ({ ...e, start: preview.start, end: new Date(preview.start.getTime() + length) });
+        const here = isoOf(preview.start) === day;
+        const has = events.some((e) => e.id === preview.id);
+        if (has) counted = here ? events.map((e) => (e.id === preview.id ? moved(e) : e)) : events.filter((e) => e.id !== preview.id);
+        else if (here) counted = [...events, moved(preview.event)];
+      }
       const energy = chainedEnergy(day, counted);
       return { events, planned, logs: mealsOf(day), energy, scale, marks, loaded: true };
     },
