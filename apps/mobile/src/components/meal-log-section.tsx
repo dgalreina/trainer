@@ -45,10 +45,11 @@ export function MealLogSection({
   // Hoy y los días futuros no han acabado: el gasto y el balance son una previsión a las 24:00.
   const projected = day >= todayISO();
 
-  // La ficha dice lo del propio día (comido − gastado) y, entre paréntesis, lo que ya llevabas al empezar; el detalle da el número
-  // «real» del cuerpo a las 24:00, el mismo que marca la gráfica amarilla.
-  const inherited = energy?.hasBurn ? Math.round(energy.startLevel) : 0;
+  // La ficha dice lo del propio día (comido − gastado) y, entre paréntesis, lo que queda a las 24:00 de lo que ya llevabas: así la
+  // suma es exactamente el número del cuerpo a las 24:00, el mismo que marca la gráfica amarilla (de lo heredado se va olvidando una parte).
   const bodyLevel = energy?.hasBurn ? Math.round(energy.level[energy.level.length - 1]) : 0;
+  const dayBalance = energy?.hasBurn ? energy.totals.balance : 0;
+  const inherited = bodyLevel - dayBalance;
   const eaten = sumMacros([loggedMacros(logs), ...planned.flatMap((event) => (event.macros ? [event.macros] : []))]);
   const targets = calculateTargets({
     ...profile,
@@ -111,12 +112,8 @@ export function MealLogSection({
           ) : null}
           {energy?.hasBurn ? (
             <ThemedText type="small" themeColor="textSecondary">
-              En el cuerpo a las 24:00: {signedKcal(bodyLevel)} kcal (traías {signedKcal(inherited)}, hoy suma{' '}
-              {signedKcal(energy.totals.balance)}
-              {Math.abs(bodyLevel - inherited - energy.totals.balance) >= 1
-                ? `, y ${signedKcal(bodyLevel - inherited - energy.totals.balance)} que se va olvidando`
-                : ''}
-              )
+              En el cuerpo a las 24:00: {signedKcal(bodyLevel)} kcal (hoy {signedKcal(dayBalance)} y {signedKcal(inherited)} de lo que
+              traías; empezaste el día con {signedKcal(Math.round(energy.startLevel))} y una parte se va olvidando)
             </ThemedText>
           ) : null}
         </>
