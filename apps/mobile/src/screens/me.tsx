@@ -4,10 +4,11 @@ import { AccountSection } from '@/components/account-section';
 import { ProfileForm } from '@/components/profile-form';
 import { Screen } from '@/components/screen';
 import { SectionTabs } from '@/components/section-tabs';
+import { WeightTrendSection } from '@/components/weight-trend';
 
-type Section = 'datos' | 'cuenta';
+type Section = 'datos' | 'peso' | 'cuenta';
 
-/** «Yo»: los datos personales y la cuenta. */
+/** «Yo»: los datos personales, cómo evoluciona el peso y la cuenta. */
 export function MeScreen() {
   const [section, setSection] = useState<Section>('datos');
 
@@ -19,13 +20,14 @@ export function MeScreen() {
         <SectionTabs
           options={[
             { key: 'datos', label: 'Mis datos' },
+            { key: 'peso', label: 'Mi peso' },
             { key: 'cuenta', label: 'Mi cuenta' },
           ]}
           value={section}
           onChange={setSection}
         />
       }>
-      {section === 'datos' ? <ProfileForm /> : <AccountSection />}
+      {section === 'datos' ? <ProfileForm /> : section === 'peso' ? <WeightTrendSection /> : <AccountSection />}
     </Screen>
   );
 }

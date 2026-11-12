@@ -73,7 +73,7 @@ const WEEKS_BEFORE = 2;
 const WEEKS_AFTER = 3;
 
 /** Los eventos de la semana que empieza el lunes `weekStart` y de las dos que la rodean. */
-export function useWeekEvents(weekStart: string) {
+export function useWeekEvents(weekStart: string, span: { before: number; after: number } = { before: WEEKS_BEFORE, after: WEEKS_AFTER }) {
   const { trainings } = useTrainings();
   const { dietOn } = useSettings();
   const { foods } = useFoods();
@@ -130,8 +130,8 @@ export function useWeekEvents(weekStart: string) {
     const mine = ++request.current;
     setLoading(true);
     setError(null);
-    const fromDay = addDays(weekStart, -7 * WEEKS_BEFORE);
-    const toDay = addDays(weekStart, 7 * WEEKS_AFTER);
+    const fromDay = addDays(weekStart, -7 * span.before);
+    const toDay = addDays(weekStart, 7 * span.after);
     const from = startOfDay(fromDay).toISOString();
     const to = startOfDay(toDay).toISOString();
     const range = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
@@ -152,7 +152,7 @@ export function useWeekEvents(weekStart: string) {
     } finally {
       if (mine === request.current) setLoading(false);
     }
-  }, [weekStart]);
+  }, [weekStart, span.before, span.after]);
 
   /** ¿Hay datos cargados de ese día? Fuera de la ventana no se sabe qué hay, y no hay que decir que está vacío. */
   const isLoaded = useCallback(

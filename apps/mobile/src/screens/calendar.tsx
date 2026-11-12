@@ -16,6 +16,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
 import { addDays, formatTime, isoOf, mondayOf, startOfDay, todayISO } from '@/lib/dates';
+import { useEnergyInput } from '@/lib/energy-input';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
@@ -90,32 +91,8 @@ export function CalendarScreen() {
     // desde lejos no lanza cientos de peticiones.
   } = useWeekEvents(useSettled(mondayOf(visibleDay)));
 
-  // El basal sale del perfil (Mifflin-St Jeor, con el último peso y la edad de hoy, también en días pasados) y
-  // los entrenos se estiman; lo comido es lo registrado más lo de la dieta que se da por comido. Un entreno
-  // en curso no gasta hasta finalizarlo.
-  const weightKg = latestWeight?.weightKg ?? null;
-  const bmr =
-    calculateTargets({ ...profile, weightKg, goal: profile.goal ?? 'mantener', today })?.bmr ?? null;
-
-  /** Lo que alimenta el cálculo de energía de un día a partir de sus eventos. */
-  const energyInput = useCallback(
-    (day: string, list: DayEvent[]) => ({
-      dayStart: startOfDay(day).getTime(),
-      bmr,
-      weightKg,
-      workouts: list
-        .filter((e) => e.kind === 'workout' && !e.inProgress)
-        .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
-      meals: list.flatMap((e) =>
-        e.kind === 'meal' && e.log
-          ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
-          : e.kind === 'plan' && e.macros
-            ? [{ at: e.start.getTime(), kcal: e.macros.kcal }]
-            : [],
-      ),
-    }),
-    [bmr, weightKg],
-  );
+  // El basal, el peso y lo que alimenta el cálculo de energía de un día (ver `useEnergyInput`).
+  const { weightKg, energyInput } = useEnergyInput();
 
   /**
    * Energía de un día con el nivel que dejaron los anteriores: el nivel sigue de un día al siguiente, así que se encadenan

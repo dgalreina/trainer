@@ -11,3 +11,4 @@ export * from "./training-template";
 export * from "./profile";
 export * from "./session";
 export * from "./health";
+export * from "./weight-trend";
