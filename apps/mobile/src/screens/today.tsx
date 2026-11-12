@@ -14,7 +14,9 @@ import { useExercises } from '@/lib/exercises';
 import { useNewTraining } from '@/lib/new-training';
 import { routineSummary } from '@/lib/routine-summary';
 import { useSettings } from '@/lib/settings';
+import { getItem } from '@/lib/storage';
 import { useTrainings } from '@/lib/trainings';
+import { draftKey, parseDraft } from '@/lib/workout-draft';
 
 export function TodayScreen() {
   const router = useRouter();
@@ -27,8 +29,28 @@ export function TodayScreen() {
     }, [refresh]),
   );
   const newTraining = useNewTraining();
-  const [createError, setCreateError] = useState<string | null>(null);
   const { activeTraining } = useSettings();
+
+  // Rutinas con el entreno empezado y sin finalizar: viven como borrador en el dispositivo. Se vuelve a mirar cada
+  // vez que se entra en la pestaña (también al volver atrás desde el entreno).
+  const [inProgress, setInProgress] = useState<Set<string>>(new Set());
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const started = new Set<string>();
+        for (const routine of activeTraining?.routines ?? []) {
+          const draft = parseDraft(await getItem(draftKey(activeTraining!.id, routine.id)));
+          if (draft && draft.startedAt !== null) started.add(routine.id);
+        }
+        if (!cancelled) setInProgress(started);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [activeTraining]),
+  );
+  const [createError, setCreateError] = useState<string | null>(null);
   const { byId } = useExercises();
 
   const openWorkout = (trainingId: string, routineId: string) =>
@@ -95,6 +117,7 @@ export function TodayScreen() {
             <>
               {activeTraining.routines.map((routine, index) => {
                 const summary = routineSummary(routine, byId);
+                const started = inProgress.has(routine.id);
                 return (
                   <Card
                     key={routine.id}
@@ -111,6 +134,11 @@ export function TodayScreen() {
                     <ThemedText type="small" themeColor="textSecondary">
                       {summary.counts}
                     </ThemedText>
+                    {started ? (
+                      <ThemedText type="smallBold" themeColor="primaryText" style={styles.tag}>
+                        En curso
+                      </ThemedText>
+                    ) : null}
                   </Card>
                 );
               })}
@@ -125,5 +153,7 @@ export function TodayScreen() {
 const styles = StyleSheet.create({
   empty: { gap: Spacing.three, padding: Spacing.four },
   routine: { gap: Spacing.one, paddingVertical: Spacing.four },
+  // Arriba a la derecha de la tarjeta, a la altura de «Día N».
+  tag: { position: 'absolute', top: Spacing.four, right: Spacing.three },
   routineName: { fontSize: 26, lineHeight: 32 },
 });
