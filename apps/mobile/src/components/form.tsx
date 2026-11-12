@@ -23,6 +23,9 @@ export function Field({ label, style, ...props }: TextInputProps & { label?: str
       <TextInput
         placeholderTextColor={theme.textSecondary}
         accessibilityLabel={label}
+        // Sin esto el navegador ofrece autocompletar (tarjetas de crédito, direcciones…) en cualquier campo; el login lo pisa con lo suyo.
+        autoComplete="off"
+        autoCorrect={false}
         {...props}
         style={[
           styles.input,
@@ -63,6 +66,7 @@ export function NumberInput({
   return (
     <TextInput
       accessibilityLabel={accessibilityLabel}
+      autoComplete="off"
       value={value}
       onChangeText={onChangeText}
       onFocus={() => {
