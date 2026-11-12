@@ -328,7 +328,7 @@ export function WorkoutScreen() {
   );
 
   return (
-    <Screen title={title} subtitle={training.name} stacked onBack={goBack} footer={footer}>
+    <Screen title={title} subtitle={training.name} stacked fade onBack={goBack} footer={footer}>
       {draft.startedAt === null ? (
         <Button title="Comenzar" onPress={start} />
       ) : (

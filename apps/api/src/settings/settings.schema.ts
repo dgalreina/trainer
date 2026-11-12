@@ -12,6 +12,9 @@ export class SettingsDoc {
   @Prop({ type: String, default: null })
   activeDietId!: string | null;
 
+  @Prop({ type: Date, default: null })
+  routinesResetAt!: Date | null;
+
   @Prop({ type: [{ _id: false, from: String, dietId: { type: String, default: null } }], default: [] })
   dietSchedule!: { from: string; dietId: string | null }[];
 }

@@ -88,7 +88,9 @@ export function Screen({
   const floatsHeader = Boolean(title || action || onBack || fixedTop);
   // Quien no pide el alto de lo que flota arriba recibe el contenido tal cual.
   const content = typeof children === 'function' ? children(floatsHeader ? overlayHeight : TAB_BAR_INSET) : children;
-  const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer ? FOOTER_SPACE : 0);
+  // Con difuminado, la barra de abajo va en el flujo (el scroll acaba justo encima y se difumina contra ella); sin él, flota encima.
+  const footerInFlow = Boolean(footer && fade && scroll && !fullBleed);
+  const bottomInset = (stacked ? Spacing.four : BottomTabInset + Spacing.four) + (footer && !footerInFlow ? FOOTER_SPACE : 0);
   const ownWaves = stacked || Platform.OS !== 'web';
 
   const header = onBack ? (
@@ -207,7 +209,7 @@ export function Screen({
         <View style={[contentStyle, styles.fill]}>{content}</View>
       )}
       {footer ? (
-        <View style={[styles.footer, { backgroundColor: theme.background }]}>{footer}</View>
+        <View style={[footerInFlow ? styles.footerFlow : styles.footer, { backgroundColor: theme.background }]}>{footer}</View>
       ) : null}
     </SafeAreaView>
   );
@@ -241,6 +243,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,
   },
+  footerFlow: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, paddingBottom: Spacing.four, gap: Spacing.two },
   content: {
     paddingHorizontal: Spacing.four,
     paddingTop: Platform.OS === 'web' ? WebTabBarInset : Spacing.four,

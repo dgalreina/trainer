@@ -180,13 +180,21 @@ export function SessionSheet({
   return (
     <>
       <Sheet visible={sessionId !== null} onClose={() => !saving && onClose()}>
-        <View>
-          <ThemedText type="smallBold">{lastTitle.current}</ThemedText>
-          {session ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {formatDay(isoOf(new Date(session.date)))}
+        <View style={styles.titleRow}>
+          <View style={styles.titleText}>
+            <ThemedText type="smallBold">{lastTitle.current}</ThemedText>
+            {session ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {formatDay(isoOf(new Date(session.date)))}
+              </ThemedText>
+            ) : null}
+          </View>
+          {/* Por si te arrepientes: cierra sin guardar. */}
+          <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={() => !saving && onClose()} hitSlop={12}>
+            <ThemedText type="subtitle" themeColor="textSecondary" style={styles.close}>
+              ✕
             </ThemedText>
-          ) : null}
+          </Pressable>
         </View>
 
         {!session ? (
@@ -288,6 +296,9 @@ export function SessionSheet({
 }
 
 const styles = StyleSheet.create({
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.two },
+  titleText: { flex: 1 },
+  close: { fontSize: 22, lineHeight: 26 },
   row: { flexDirection: 'row', gap: Spacing.three },
   half: { flex: 1, gap: Spacing.one },
   exercise: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },

@@ -26,7 +26,12 @@ export class SettingsService {
       const diet = await this.diets.findOne({ _id: activeDietId, userId }).lean();
       if (diet) dietSchedule = [{ from: diet.startDate, dietId: activeDietId }];
     }
-    return { activeTrainingId: doc?.activeTrainingId ?? null, activeDietId, dietSchedule };
+    return {
+      activeTrainingId: doc?.activeTrainingId ?? null,
+      activeDietId,
+      dietSchedule,
+      routinesResetAt: doc?.routinesResetAt ? doc.routinesResetAt.toISOString() : null,
+    };
   }
 
   async update(userId: string, dto: UpdateUserSettings): Promise<UserSettings> {
@@ -42,8 +47,14 @@ export class SettingsService {
         (await this.diets.exists({ _id: dto.activeDietId, userId }));
       if (!exists) throw new BadRequestException("Esa dieta no existe");
     }
-    const { dietSince, ...changes } = dto;
+    const { dietSince, routinesResetAt, ...changes } = dto;
     const set: Record<string, unknown> = { ...changes };
+    if (routinesResetAt !== undefined) set.routinesResetAt = routinesResetAt ? new Date(routinesResetAt) : null;
+    // Al cambiar de entrenamiento actual empieza un ciclo nuevo de rutinas hechas.
+    if (dto.activeTrainingId !== undefined && routinesResetAt === undefined) {
+      const current = await this.model.findOne({ userId }).lean();
+      if ((current?.activeTrainingId ?? null) !== dto.activeTrainingId) set.routinesResetAt = new Date();
+    }
     if (dto.activeDietId !== undefined) {
       // Desde ese día rige la dieta nueva (o ninguna); lo anterior se conserva y lo posterior se descarta.
       const since = dietSince ?? new Date().toISOString().slice(0, 10);

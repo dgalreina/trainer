@@ -92,6 +92,11 @@ export const userSettingsSchema = z.object({
   activeDietId: z.string().nullable(),
   /** Qué dieta rige cada día: sin fin hasta que se cambia o se quita, y antes de cada cambio rige la anterior. */
   dietSchedule: z.array(dietScheduleEntrySchema),
+  /**
+   * Cuándo se pulsó por última vez «Desmarcar todos» (o se cambió el entrenamiento actual): los entrenos anteriores
+   * ya no cuentan para saber qué rutinas están hechas en «Hoy». Null = nunca.
+   */
+  routinesResetAt: z.iso.datetime({ offset: true }).nullable(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 
@@ -100,6 +105,8 @@ export const updateUserSettingsSchema = z.object({
   activeDietId: z.string().nullable().optional(),
   /** Día desde el que rige el cambio de `activeDietId` (por defecto, hoy en el servidor). */
   dietSince: dateSchema.optional(),
+  /** Momento desde el que cuentan los entrenos para marcar rutinas como hechas. */
+  routinesResetAt: z.iso.datetime({ offset: true }).nullable().optional(),
 });
 export type UpdateUserSettings = z.infer<typeof updateUserSettingsSchema>;
 
@@ -114,4 +121,35 @@ export function dietIdOn(schedule: DietScheduleEntry[], day: string): string | n
     }
   }
   return found;
+}
+
+/**
+ * Qué rutinas de un entrenamiento están hechas en el ciclo en curso. Se recorren los entrenos terminados por orden de
+ * fecha (los anteriores a `resetAt` no cuentan): cada uno marca su rutina, y cuando están hechas todas se desmarcan
+ * todas y empieza otro ciclo. Repetir una rutina ya marcada no cambia nada. Con una sola rutina nunca queda marcada.
+ * Un entreno cuenta si TERMINÓ después de `resetAt` (empezó antes de pulsar «Desmarcar todos» y se finalizó después: cuenta).
+ * Limitación conocida: se recalcula con las rutinas de ahora, así que añadir o borrar una rutina a mitad de historial puede
+ * cambiar lo marcado.
+ */
+export function doneRoutineIds(
+  routineIds: string[],
+  sessions: { routineId?: string; date: string; durationSeconds?: number }[],
+  resetAt: string | null,
+): Set<string> {
+  const wanted = new Set(routineIds);
+  const done = new Set<string>();
+  const since = resetAt ? Date.parse(resetAt) : -Infinity;
+  const ordered = sessions
+    .filter(
+      (s) =>
+        s.routineId !== undefined &&
+        wanted.has(s.routineId) &&
+        Date.parse(s.date) + (s.durationSeconds ?? 0) * 1000 >= since,
+    )
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  for (const session of ordered) {
+    done.add(session.routineId as string);
+    if (done.size === wanted.size) done.clear();
+  }
+  return done;
 }

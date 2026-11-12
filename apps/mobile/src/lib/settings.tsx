@@ -15,13 +15,15 @@ import { todayISO } from '@/lib/dates';
 import { useDiets } from '@/lib/diets';
 import { useTrainings } from '@/lib/trainings';
 
-const EMPTY: UserSettings = { activeTrainingId: null, activeDietId: null, dietSchedule: [] };
+const EMPTY: UserSettings = { activeTrainingId: null, activeDietId: null, dietSchedule: [], routinesResetAt: null };
 
 interface SettingsValue {
   settings: UserSettings;
   /** El entrenamiento que el usuario tiene en marcha ahora, si lo hay. */
   activeTraining: Training | null;
   setActiveTraining: (id: string | null) => Promise<void>;
+  /** «Desmarcar todos»: desde ahora no cuentan los entrenos anteriores para marcar rutinas como hechas. */
+  resetRoutines: () => Promise<void>;
   /** La dieta que el usuario sigue ahora, si la hay. */
   activeDiet: Diet | null;
   /** Desde hoy se sigue esa dieta (sin fin, hasta que se cambia o se quita con `null`). */
@@ -33,7 +35,11 @@ interface SettingsValue {
 const SettingsContext = createContext<SettingsValue | null>(null);
 
 /** Una API anterior al calendario de dietas no manda `dietSchedule`: se toma como vacío. */
-const normalize = (s: UserSettings): UserSettings => ({ ...s, dietSchedule: s.dietSchedule ?? [] });
+const normalize = (s: UserSettings): UserSettings => ({
+  ...s,
+  dietSchedule: s.dietSchedule ?? [],
+  routinesResetAt: s.routinesResetAt ?? null,
+});
 
 /** Qué entrenamiento y qué dieta tiene el usuario en marcha ahora. */
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -54,6 +60,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const setActiveTraining = useCallback(async (id: string | null) => {
     setSettings(normalize(await api.put<UserSettings>('/me/settings', { activeTrainingId: id })));
+  }, []);
+
+  const resetRoutines = useCallback(async () => {
+    setSettings(normalize(await api.put<UserSettings>('/me/settings', { routinesResetAt: new Date().toISOString() })));
   }, []);
 
   const setActiveDiet = useCallback(async (id: string | null) => {
@@ -85,8 +95,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<SettingsValue>(
-    () => ({ settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn }),
-    [settings, activeTraining, setActiveTraining, activeDiet, setActiveDiet, dietOn],
+    () => ({ settings, activeTraining, setActiveTraining, resetRoutines, activeDiet, setActiveDiet, dietOn }),
+    [settings, activeTraining, setActiveTraining, resetRoutines, activeDiet, setActiveDiet, dietOn],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
