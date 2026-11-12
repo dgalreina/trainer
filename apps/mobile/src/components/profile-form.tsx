@@ -13,7 +13,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Card } from '@/components/card';
 import { DateField } from '@/components/date-field';
 import { Button, Chip, ErrorText, Field, NumberInput } from '@/components/form';
-import { OptionRows } from '@/components/option-rows';
+import { SelectField } from '@/components/select-field';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -146,7 +146,9 @@ export function ProfileForm() {
       <ThemedText type="smallBold" themeColor="textSecondary">
         Nivel de actividad
       </ThemedText>
-      <OptionRows
+      <SelectField
+        accessibilityLabel="Nivel de actividad"
+        placeholder="Elige tu nivel de actividad"
         options={ACTIVITY_LEVELS.map((value) => ({ value, ...ACTIVITY_LABELS[value] }))}
         selected={activity}
         onSelect={setActivity}

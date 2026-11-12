@@ -1,4 +1,4 @@
-import { ENERGY_SLOTS, type DayEnergy } from '@trainer/shared';
+import { ENERGY_SLOTS, RATE_PER_WINDOW, type DayEnergy } from '@trainer/shared';
 import { useId, useMemo } from 'react';
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
@@ -8,10 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 const MAX_FILL = 0.92;
 /** Los tramos de gasto y consumo se suavizan con un núcleo triangular de este radio (en tramos). */
 const SMOOTH_RADIUS = 2;
-/** El nivel llega al borde del gráfico con este múltiplo del basal diario. Depende solo de la persona (igual en todos los días: si no, a medianoche habría un escalón) y deja sitio a rachas de superávit. */
-const LEVEL_SCALE_BMR = 2;
-/** Escala mínima (kcal), por si el basal es muy bajo. */
-const MIN_LEVEL_SCALE = 1500;
+
 /** Opacidad de lo que ya ha pasado y de lo que aún no (esto último es proyección: se ve más tenue). */
 const PAST_OPACITY = 0.5;
 const FUTURE_OPACITY = 0.2;
@@ -32,6 +29,28 @@ function smooth(values: number[], radius = SMOOTH_RADIUS): number[] {
     }
     return total / weights;
   });
+}
+
+/**
+ * Dónde cae cada cosa en una gráfica (en píxeles, con la línea central en `x0`): lo usan la propia gráfica y los números
+ * que se dibujan encima, para que coincidan siempre. `slot` es el tramo de 15 min (0-95).
+ */
+export function chartMapper(energy: DayEnergy, scale: number | null, width: number) {
+  const x0 = width / 2;
+  const reach = x0 * MAX_FILL;
+  const kcalAtEdge = scale ?? Math.max(1, energy.peak);
+  /** Píxeles (con signo) de una cantidad de kcal: la misma escala para lo comido, lo gastado y el nivel. */
+  const px = (kcal: number) => Math.max(-1, Math.min(1, kcal / kcalAtEdge)) * reach;
+  const intake = smooth(energy.intake);
+  const burn = energy.hasBurn ? smooth(energy.burn) : null;
+  return {
+    x0,
+    reach,
+    px,
+    pinkX: (slot: number) => x0 + px(intake[slot] * RATE_PER_WINDOW),
+    blueX: (slot: number) => (burn ? x0 - px(burn[slot] * RATE_PER_WINDOW) : x0),
+    amberX: (slot: number) => x0 + px(energy.level[slot]),
+  };
 }
 
 /** Lado de la línea central en el que debe quedarse una gráfica: la curva no puede cruzarla. */
@@ -67,16 +86,19 @@ function area(points: Point[], x0: number, side?: Side): string {
 /**
  * Las gráficas del día, detrás de las horas: una línea vertical central (el cero de calorías), el gasto en
  * azul a la izquierda, lo comido en rosa a la derecha y el balance acumulado en amarillo anaranjado, que
- * cruza la línea según se va gastando o comiendo. Gasto y consumo comparten escala (son tasas por tramo); el
- * balance, por ser un acumulado, tiene la suya. Lo que aún no ha pasado se dibuja más tenue.
+ * cruza la línea según se va gastando o comiendo. Los tres comparten escala (kcal → píxeles; lo comido y gastado, en
+ * kcal cada 30 min) y la escala la fija `scale`. Lo que aún no ha pasado se dibuja más tenue.
  */
 export function DayEnergyChart({
   energy,
+  scale,
   width,
   height,
   dimFrom,
 }: {
   energy: DayEnergy;
+  /** kcal que llegan al borde: la misma para todos los días; sin ella, lo más grande del día. */
+  scale: number | null;
   width: number;
   height: number;
   /** Altura (px) a partir de la cual el día es proyección y se dibuja más tenue. */
@@ -88,28 +110,25 @@ export function DayEnergyChart({
   const ids = { blue: `energy-blue-${uid}`, amber: `energy-amber-${uid}`, pink: `energy-pink-${uid}`, past: `energy-past-${uid}`, future: `energy-future-${uid}` };
 
   const shapes = useMemo(() => {
-    const x0 = width / 2;
-    const reach = x0 * MAX_FILL;
+    const { x0, reach, px } = chartMapper(energy, scale, width);
     const slotHeight = height / ENERGY_SLOTS;
     const centerY = (i: number) => (i + 0.5) * slotHeight;
 
     const intake = smooth(energy.intake);
     const burn = energy.hasBurn ? smooth(energy.burn) : null;
-    // Una sola escala para las dos tasas: así se ve que lo comido pesa mucho más que el basal.
-    const rateScale = Math.max(1, ...intake, ...(burn ?? []));
+    // Una sola escala (kcal → píxeles) para todo: lo comido y lo gastado (kcal cada 30 min) y el nivel acumulado, y la misma
+    // en todos los días (si no, a medianoche habría un escalón).
 
     // Los extremos repiten el primer y el último valor, y la curva llega hasta el borde del día.
     const side = (values: number[], sign: 1 | -1): Point[] => {
-      const body = values.map((v, i): Point => [x0 + sign * (v / rateScale) * reach, centerY(i)]);
+      const body = values.map((v, i): Point => [x0 + sign * px(v * RATE_PER_WINDOW), centerY(i)]);
       return [[body[0][0], 0], ...body, [body[body.length - 1][0], height]];
     };
 
     // El día empieza ya en el nivel que dejó el anterior (no en el centro): así no hay corte a medianoche.
-    const levelScale = Math.max(MIN_LEVEL_SCALE, energy.totals.basal * LEVEL_SCALE_BMR);
-    const levelX = (v: number) => x0 + Math.max(-1, Math.min(1, v / levelScale)) * reach;
     const balancePoints: Point[] = [
-      [levelX(energy.level[0]), 0],
-      ...energy.level.map((v, i): Point => [levelX(v), (i + 1) * slotHeight]),
+      [x0 + px(energy.level[0]), 0],
+      ...energy.level.map((v, i): Point => [x0 + px(v), (i + 1) * slotHeight]),
     ];
 
     return {
@@ -118,7 +137,7 @@ export function DayEnergyChart({
       blue: burn ? side(burn, -1) : null,
       balance: energy.hasBurn ? balancePoints : null,
     };
-  }, [energy, width, height]);
+  }, [energy, scale, width, height]);
 
   if (width <= 0) return null;
   const { x0 } = shapes;

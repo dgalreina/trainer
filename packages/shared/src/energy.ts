@@ -6,6 +6,12 @@ export const ENERGY_SLOT_MINUTES = 15;
 export const ENERGY_SLOTS = (24 * 60) / ENERGY_SLOT_MINUTES;
 /** Equivalente metabólico de un entreno de pesas (orientativo: no medimos las calorías quemadas). */
 export const WORKOUT_MET = 5;
+/**
+ * Gasto y consumo se dibujan como «lo que pasa en este rato» (kcal cada 30 min): una comida de 900 kcal, que se reparte en
+ * 30 min, mide lo mismo que lo que sube el nivel acumulado, así que las dos curvas están a la misma escala (kcal → píxeles).
+ */
+export const RATE_WINDOW_MINUTES = 30;
+export const RATE_PER_WINDOW = RATE_WINDOW_MINUTES / ENERGY_SLOT_MINUTES;
 /** Una comida se reparte a lo largo de este rato, desde su hora (no es instantánea). */
 export const MEAL_SPREAD_MINUTES = 30;
 
@@ -58,6 +64,8 @@ export interface DayEnergy {
    * cada comida lo sube, el gasto lo baja y tiende despacio a 0 ({@link LEVEL_LEAK_PER_SLOT}). Es lo que se dibuja.
    */
   level: number[];
+  /** Lo más grande que se dibuja ese día (kcal): el mayor nivel o el mayor ritmo de gasto o consumo. Sirve para fijar la escala. */
+  peak: number;
   totals: {
     basal: number;
     workouts: number;
@@ -131,6 +139,13 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel
   let carried = startLevel;
   const level = intake.map((eaten, i) => (carried = carried * (1 - LEVEL_LEAK_PER_SLOT) + eaten - burn[i]));
 
+  const peak = Math.max(
+    0,
+    ...level.map(Math.abs),
+    ...intake.map((v) => v * RATE_PER_WINDOW),
+    ...burn.map((v) => v * RATE_PER_WINDOW),
+  );
+
   const sum = (list: number[]) => list.reduce((total, value) => total + value, 0);
   return {
     hasBurn,
@@ -138,6 +153,7 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel
     intake,
     balance,
     level,
+    peak,
     totals: {
       basal: Math.round(basalPerSlot * ENERGY_SLOTS),
       workouts: Math.round(workoutsKcal),

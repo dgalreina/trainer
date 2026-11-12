@@ -61,6 +61,8 @@ function useSettled<T>(value: T, ms = 250): T {
  */
 /** Días anteriores que se encadenan para saber con qué nivel de energía empieza un día. */
 const CARRY_DAYS = 7;
+/** Escala mínima de las gráficas (kcal): si no, un día con muy poco movimiento ampliaría el ruido. */
+const MIN_CHART_SCALE = 800;
 
 export function CalendarScreen() {
   useMinuteTick();
@@ -115,6 +117,36 @@ export function CalendarScreen() {
     [bmr, weightKg],
   );
 
+  /**
+   * Energía de un día con el nivel que dejaron los anteriores: el nivel sigue de un día al siguiente, así que se encadenan
+   * los días anteriores cargados (como mucho CARRY_DAYS; el nivel tiende a 0, lo de hace una semana ya no pesa).
+   */
+  const chainedEnergy = useCallback(
+    (day: string, list: DayEvent[]) => {
+      let startDay = day;
+      for (let i = 0; i < CARRY_DAYS && isLoaded(addDays(startDay, -1)); i++) startDay = addDays(startDay, -1);
+      let startLevel = 0;
+      for (let d = startDay; d !== day; d = addDays(d, 1)) {
+        const previous = dayEnergy({ ...energyInput(d, [...eventsOf(d), ...plannedOf(d)]), startLevel });
+        startLevel = previous.level[previous.level.length - 1];
+      }
+      return dayEnergy({ ...energyInput(day, list), startLevel });
+    },
+    [isLoaded, eventsOf, plannedOf, energyInput],
+  );
+
+  // UNA escala para TODA la gráfica (todos los días, para que a medianoche no haya escalón): lo más grande que se dibuja
+  // en los últimos 5 días hasta hoy (un día descontrolado solo afecta a esos 5). Si hoy queda fuera de lo cargado (se ha
+  // ido lejos en el calendario), se conserva la última que se calculó.
+  const lastScale = useRef(MIN_CHART_SCALE);
+  const computedScale = useMemo(() => {
+    const days = [0, 1, 2, 3, 4].map((i) => addDays(today, -i)).filter(isLoaded);
+    if (days.length === 0) return null;
+    return Math.max(MIN_CHART_SCALE, ...days.map((d) => chainedEnergy(d, [...eventsOf(d), ...plannedOf(d)]).peak));
+  }, [today, isLoaded, chainedEnergy, eventsOf, plannedOf]);
+  if (computedScale !== null) lastScale.current = computedScale;
+  const scale = computedScale ?? lastScale.current;
+
   /** Todo lo de un día: sus tarjetas, sus gráficas y sus marcas. Se calcula día a día, solo para los que se pintan. */
   const modelOf = useCallback(
     (day: string, preview?: DragPreview): DayModel & { planned: DayEvent[]; logs: ReturnType<typeof mealsOf> } => {
@@ -130,7 +162,7 @@ export function CalendarScreen() {
       }
       // Fuera de lo cargado no se sabe qué hay: ni se dice que esté vacío ni se suma la dieta (podría haber
       // comidas editadas o quitadas ese día).
-      if (!isLoaded(day)) return { events: [], planned: [], logs: [], energy: null, marks, loaded: false };
+      if (!isLoaded(day)) return { events: [], planned: [], logs: [], energy: null, scale: null, marks, loaded: false };
       const planned = plannedOf(day);
       // El entreno terminado muestra lo que se estima que gasta (por encima del basal; es orientativo).
       const events = [...eventsOf(day), ...planned]
@@ -151,19 +183,10 @@ export function CalendarScreen() {
               : e,
           )
         : events;
-      // El nivel sigue de un día al siguiente: se encadenan los días anteriores cargados (como mucho CARRY_DAYS;
-      // el nivel tiende a 0, así que lo de hace una semana ya no pesa).
-      let startDay = day;
-      for (let i = 0; i < CARRY_DAYS && isLoaded(addDays(startDay, -1)); i++) startDay = addDays(startDay, -1);
-      let startLevel = 0;
-      for (let d = startDay; d !== day; d = addDays(d, 1)) {
-        const level = dayEnergy({ ...energyInput(d, [...eventsOf(d), ...plannedOf(d)]), startLevel }).level;
-        startLevel = level[level.length - 1];
-      }
-      const energy = dayEnergy({ ...energyInput(day, counted), startLevel });
-      return { events, planned, logs: mealsOf(day), energy, marks, loaded: true };
+      const energy = chainedEnergy(day, counted);
+      return { events, planned, logs: mealsOf(day), energy, scale, marks, loaded: true };
     },
-    [eventsOf, plannedOf, mealsOf, isLoaded, energyInput, weightKg, settings.dietSchedule, dietOn, trainings],
+    [eventsOf, plannedOf, mealsOf, isLoaded, chainedEnergy, scale, weightKg, settings.dietSchedule, dietOn, trainings],
   );
   const visible = useMemo(() => modelOf(visibleDay), [modelOf, visibleDay]);
 

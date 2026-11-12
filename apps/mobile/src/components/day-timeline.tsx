@@ -22,9 +22,10 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
-import type { DayEnergy } from '@trainer/shared';
+import { loggedMacros, type DayEnergy } from '@trainer/shared';
 
 import { DayEnergyChart } from '@/components/day-energy-chart';
+import { EnergyLabels, ScrubReadout, type ReadoutMeal } from '@/components/energy-readout';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -81,6 +82,8 @@ export interface DayModel {
   events: DayEvent[];
   /** Gasto, consumo y balance del día para las gráficas de fondo; sin él no se dibujan. */
   energy: DayEnergy | null;
+  /** Escala de las gráficas (kcal que llegan al borde): una sola para todos los días; sin energía, null. */
+  scale: number | null;
   /** Marcas discretas del principio del día («Comienza la dieta…»). */
   marks: string[];
   /** Si ya hay datos de ese día: hasta entonces no se dice que esté vacío. */
@@ -130,13 +133,110 @@ function dragMinutes(dy: number, event: DayEvent, dayStart: number): number {
   return Math.min(Math.max(wanted, lowest), highest);
 }
 
-/** Hora en la que se ha tocado el día, a partir de la altura del toque dentro de las 24 horas. */
-function slotAt(event: GestureResponderEvent, dayStart: number): Date {
-  // En nativo llega `locationY`; en la web el clic trae `offsetY` (relativo al hueco tocado).
-  const native = event.nativeEvent as { locationY?: number; offsetY?: number };
-  const y = native.locationY ?? native.offsetY ?? 0;
-  const minutes = Math.floor(((y / HOUR_HEIGHT) * 60) / SLOT_MINUTES) * SLOT_MINUTES;
-  return new Date(dayStart + Math.min(Math.max(minutes, 0), DAY_MINUTES - SLOT_MINUTES) * MINUTE_MS);
+/**
+ * El fondo táctil de un día. Un toque corto en un hueco propone añadir algo a esa hora; un gesto rápido es scroll; y
+ * manteniendo el dedo un rato (con una pequeña vibración) se «lee» la gráfica: mientras se mueve arriba y abajo se
+ * avisa de la altura del dedo (`onScrub`), y `null` al soltar. Los círculos de los eventos están por encima y mantienen
+ * su propia pulsación larga (mover el evento).
+ */
+function SlotsLayer({
+  dayStart,
+  onPressSlot,
+  onScrub,
+}: {
+  dayStart: number;
+  onPressSlot?: (at: Date) => void;
+  onScrub?: (y: number | null) => void;
+}) {
+  const node = useRef<unknown>(null);
+  const armed = useRef(false);
+  const startY = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef({ dayStart, onPressSlot, onScrub });
+  useEffect(() => {
+    latest.current = { dayStart, onPressSlot, onScrub };
+  });
+  const clearHold = useCallback(() => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  }, []);
+  useEffect(() => clearHold, [clearHold]);
+
+  // Web: una vez agarrado, el navegador no debe hacer scroll con el movimiento del dedo (el escuchador no puede ser pasivo),
+  // y al soltar se evita el clic «fantasma».
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const element = node.current as unknown as HTMLElement | null;
+    if (!element) return;
+    const block = (e: TouchEvent) => {
+      if (armed.current && e.cancelable) e.preventDefault();
+    };
+    // Siempre (también en un toque corto): si no, el clic fantasma cae sobre la ventana de «Añadir» recién abierta y la cierra.
+    const swallowClick = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    element.addEventListener('touchmove', block, { passive: false });
+    element.addEventListener('touchend', swallowClick, { passive: false });
+    return () => {
+      element.removeEventListener('touchmove', block);
+      element.removeEventListener('touchend', swallowClick);
+    };
+  }, []);
+
+  const responder = useMemo(() => {
+    const yOf = (e: GestureResponderEvent) => {
+      const native = e.nativeEvent as { locationY?: number; offsetY?: number };
+      return native.locationY ?? native.offsetY ?? 0;
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => armed.current,
+      onPanResponderTerminationRequest: () => !armed.current,
+      onPanResponderGrant: (e) => {
+        armed.current = false;
+        startY.current = yOf(e);
+        clearHold();
+        // Sin lectura (no hay datos del día), no hay pulsación larga: solo toques.
+        if (!latest.current.onScrub) return;
+        holdTimer.current = setTimeout(() => {
+          armed.current = true;
+          Vibration.vibrate(15);
+          latest.current.onScrub?.(startY.current);
+        }, LONG_PRESS_MS);
+      },
+      onPanResponderMove: (_e, g) => {
+        if (armed.current) latest.current.onScrub?.(Math.min(Math.max(startY.current + g.dy, 0), DAY_HEIGHT));
+        else if (Math.hypot(g.dx, g.dy) > TAP_SLOP) clearHold();
+      },
+      onPanResponderRelease: (e, g) => {
+        clearHold();
+        if (armed.current) latest.current.onScrub?.(null);
+        else if (Math.hypot(g.dx, g.dy) <= TAP_SLOP) {
+          const minutes = Math.floor(((startY.current / HOUR_HEIGHT) * 60) / SLOT_MINUTES) * SLOT_MINUTES;
+          latest.current.onPressSlot?.(
+            new Date(latest.current.dayStart + Math.min(Math.max(minutes, 0), DAY_MINUTES - SLOT_MINUTES) * MINUTE_MS),
+          );
+        }
+        armed.current = false;
+        void e;
+      },
+      onPanResponderTerminate: () => {
+        clearHold();
+        if (armed.current) latest.current.onScrub?.(null);
+        armed.current = false;
+      },
+    });
+  }, [clearHold]);
+
+  return (
+    <View
+      ref={node as never}
+      {...responder.panHandlers}
+      accessibilityRole="button"
+      accessibilityLabel="Añadir a esta hora"
+      style={[styles.slots, NO_SELECT]}
+    />
+  );
 }
 
 /**
@@ -321,11 +421,25 @@ const DayColumn = memo(function DayColumn({
   onDragEvent: (day: string, preview: DragPreview | null) => void;
 } & Handlers) {
   const theme = useTheme();
-  const { events, energy, marks, loaded } = useMemo(() => modelOf(day, preview ?? undefined), [modelOf, day, preview]);
+  const { events, energy, scale, marks, loaded } = useMemo(() => modelOf(day, preview ?? undefined), [modelOf, day, preview]);
   const isToday = day === today;
   const dayStart = startOfDay(day).getTime();
   const [now, setNow] = useState(() => Date.now());
   const [areaWidth, setAreaWidth] = useState(0);
+  // Altura (px) del dedo mientras se «lee» la gráfica manteniendo pulsado; null el resto del tiempo.
+  const [scrubY, setScrubY] = useState<number | null>(null);
+  // Las comidas del día (con sus kcal), para los números de la gráfica: las mismas que cuenta la energía.
+  const meals = useMemo<ReadoutMeal[]>(
+    () =>
+      events.flatMap((e) =>
+        e.kind === 'meal' && e.log
+          ? [{ at: e.start.getTime(), kcal: loggedMacros([e.log]).kcal }]
+          : e.kind === 'plan' && e.macros
+            ? [{ at: e.start.getTime(), kcal: e.macros.kcal }]
+            : [],
+      ),
+    [events],
+  );
 
   // La línea de "ahora" avanza cada minuto, solo en el día de hoy.
   useEffect(() => {
@@ -349,7 +463,18 @@ const DayColumn = memo(function DayColumn({
         {/* Gráficas del día, por debajo de todo lo demás. */}
         <View pointerEvents="none" style={styles.chart}>
           {energy && areaWidth > 0 ? (
-            <DayEnergyChart energy={energy} width={areaWidth} height={DAY_HEIGHT} dimFrom={dimFrom} />
+            <>
+              <DayEnergyChart energy={energy} scale={scale} width={areaWidth} height={DAY_HEIGHT} dimFrom={dimFrom} />
+              <EnergyLabels
+                energy={energy}
+                scale={scale}
+                width={areaWidth}
+                height={DAY_HEIGHT}
+                dayStart={dayStart}
+                meals={meals}
+                dimFrom={dimFrom}
+              />
+            </>
           ) : null}
         </View>
 
@@ -392,13 +517,12 @@ const DayColumn = memo(function DayColumn({
           </ThemedText>
         )}
 
-        {/* Fondo táctil del día: tocar un hueco vacío propone añadir algo a esa hora. */}
+        {/* Fondo táctil del día: tocar un hueco vacío propone añadir algo a esa hora; mantener y mover lee la gráfica. */}
         {onPressSlot && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Añadir a esta hora"
-            onPress={(e) => onPressSlot(slotAt(e, dayStart))}
-            style={styles.slots}
+          <SlotsLayer
+            dayStart={dayStart}
+            onPressSlot={onPressSlot}
+            onScrub={energy && areaWidth > 0 ? setScrubY : undefined}
           />
         )}
 
@@ -419,6 +543,22 @@ const DayColumn = memo(function DayColumn({
             />
           ))}
         </View>
+
+        {/* La lectura de la gráfica, por encima de todo, mientras se mantiene el dedo. */}
+        {scrubY !== null && energy && areaWidth > 0 ? (
+          <View pointerEvents="none" style={styles.chart}>
+            <ScrubReadout
+              y={scrubY}
+              energy={energy}
+              scale={scale}
+              width={areaWidth}
+              height={DAY_HEIGHT}
+              dayStart={dayStart}
+              meals={meals}
+              hourLabel={formatTime}
+            />
+          </View>
+        ) : null}
 
         {isToday && nowTop >= 0 && nowTop <= DAY_HEIGHT && (
           <View pointerEvents="none" style={[styles.nowLine, { top: nowTop }]}>
