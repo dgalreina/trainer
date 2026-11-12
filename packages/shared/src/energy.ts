@@ -64,6 +64,8 @@ export interface DayEnergy {
    * cada comida lo sube, el gasto lo baja y tiende despacio a 0 ({@link LEVEL_LEAK_PER_SLOT}). Es lo que se dibuja.
    */
   level: number[];
+  /** Nivel con el que empezó el día (lo heredado de los anteriores), el `startLevel` de la entrada. */
+  startLevel: number;
   /** Lo más grande que se dibuja ese día (kcal): el mayor nivel o el mayor ritmo de gasto o consumo. Sirve para fijar la escala. */
   peak: number;
   totals: {
@@ -153,6 +155,7 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel
     intake,
     balance,
     level,
+    startLevel,
     peak,
     totals: {
       basal: Math.round(basalPerSlot * ENERGY_SLOTS),

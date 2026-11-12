@@ -45,6 +45,10 @@ export function MealLogSection({
   // Hoy y los días futuros no han acabado: el gasto y el balance son una previsión a las 24:00.
   const projected = day >= todayISO();
 
+  // La ficha dice lo del propio día (comido − gastado) y, entre paréntesis, lo que ya llevabas al empezar; el detalle da el número
+  // «real» del cuerpo a las 24:00, el mismo que marca la gráfica amarilla.
+  const inherited = energy?.hasBurn ? Math.round(energy.startLevel) : 0;
+  const bodyLevel = energy?.hasBurn ? Math.round(energy.level[energy.level.length - 1]) : 0;
   const eaten = sumMacros([loggedMacros(logs), ...planned.flatMap((event) => (event.macros ? [event.macros] : []))]);
   const targets = calculateTargets({
     ...profile,
@@ -68,7 +72,7 @@ export function MealLogSection({
             {formatShortDay(day)} · {ready ? `${eaten.kcal} kcal` : '…'}
           </ThemedText>
           {energy?.hasBurn ? (
-            <BalanceLabel balance={energy.totals.balance} burn={energy.totals.burn} projected={projected} />
+            <BalanceLabel balance={energy.totals.balance} burn={energy.totals.burn} projected={projected} inherited={inherited} />
           ) : null}
         </View>
         {/* La flecha mira a la derecha con el resumen cerrado y hacia abajo con él abierto. */}
@@ -102,9 +106,17 @@ export function MealLogSection({
           {energy?.hasBurn ? (
             <ThemedText type="small" themeColor="textSecondary">
               {projected ? 'Gasto previsto' : 'Gasto estimado'}: {energy.totals.burn} kcal (basal {energy.totals.basal}
-              {energy.totals.workouts > 0 ? ` + entrenos ${energy.totals.workouts}` : ''}) ·{' '}
-              {projected ? 'Balance previsto a las 24:00' : 'Balance'}: {energy.totals.balance > 0 ? '+' : ''}
-              {energy.totals.balance} kcal
+              {energy.totals.workouts > 0 ? ` + entrenos ${energy.totals.workouts}` : ''})
+            </ThemedText>
+          ) : null}
+          {energy?.hasBurn ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              En el cuerpo a las 24:00: {signedKcal(bodyLevel)} kcal (traías {signedKcal(inherited)}, hoy suma{' '}
+              {signedKcal(energy.totals.balance)}
+              {Math.abs(bodyLevel - inherited - energy.totals.balance) >= 1
+                ? `, y ${signedKcal(bodyLevel - inherited - energy.totals.balance)} que se va olvidando`
+                : ''}
+              )
             </ThemedText>
           ) : null}
         </>
@@ -123,6 +135,9 @@ export function MealLogSection({
     </Card>
   );
 }
+
+/** «+2158», «−300»: con signo y sin decimales. */
+const signedKcal = (kcal: number) => `${kcal > 0 ? '+' : kcal < 0 ? '−' : ''}${Math.abs(Math.round(kcal))}`;
 
 const styles = StyleSheet.create({
   // Sombra suave: la tarjeta flota sobre la gráfica y debe despegarse de ella.

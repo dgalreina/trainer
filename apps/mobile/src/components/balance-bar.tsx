@@ -7,6 +7,8 @@ import { useTheme } from '@/hooks/use-theme';
 /** La barra va, como mucho, de −este balance (vacía) a +este balance (llena); más allá se queda en el extremo. */
 const MIN_RANGE = 600;
 const TRACK_HEIGHT = 3;
+/** Lo heredado solo se muestra si pasa de esto (kcal): por debajo es ruido. */
+const MIN_INHERITED = 50;
 /** Lo mínimo que se llena la barra (fracción): con un déficit enorme el relleno seguiría viéndose, en azul, y no saldría vacía. */
 const MIN_FILL = 0.07;
 /** Transparencia del carril vacío (hex, ≈ 35 %): solo el fondo, para que el relleno conserve su color pleno. */
@@ -23,17 +25,21 @@ export function BalanceLabel({
   balance,
   burn,
   projected = false,
+  inherited = 0,
 }: {
   balance: number;
   burn: number;
   /** El día no ha acabado: es lo que saldría a las 24:00 si todo sigue el plan. */
   projected?: boolean;
+  /** Lo que ya llevabas en el cuerpo al empezar el día (kcal, con signo): sale entre paréntesis si es apreciable. */
+  inherited?: number;
 }) {
   const zone = balanceZone(balance, burn);
   return (
     <ThemedText type="small">
       <ThemedText type="smallBold">{`${LABELS[zone]}${projected ? ' previsto' : ''}`}</ThemedText>
       {` · ${balance > 0 ? '+' : ''}${balance} kcal`}
+      {Math.abs(inherited) >= MIN_INHERITED ? ` (${inherited > 0 ? '+' : '−'}${Math.abs(inherited)} de antes)` : ''}
     </ThemedText>
   );
 }
