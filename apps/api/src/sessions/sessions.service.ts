@@ -59,10 +59,17 @@ export class SessionsService {
     return toSession(doc);
   }
 
-  /** Corrige cuándo empezó el entreno. El resto de la sesión no se toca. */
+  /** Corrige lo que se envía (fecha, duración y/o ejercicios con sus series); el resto de la sesión no se toca. */
   async update(userId: string, id: string, dto: UpdateWorkoutSession): Promise<WorkoutSession> {
     const doc = await this.findOwn(userId, id);
-    doc.date = new Date(dto.date);
+    if (dto.date !== undefined) doc.date = new Date(dto.date);
+    if (dto.durationSeconds !== undefined) doc.durationSeconds = dto.durationSeconds;
+    if (dto.entries !== undefined) {
+      // Solo se comprueban los ejercicios que no estaban ya en la sesión: uno que se borró después del entreno no impide corregir el resto.
+      const already = new Set(doc.entries.map((e) => e.exerciseId));
+      await this.exercises.assertVisible(userId, dto.entries.map((e) => e.exerciseId).filter((id) => !already.has(id)));
+      doc.entries = dto.entries;
+    }
     return toSession(await doc.save());
   }
 

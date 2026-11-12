@@ -8,6 +8,7 @@ import { Button, ErrorText, LinkButton } from '@/components/form';
 import { MealEditor, type MealDraft, type MealForm } from '@/components/meal-editor';
 import { MealLogSection } from '@/components/meal-log-section';
 import { Screen } from '@/components/screen';
+import { SessionSheet } from '@/components/session-sheet';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { WeighInSheet } from '@/components/weigh-in-card';
@@ -169,6 +170,7 @@ export function CalendarScreen() {
   // Tocar un hueco de un día abre «añadir»; de ahí sale la comida, la pesada o el entreno. Todo lo que se
   // hace desde ahí es de ese día (no tiene por qué ser el que se muestra en la tarjeta de abajo).
   const [actionDay, setActionDay] = useState(today);
+  const [sessionOpen, setSessionOpen] = useState<{ id: string; title: string } | null>(null);
   const [slot, setSlot] = useState<Date | null>(null);
   const [choosingWorkout, setChoosingWorkout] = useState(false);
   const [meal, setMeal] = useState<MealEditing | null>(null);
@@ -193,12 +195,14 @@ export function CalendarScreen() {
         return;
       }
       if (event.kind === 'workout') {
-        // Los entrenos terminados no hacen nada por ahora (irán a un historial).
         if (event.inProgress && event.draftOf) {
           router.push({
             pathname: '/entreno/[id]/[rid]',
             params: { id: event.draftOf.trainingId, rid: event.draftOf.routineId },
           });
+        } else if (event.sessionId) {
+          // Un entreno terminado se abre para corregirlo o borrarlo.
+          setSessionOpen({ id: event.sessionId, title: event.title });
         }
         return;
       }
@@ -353,6 +357,12 @@ export function CalendarScreen() {
             onSave={onSaveMeal}
             onDelete={onDeleteMeal}
             onClose={() => setMeal(null)}
+          />
+
+          <SessionSheet
+            sessionId={sessionOpen?.id ?? null}
+            title={sessionOpen?.title ?? ''}
+            onClose={() => setSessionOpen(null)}
           />
 
           <WeighInSheet

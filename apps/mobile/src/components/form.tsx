@@ -42,6 +42,7 @@ export function NumberInput({
   accessibilityLabel,
   compact,
   field,
+  highlight,
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -51,6 +52,8 @@ export function NumberInput({
   compact?: boolean;
   /** Con el aspecto de un campo de formulario (como el nombre o la hora), no el de una celda de serie. */
   field?: boolean;
+  /** Con un filo más oscuro (por ejemplo, un peso distinto al de la última vez). */
+  highlight?: boolean;
 }) {
   const theme = useTheme();
   // El texto de ayuda («kg», «reps») se quita en cuanto se pincha el campo.
@@ -79,6 +82,7 @@ export function NumberInput({
         compact && styles.numberCompact,
         field && styles.numberField,
         { backgroundColor: field ? theme.backgroundElement : theme.backgroundSelected, color: theme.text },
+        { borderColor: highlight ? theme.primaryText : 'transparent' },
       ]}
     />
   );
@@ -193,8 +197,10 @@ const styles = StyleSheet.create({
   number: {
     borderRadius: Radius.control,
     minWidth: 64,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two + 2,
+    // El filo (transparente salvo en `highlight`) ocupa sitio: se resta del relleno para que el campo mida lo mismo.
+    borderWidth: 1.5,
+    paddingHorizontal: Spacing.two - 1.5,
+    paddingVertical: Spacing.two + 0.5,
     fontSize: 16,
     textAlign: 'center',
   },

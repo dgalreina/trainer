@@ -224,15 +224,7 @@ export function WorkoutScreen() {
   async function finish() {
     if (!draft) return;
     setError(null);
-    const anyDone = draft.entries.some((e) => e.sets.some((s) => s.done));
-    if (!anyDone) {
-      const ok = await confirmAction(
-        'No has marcado ninguna serie',
-        'Se guardarán todas las series tal como están, con las repeticiones que tengan puestas.',
-        'Guardar todas',
-      );
-      if (!ok) return;
-    }
+    // Marcar las series es opcional: si no se marca ninguna, se acaba igual y cuentan todas (con las repeticiones que tengan).
     const result = toSessionPayload(draft, Date.now(), true);
     if (!result) return setError('No hay ninguna serie con repeticiones que guardar.');
 
@@ -374,13 +366,23 @@ export function WorkoutScreen() {
                 {entry.restSeconds === 0 ? 'Sin descanso en este ejercicio' : `Descanso de este ejercicio: ${entry.restSeconds} s`}
               </ThemedText>
             ) : null}
-            {last && last.length > 0 && (
-              <ThemedText type="small" themeColor="textSecondary">
-                Última vez: {last.slice(0, 4).map((s) => `${s.reps} × ${s.weightKg} kg`).join(' · ')}
+            {/* Cabecera de las columnas: mismos huecos que una fila de serie, para que cada título quede sobre su campo. */}
+            <View style={styles.setRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <View style={styles.checkSpace} />
+              <ThemedText type="small" themeColor="textSecondary" style={styles.columnTitle}>
+                Repeticiones
               </ThemedText>
-            )}
+              <ThemedText style={styles.hidden}>×</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.columnTitle}>
+                Peso
+              </ThemedText>
+              <ThemedText type="small" style={styles.hidden}>✕</ThemedText>
+            </View>
 
-            {entry.sets.map((set, setIndex) => (
+            {entry.sets.map((set, setIndex) => {
+              const delta = numberDelta(set.weightKg, last?.[setIndex]?.weightKg);
+              const repsDelta = numberDelta(set.reps, last?.[setIndex]?.reps);
+              return (
               <View key={setIndex} style={styles.setRow}>
                 <Pressable
                   accessibilityRole="checkbox"
@@ -392,19 +394,36 @@ export function WorkoutScreen() {
                     {set.done ? '✓' : setIndex + 1}
                   </ThemedText>
                 </Pressable>
-                <NumberInput
-                  accessibilityLabel={`Repeticiones de la serie ${setIndex + 1}`}
-                  placeholder="reps"
-                  value={set.reps}
-                  onChangeText={(text) => changeSet(entryIndex, setIndex, 'reps', text)}
-                />
+                <View style={styles.cell}>
+                  <NumberInput
+                    accessibilityLabel={`Repeticiones de la serie ${setIndex + 1}`}
+                    placeholder="reps"
+                    value={set.reps}
+                    highlight={repsDelta !== null}
+                    onChangeText={(text) => changeSet(entryIndex, setIndex, 'reps', text)}
+                  />
+                  {repsDelta !== null && (
+                    <ThemedText type="small" themeColor="primaryText" style={styles.delta}>
+                      {formatDelta(repsDelta)} {Math.abs(repsDelta) === 1 ? 'rep' : 'reps'}
+                    </ThemedText>
+                  )}
+                </View>
                 <ThemedText themeColor="textSecondary">×</ThemedText>
-                <NumberInput
-                  accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
-                  placeholder="kg"
-                  value={set.weightKg}
-                  onChangeText={(text) => changeSet(entryIndex, setIndex, 'weightKg', text)}
-                />
+                <View style={styles.cell}>
+                  <NumberInput
+                    accessibilityLabel={`Peso de la serie ${setIndex + 1}`}
+                    placeholder="kg"
+                    value={set.weightKg}
+                    highlight={delta !== null}
+                    onChangeText={(text) => changeSet(entryIndex, setIndex, 'weightKg', text)}
+                  />
+                  {/* Diferencia con esa serie la última vez (también en las repeticiones): así se ve la progresión sin otro texto. */}
+                  {delta !== null && (
+                    <ThemedText type="small" themeColor="primaryText" style={styles.delta}>
+                      {formatDelta(delta)} kg
+                    </ThemedText>
+                  )}
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Quitar serie ${setIndex + 1}`}
@@ -415,7 +434,8 @@ export function WorkoutScreen() {
                   <ThemedText type="small" themeColor="textSecondary">✕</ThemedText>
                 </Pressable>
               </View>
-            ))}
+              );
+            })}
             <LinkButton title="+ Serie" onPress={() => addSet(entryIndex)} />
           </Card>
         );
@@ -426,12 +446,29 @@ export function WorkoutScreen() {
   );
 }
 
+/** Diferencia entre lo escrito (peso o repeticiones) y lo de la última vez (null si falta alguno o no hay cambio). */
+function numberDelta(current: string, previous: number | undefined): number | null {
+  const now = Number.parseFloat(current.replace(',', '.'));
+  if (previous === undefined || !Number.isFinite(now)) return null;
+  const diff = Math.round((now - previous) * 100) / 100;
+  return diff === 0 ? null : diff;
+}
+
+const formatDelta = (diff: number) => `${diff > 0 ? '+' : '−'}${Math.abs(diff).toLocaleString('es-ES')}`;
+
 const styles = StyleSheet.create({
   clockCard: { gap: Spacing.half },
   exercise: { gap: Spacing.two + 2 },
-  setRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  // El margen deja sitio debajo del peso para la diferencia con la última vez (+5 kg).
+  setRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: 6 },
   check: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.3 },
+  checkSpace: { width: 36 },
+  cell: { flex: 1 },
+  // Debajo del campo, en el hueco entre filas.
+  delta: { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 1, textAlign: 'center', fontSize: 10, lineHeight: 10 },
+  columnTitle: { flex: 1, textAlign: 'center' },
+  hidden: { opacity: 0 },
   restBar: {
     flexDirection: 'row',
     alignItems: 'center',
