@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 
 import { startOfDay, todayISO } from '@/lib/dates';
 import { useMe } from '@/lib/me';
+import { useSettings } from '@/lib/settings';
 import type { DayEvent } from '@/lib/week-events';
 
 /**
@@ -12,6 +13,9 @@ import type { DayEvent } from '@/lib/week-events';
  */
 export function useEnergyInput() {
   const { profile, latestWeight } = useMe();
+  const { settings } = useSettings();
+  // Gasto diario extra por moverte y digerir (lo estima «Mi peso» y se aplica desde ahí).
+  const extraBurn = settings.extraBurnKcal ?? 0;
   const weightKg = latestWeight?.weightKg ?? null;
   const bmr = calculateTargets({ ...profile, weightKg, goal: profile.goal ?? 'mantener', today: todayISO() })?.bmr ?? null;
 
@@ -20,6 +24,7 @@ export function useEnergyInput() {
       dayStart: startOfDay(day).getTime(),
       bmr,
       weightKg,
+      extraBurn,
       workouts: list
         .filter((e) => e.kind === 'workout' && !e.inProgress)
         .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),
@@ -31,8 +36,8 @@ export function useEnergyInput() {
             : [],
       ),
     }),
-    [bmr, weightKg],
+    [bmr, weightKg, extraBurn],
   );
 
-  return { bmr, weightKg, energyInput };
+  return { bmr, weightKg, extraBurn, energyInput };
 }

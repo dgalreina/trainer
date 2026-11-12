@@ -37,6 +37,10 @@ export interface EnergyMeal {
   kcal: number;
 }
 
+/** La actividad diaria (moverte, digerir…) se reparte entre estas horas del día (7:00 a 23:00). */
+export const ACTIVITY_FROM_HOUR = 7;
+export const ACTIVITY_TO_HOUR = 23;
+
 export interface DayEnergyInput {
   /** Inicio del día (00:00 en la hora del dispositivo), en milisegundos. */
   dayStart: number;
@@ -48,13 +52,20 @@ export interface DayEnergyInput {
   meals: EnergyMeal[];
   /** Nivel con el que empieza el día (kcal): el que dejó el día anterior. Sin él, 0. */
   startLevel?: number;
+  /**
+   * Gasto diario extra (kcal) por moverte y digerir, que el basal y los entrenos no cuentan: sale de comparar el peso con las
+   * calorías («Mi peso»). Se reparte por igual entre las {@link ACTIVITY_FROM_HOUR}:00 y las {@link ACTIVITY_TO_HOUR}:00.
+   */
+  extraBurn?: number;
 }
 
 export interface DayEnergy {
   /** Si hay datos para conocer el gasto (el basal). Sin ellos solo hay consumo. */
   hasBurn: boolean;
-  /** Gasto de cada tramo (kcal): basal más entrenos. */
+  /** Gasto de cada tramo (kcal): basal más entrenos más actividad diaria. */
   burn: number[];
+  /** La parte de `burn` que es actividad diaria (la estimada por el peso), para dibujarla aparte. */
+  activity: number[];
   /** Lo comido en cada tramo (kcal). */
   intake: number[];
   /** Balance acumulado desde las 00:00 hasta el final de cada tramo (consumo − gasto, kcal). Solo cuenta este día. */
@@ -71,6 +82,8 @@ export interface DayEnergy {
   totals: {
     basal: number;
     workouts: number;
+    /** Actividad diaria (la que sale de comparar el peso con las calorías); 0 si no se ha aplicado. */
+    activity: number;
     burn: number;
     intake: number;
     balance: number;
@@ -116,11 +129,22 @@ function spread(slots: number[], dayStart: number, start: number, end: number, k
  * o una comida fuera del día no cuenta. El día se trata como 24 h fijas (96 tramos): el día del cambio
  * de hora, lo de después de las 23:00 locales queda ±1 h desplazado (igual que las tarjetas del calendario).
  */
-export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel = 0 }: DayEnergyInput): DayEnergy {
+export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel = 0, extraBurn = 0 }: DayEnergyInput): DayEnergy {
   const hasBurn = bmr !== null && bmr > 0;
   const basalPerSlot = hasBurn ? bmr / ENERGY_SLOTS : 0;
   const burn = Array.from({ length: ENERGY_SLOTS }, () => basalPerSlot);
   const intake = Array.from({ length: ENERGY_SLOTS }, () => 0);
+
+  // La actividad diaria, por igual entre las 7:00 y las 23:00.
+  const activity = Array.from({ length: ENERGY_SLOTS }, () => 0);
+  if (hasBurn && extraBurn > 0) {
+    const first = (ACTIVITY_FROM_HOUR * 60) / ENERGY_SLOT_MINUTES;
+    const last = (ACTIVITY_TO_HOUR * 60) / ENERGY_SLOT_MINUTES;
+    for (let i = first; i < last; i++) {
+      activity[i] = extraBurn / (last - first);
+      burn[i] += activity[i];
+    }
+  }
 
   let workoutsKcal = 0;
   if (hasBurn && weightKg !== null && weightKg > 0) {
@@ -152,6 +176,7 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel
   return {
     hasBurn,
     burn,
+    activity,
     intake,
     balance,
     level,
@@ -160,6 +185,7 @@ export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel
     totals: {
       basal: Math.round(basalPerSlot * ENERGY_SLOTS),
       workouts: Math.round(workoutsKcal),
+      activity: Math.round(sum(activity)),
       burn: Math.round(sum(burn)),
       intake: Math.round(sum(intake)),
       balance: Math.round(running),

@@ -107,7 +107,8 @@ export function MealLogSection({
           {energy?.hasBurn ? (
             <ThemedText type="small" themeColor="textSecondary">
               {projected ? 'Gasto previsto' : 'Gasto estimado'}: {energy.totals.burn} kcal (basal {energy.totals.basal}
-              {energy.totals.workouts > 0 ? ` + entrenos ${energy.totals.workouts}` : ''})
+              {energy.totals.workouts > 0 ? ` + entrenos ${energy.totals.workouts}` : ''}
+              {energy.totals.activity > 0 ? ` + actividad ${energy.totals.activity}` : ''})
             </ThemedText>
           ) : null}
           {energy?.hasBurn ? (

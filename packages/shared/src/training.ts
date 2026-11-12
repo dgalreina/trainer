@@ -97,6 +97,13 @@ export const userSettingsSchema = z.object({
    * ya no cuentan para saber qué rutinas están hechas en «Hoy». Null = nunca.
    */
   routinesResetAt: z.iso.datetime({ offset: true }).nullable(),
+  /**
+   * Gasto diario extra (kcal) por moverte y digerir, que el basal y los entrenos no cuentan: lo estima «Mi peso» comparando el
+   * peso con las calorías y el usuario lo aplica a las gráficas. Null = sin aplicar.
+   */
+  extraBurnKcal: z.number().int().min(0).max(3000).nullable(),
+  /** Si el gasto extra se recalcula solo (una vez al día, con datos suficientes) o solo a mano. */
+  extraBurnAuto: z.boolean(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 
@@ -107,6 +114,9 @@ export const updateUserSettingsSchema = z.object({
   dietSince: dateSchema.optional(),
   /** Momento desde el que cuentan los entrenos para marcar rutinas como hechas. */
   routinesResetAt: z.iso.datetime({ offset: true }).nullable().optional(),
+  /** Gasto diario extra (kcal) que se suma al basal en las gráficas; null lo quita. */
+  extraBurnKcal: z.number().int().min(0).max(3000).nullable().optional(),
+  extraBurnAuto: z.boolean().optional(),
 });
 export type UpdateUserSettings = z.infer<typeof updateUserSettingsSchema>;
 

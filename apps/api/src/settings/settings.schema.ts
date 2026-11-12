@@ -15,6 +15,12 @@ export class SettingsDoc {
   @Prop({ type: Date, default: null })
   routinesResetAt!: Date | null;
 
+  @Prop({ type: Number, default: null })
+  extraBurnKcal!: number | null;
+
+  @Prop({ type: Boolean, default: true })
+  extraBurnAuto!: boolean;
+
   @Prop({ type: [{ _id: false, from: String, dietId: { type: String, default: null } }], default: [] })
   dietSchedule!: { from: string; dietId: string | null }[];
 }

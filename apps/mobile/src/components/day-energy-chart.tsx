@@ -42,13 +42,16 @@ export function chartMapper(energy: DayEnergy, scale: number | null, width: numb
   /** Píxeles (con signo) de una cantidad de kcal: la misma escala para lo comido, lo gastado y el nivel. */
   const px = (kcal: number) => Math.max(-1, Math.min(1, kcal / kcalAtEdge)) * reach;
   const intake = smooth(energy.intake);
-  const burn = energy.hasBurn ? smooth(energy.burn) : null;
+  // El azul es lo que se gasta sin la actividad diaria; el verde, el total (con ella).
+  const burn = energy.hasBurn ? smooth(energy.burn.map((v, i) => v - energy.activity[i])) : null;
+  const burnAll = energy.hasBurn ? smooth(energy.burn) : null;
   return {
     x0,
     reach,
     px,
     pinkX: (slot: number) => x0 + px(intake[slot] * RATE_PER_WINDOW),
     blueX: (slot: number) => (burn ? x0 - px(burn[slot] * RATE_PER_WINDOW) : x0),
+    tealX: (slot: number) => (burnAll ? x0 - px(burnAll[slot] * RATE_PER_WINDOW) : x0),
     amberX: (slot: number) => x0 + px(energy.level[slot]),
   };
 }
@@ -107,7 +110,7 @@ export function DayEnergyChart({
   const theme = useTheme();
   // Ids únicos por instancia: los degradados y recortes son globales en el documento.
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const ids = { blue: `energy-blue-${uid}`, amber: `energy-amber-${uid}`, pink: `energy-pink-${uid}`, past: `energy-past-${uid}`, future: `energy-future-${uid}` };
+  const ids = { blue: `energy-blue-${uid}`, teal: `energy-teal-${uid}`, amber: `energy-amber-${uid}`, pink: `energy-pink-${uid}`, past: `energy-past-${uid}`, future: `energy-future-${uid}` };
 
   const shapes = useMemo(() => {
     const { x0, reach, px } = chartMapper(energy, scale, width);
@@ -116,6 +119,9 @@ export function DayEnergyChart({
 
     const intake = smooth(energy.intake);
     const burn = energy.hasBurn ? smooth(energy.burn) : null;
+    // Lo que se gasta sin la actividad diaria (basal + entrenos): el azul; la actividad se dibuja aparte, en verde, por fuera.
+    const burnCore = energy.hasBurn ? smooth(energy.burn.map((v, i) => v - energy.activity[i])) : null;
+    const hasActivity = energy.totals.activity > 0;
     // Una sola escala (kcal → píxeles) para todo: lo comido y lo gastado (kcal cada 30 min) y el nivel acumulado, y la misma
     // en todos los días (si no, a medianoche habría un escalón).
 
@@ -134,7 +140,8 @@ export function DayEnergyChart({
     return {
       x0,
       pink: side(intake, 1),
-      blue: burn ? side(burn, -1) : null,
+      blue: burnCore ? side(burnCore, -1) : null,
+      teal: burn && hasActivity ? side(burn, -1) : null,
       balance: energy.hasBurn ? balancePoints : null,
     };
   }, [energy, scale, width, height]);
@@ -157,6 +164,13 @@ export function DayEnergyChart({
           <Path d={curve(shapes.balance)} fill="none" stroke={theme.amber} strokeWidth={2} strokeOpacity={0.75} strokeLinecap="round" strokeLinejoin="round" />
         </>
       )}
+      {/* La actividad diaria (moverte, digerir…): el total del gasto, en verde, detrás del azul, que es lo que no depende de ti. */}
+      {shapes.teal && (
+        <>
+          <Path d={area(shapes.teal, x0, leftSide)} fill={`url(#${ids.teal})`} />
+          <Path d={curve(shapes.teal, leftSide)} fill="none" stroke={theme.teal} strokeWidth={1.5} strokeOpacity={0.8} />
+        </>
+      )}
       {shapes.blue && (
         <>
           <Path d={area(shapes.blue, x0, leftSide)} fill={`url(#${ids.blue})`} />
@@ -175,6 +189,10 @@ export function DayEnergyChart({
         <LinearGradient id={ids.blue} gradientUnits="userSpaceOnUse" x1={x0} y1={0} x2={x0 - reach} y2={0}>
           <Stop offset="0" stopColor={theme.sky} stopOpacity={0.12} />
           <Stop offset="1" stopColor={theme.sky} stopOpacity={0.5} />
+        </LinearGradient>
+        <LinearGradient id={ids.teal} gradientUnits="userSpaceOnUse" x1={x0} y1={0} x2={x0 - reach} y2={0}>
+          <Stop offset="0" stopColor={theme.teal} stopOpacity={0.12} />
+          <Stop offset="1" stopColor={theme.teal} stopOpacity={0.45} />
         </LinearGradient>
         <LinearGradient id={ids.pink} gradientUnits="userSpaceOnUse" x1={x0} y1={0} x2={x0 + reach} y2={0}>
           <Stop offset="0" stopColor={theme.pink} stopOpacity={0.12} />

@@ -175,3 +175,26 @@ export function weightTrend({
 
   return { weeks, points, calibration };
 }
+
+/** Cambio máximo del gasto extra aplicado en cada recálculo automático (kcal/día): una semana rara de la báscula no mueve todo. */
+export const AUTO_MAX_STEP = 150;
+/** Por debajo de este cambio (kcal/día) no se toca lo aplicado. */
+export const AUTO_MIN_CHANGE = 50;
+
+/**
+ * El gasto extra (kcal/día) que debería quedar aplicado tras un recálculo automático, o null si no hay que cambiar nada.
+ * Solo se aplica con una fiabilidad media o alta (con pocas semanas el peso es puro ruido: agua, sal…); para retocar algo ya
+ * aplicado hace falta fiabilidad alta (un kg de agua son unas 370 kcal/día en tres semanas). La primera vez (`current` null) se
+ * adopta la estimación entera; después se acerca como mucho {@link AUTO_MAX_STEP} por recálculo.
+ * `calibration.extraBurn` se mide contra el gasto que ya incluye lo aplicado, así que el objetivo es `current + extraBurn`.
+ */
+export function nextExtraBurn(current: number | null, calibration: Calibration | null): number | null {
+  if (!calibration || calibration.confidence === "baja") return null;
+  if (current !== null && calibration.confidence !== "alta") return null;
+  const base = current ?? 0;
+  const target = Math.min(3000, Math.max(0, base + calibration.extraBurn));
+  const step = current === null ? target - base : Math.max(-AUTO_MAX_STEP, Math.min(AUTO_MAX_STEP, target - base));
+  const next = Math.round((base + step) / 10) * 10;
+  if (Math.abs(next - base) < AUTO_MIN_CHANGE) return null;
+  return next;
+}

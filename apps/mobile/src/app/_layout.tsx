@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AutoCalibration } from '@/components/auto-calibration';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { DietsProvider } from '@/lib/diets';
 import { ExercisesProvider } from '@/lib/exercises';
@@ -24,6 +25,9 @@ function RootNavigator() {
   const signedIn = status === 'signedIn';
 
   return (
+    <>
+    {/* Con sesión iniciada, el recálculo automático del gasto extra (no pinta nada). */}
+    {signedIn ? <AutoCalibration /> : null}
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />
@@ -38,6 +42,7 @@ function RootNavigator() {
         <Stack.Screen name="login" />
       </Stack.Protected>
     </Stack>
+    </>
   );
 }
 

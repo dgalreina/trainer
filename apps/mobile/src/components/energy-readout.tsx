@@ -154,23 +154,28 @@ export function ScrubReadout({
   const lineY = Math.min(Math.max(y, 0), height);
   const moment = dayStart + slot * ENERGY_SLOT_MINUTES * MINUTE_MS;
 
-  const burnPerHour = energy.hasBurn ? energy.burn[slot] * (60 / ENERGY_SLOT_MINUTES) : null;
+  const perHour = 60 / ENERGY_SLOT_MINUTES;
+  const burnPerHour = energy.hasBurn ? (energy.burn[slot] - energy.activity[slot]) * perHour : null;
+  const activityPerHour = energy.activity[slot] * perHour;
   const meal = meals.find((m) => moment >= m.at && moment < m.at + MEAL_SPREAD_MINUTES * MINUTE_MS);
   const level = energy.level[slot];
 
   const rows: { color: string; text: string }[] = [
     { color: theme.sky, text: burnPerHour === null ? '—' : `−${Math.round(burnPerHour).toLocaleString('es-ES')} kcal/h` },
+    ...(activityPerHour > 0 ? [{ color: theme.teal, text: `−${Math.round(activityPerHour).toLocaleString('es-ES')} kcal/h` }] : []),
     { color: theme.primary, text: `${meal ? signed(meal.kcal) : '0'} kcal` },
     { color: theme.amber, text: `${signed(level)} kcal` },
   ];
   // La tarjeta va encima de la línea (el dedo está debajo) y, si no cabe arriba, debajo.
-  const cardTop = lineY > 130 ? lineY - 116 : lineY + 18;
+  const cardHeight = 76 + rows.length * 26;
+  const cardTop = lineY > cardHeight + 14 ? lineY - cardHeight - 8 : lineY + 18;
 
   return (
     <View pointerEvents="none" style={styles.readout}>
       <View style={[styles.line, { top: lineY - 0.5, backgroundColor: theme.text }]} />
       {[
         { x: map.blueX(slot), color: theme.sky },
+        ...(activityPerHour > 0 ? [{ x: map.tealX(slot), color: theme.teal }] : []),
         { x: map.pinkX(slot), color: theme.primary },
         { x: map.amberX(slot), color: theme.amber },
       ].map((dot) => (

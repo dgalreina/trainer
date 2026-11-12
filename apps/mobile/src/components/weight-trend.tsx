@@ -1,26 +1,18 @@
-import {
-  dayEnergy,
-  KCAL_PER_KG,
-  weightTrend,
-  type Calibration,
-  type TrendDay,
-  type TrendWeek,
-  type WeightPoint,
-} from '@trainer/shared';
-import { useMemo, useState } from 'react';
+import { KCAL_PER_KG, type Calibration, type TrendWeek, type WeightPoint } from '@trainer/shared';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { Card } from '@/components/card';
+import { Button, Chip, LinkButton } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { addDays, formatDay, isoOf, mondayOf, todayISO } from '@/lib/dates';
+import { formatDay } from '@/lib/dates';
 import { useEnergyInput } from '@/lib/energy-input';
-import { useWeekEvents } from '@/lib/week-events';
+import { useSettings } from '@/lib/settings';
+import { useWeightTrend } from '@/lib/weight-trend';
 
-/** Cuántas semanas se miran (la actual incluida). */
-const WEEKS = 12;
 const CHART_HEIGHT = 190;
 const PAD = { left: 40, right: 12, top: 14, bottom: 26 };
 
@@ -34,35 +26,9 @@ const signedKcal = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : '
  */
 export function WeightTrendSection() {
   const theme = useTheme();
-  const today = todayISO();
-  const weekStart = mondayOf(today);
-  const { events, eventsOf, plannedOf, isLoaded, loading, error } = useWeekEvents(weekStart, { before: WEEKS - 1, after: 1 });
-  const { energyInput, bmr } = useEnergyInput();
+  const { trend, bmr, loading, error } = useWeightTrend();
+  const { extraBurn } = useEnergyInput();
   const [width, setWidth] = useState(0);
-
-  const trend = useMemo(() => {
-    if (bmr === null) return null;
-    const firstDay = addDays(weekStart, -7 * (WEEKS - 1));
-    const days: TrendDay[] = [];
-    // Hasta ayer: hoy aún no ha acabado.
-    for (let day = firstDay; day < today; day = addDays(day, 1)) {
-      if (!isLoaded(day)) continue;
-      const list = [...eventsOf(day), ...plannedOf(day)];
-      const energy = dayEnergy(energyInput(day, list));
-      days.push({
-        day,
-        balance: energy.totals.balance,
-        intake: energy.totals.intake,
-        burn: energy.totals.burn,
-        // Un día sin ninguna comida no es un día de ayuno: no se cuenta.
-        counted: energy.totals.intake > 0,
-      });
-    }
-    const weights = events
-      .filter((e) => e.kind === 'weight' && e.weightKg !== undefined && isoOf(e.start) >= firstDay)
-      .map((e) => ({ day: isoOf(e.start), weightKg: e.weightKg as number }));
-    return weightTrend({ weights, days });
-  }, [bmr, weekStart, today, isLoaded, eventsOf, plannedOf, energyInput, events]);
 
   if (bmr === null) {
     return (
@@ -102,7 +68,7 @@ export function WeightTrendSection() {
             <LegendDot color={theme.primary} label="Tu peso (media semanal)" />
             <LegendDot color={theme.amber} label="Lo que predicen tus kcal" />
           </View>
-          {trend?.calibration ? <CalibrationCard calibration={trend.calibration} /> : null}
+          {trend?.calibration ? <CalibrationCard calibration={trend.calibration} applied={extraBurn} /> : null}
           <WeeksList weeks={trend?.weeks ?? []} />
         </>
       )}
@@ -174,8 +140,26 @@ function TrendChart({ points, width }: { points: WeightPoint[]; width: number })
 }
 
 /** El gasto que explica tu peso, frente al que calcula la app (basal + entrenos). */
-function CalibrationCard({ calibration }: { calibration: Calibration }) {
+function CalibrationCard({ calibration, applied }: { calibration: Calibration; applied: number }) {
+  const theme = useTheme();
+  const { settings, setExtraBurn, setExtraBurnAuto, clearExtraBurn } = useSettings();
+  const auto = settings.extraBurnAuto;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // `modeledBurn` ya incluye lo aplicado: lo que sobra es la diferencia que queda por explicar.
   const diff = calibration.extraBurn;
+  const target = Math.min(3000, Math.max(0, Math.round((applied + diff) / 10) * 10));
+  async function apply(value: number | null | undefined) {
+    setSaving(true);
+    setError(null);
+    try {
+      if (value !== undefined) await setExtraBurn(value);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se ha podido guardar');
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <Card tone="primarySoft">
       <ThemedText type="smallBold">Tu gasto real estimado</ThemedText>
@@ -192,6 +176,37 @@ function CalibrationCard({ calibration }: { calibration: Calibration }) {
         Con {calibration.weeks} semanas de pesadas ({calibration.days} días), comiendo de media {calibration.avgIntake.toLocaleString('es-ES')} kcal. Fiabilidad {calibration.confidence}
         {calibration.confidence === 'baja' ? ': con más semanas será más fiable.' : '.'}
       </ThemedText>
+      {applied > 0 ? (
+        <ThemedText type="small" themeColor="primaryText">
+          {auto ? 'Aplicado automáticamente' : 'Aplicado en las gráficas'}: +{applied.toLocaleString('es-ES')} kcal/día de actividad (en verde).
+        </ThemedText>
+      ) : null}
+      <View style={styles.autoRow}>
+        <Chip
+          label={auto ? 'Ajuste automático: sí' : 'Ajuste automático: no'}
+          active={auto}
+          onPress={() => setExtraBurnAuto(!auto).catch(() => {})}
+        />
+      </View>
+      <ThemedText type="small" themeColor="textSecondary">
+        {auto
+          ? 'Se recalcula solo una vez al día, al abrir la app: la primera vez con unas tres semanas de pesadas con comidas registradas, y después solo con cinco, cambiando como máximo unas 150 kcal cada vez.'
+          : 'El ajuste automático está apagado: solo cambia si tú lo pides.'}
+      </ThemedText>
+      {error ? <ThemedText type="small" style={{ color: theme.danger }}>{error}</ThemedText> : null}
+      {!auto && Math.abs(diff) >= 100 && target !== applied ? (
+        <Button
+          title={applied > 0 ? `Ajustar a +${target.toLocaleString('es-ES')} kcal/día` : 'Usar mi gasto real en las gráficas'}
+          onPress={() => apply(target)}
+          loading={saving}
+        />
+      ) : null}
+      {applied > 0 ? (
+        <LinkButton
+          title="Quitar la actividad de las gráficas"
+          onPress={() => clearExtraBurn().catch(() => {})}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -236,5 +251,6 @@ const styles = StyleSheet.create({
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   list: { gap: Spacing.two },
   weekCard: { gap: Spacing.half },
+  autoRow: { flexDirection: 'row' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
 });

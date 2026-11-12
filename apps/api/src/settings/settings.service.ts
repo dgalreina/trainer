@@ -31,6 +31,8 @@ export class SettingsService {
       activeDietId,
       dietSchedule,
       routinesResetAt: doc?.routinesResetAt ? doc.routinesResetAt.toISOString() : null,
+      extraBurnKcal: doc?.extraBurnKcal ?? null,
+      extraBurnAuto: doc?.extraBurnAuto ?? true,
     };
   }
 
