@@ -39,6 +39,14 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/cruces-en-polea-cable-crossover_0.webp'),
     require('../../assets/exercises/cruces-en-polea-cable-crossover_1.webp'),
   ],
+  'cruces en polea baja': [
+    require('../../assets/exercises/cruces-en-polea-baja_0.webp'),
+    require('../../assets/exercises/cruces-en-polea-baja_1.webp'),
+  ],
+  'cruces en polea media': [
+    require('../../assets/exercises/cruces-en-polea-media_0.webp'),
+    require('../../assets/exercises/cruces-en-polea-media_1.webp'),
+  ],
   'flexiones de brazos': [
     require('../../assets/exercises/flexiones-de-brazos_0.webp'),
     require('../../assets/exercises/flexiones-de-brazos_1.webp'),
@@ -584,6 +592,19 @@ const FRAMES: Record<string, ExerciseFrames> = {
   'press inclinado en maquina': [
     require('../../assets/exercises/press-inclinado-en-maquina_0.webp'),
     require('../../assets/exercises/press-inclinado-en-maquina_1.webp'),
+  ],
+  // Estática: las dos posiciones son la misma imagen (no se mueve).
+  'plancha abdominal': [
+    require('../../assets/exercises/plancha-abdominal_0.webp'),
+    require('../../assets/exercises/plancha-abdominal_0.webp'),
+  ],
+  'plancha lateral': [
+    require('../../assets/exercises/plancha-lateral_0.webp'),
+    require('../../assets/exercises/plancha-lateral_1.webp'),
+  ],
+  sprints: [
+    require('../../assets/exercises/sprints_0.webp'),
+    require('../../assets/exercises/sprints_1.webp'),
   ],
 };
 

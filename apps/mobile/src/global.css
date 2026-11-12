@@ -18,6 +18,21 @@
   display: none;
 }
 
+/* Nada de texto «seleccionado» en azul ni menú de copiar al mantener pulsado (el calendario se arrastra con pulsación larga):
+   solo se puede seleccionar dentro de los campos de texto. */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 html,
 body {
   background-color: #ffffff;

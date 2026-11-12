@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -55,17 +55,25 @@ export function NumberInput({
   const theme = useTheme();
   // El texto de ayuda («kg», «reps») se quita en cuanto se pincha el campo.
   const [focused, setFocused] = useState(false);
+  // Al pinchar, el campo se vacía para escribir de cero (sin el azul de «texto seleccionado»); si se sale sin escribir, vuelve el valor de antes.
+  const before = useRef('');
   return (
     <TextInput
       accessibilityLabel={accessibilityLabel}
       value={value}
       onChangeText={onChangeText}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onFocus={() => {
+        setFocused(true);
+        before.current = value;
+        if (value !== '') onChangeText('');
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (value === '' && before.current !== '') onChangeText(before.current);
+      }}
       placeholder={focused ? '' : placeholder}
       placeholderTextColor={theme.textSecondary}
       keyboardType="decimal-pad"
-      selectTextOnFocus
       style={[
         styles.number,
         compact && styles.numberCompact,

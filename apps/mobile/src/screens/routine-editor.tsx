@@ -68,7 +68,7 @@ export function RoutineEditorScreen() {
   }
 
   return (
-    <Screen title="Editar rutina" subtitle={training.name} stacked fade onBack={goBack}>
+    <Screen title="Editar rutina" subtitle={routine.name || undefined} stacked fade onBack={goBack}>
       <RoutineForm routine={routine} onSave={onSave} />
       <ErrorText message={error} />
       <Button variant="danger" title="Borrar rutina" onPress={onDelete} />
