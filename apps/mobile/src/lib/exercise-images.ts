@@ -594,6 +594,10 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/press-inclinado-en-maquina_1.webp'),
   ],
   // Estática: las dos posiciones son la misma imagen (no se mueve).
+  'curl bayesian en polea': [
+    require('../../assets/exercises/curl-bayesian-en-polea_0.webp'),
+    require('../../assets/exercises/curl-bayesian-en-polea_1.webp'),
+  ],
   'plancha abdominal': [
     require('../../assets/exercises/plancha-abdominal_0.webp'),
     require('../../assets/exercises/plancha-abdominal_0.webp'),
