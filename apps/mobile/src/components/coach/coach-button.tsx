@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, StyleSheet } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { COACH_EDGE, COACH_ICON, useCoachIconBottom } from '@/components/coach/coach-layout';
+import { COACH_MARK } from '@/components/coach/coach-chat';
 import { CoachOrb } from '@/components/coach/coach-orb';
 import { useCoach } from '@/lib/coach';
 
@@ -36,7 +37,7 @@ export function CoachButton() {
   const scale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
 
   return (
-    <Animated.View pointerEvents="box-none" style={[styles.wrap, { bottom, right: COACH_EDGE, transform: [{ scale }] }]}>
+    <Animated.View pointerEvents="box-none" {...COACH_MARK} style={[styles.wrap, { bottom, right: COACH_EDGE, transform: [{ scale }] }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={open ? 'Cerrar el chat con tu entrenador' : 'Hablar con tu entrenador'}

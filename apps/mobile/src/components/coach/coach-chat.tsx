@@ -38,6 +38,11 @@ const BUBBLE_MAX_WIDTH = 380;
 const BUBBLE_MAX_HEIGHT_FRACTION = 0.5;
 /** Ancho máximo del saludo pequeño. */
 const GREETING_MAX_WIDTH = 300;
+/** Marca (solo web) para reconocer que un toque cae dentro del bocadillo o del icono y no cuenta como «fuera». */
+export const COACH_MARK = { dataSet: { coach: '1' } } as object;
+/** Un toque fuera cierra el bocadillo si el dedo se mueve menos de esto (px) y dura menos de esto (ms). */
+const OUTSIDE_TAP_SLOP = 10;
+const OUTSIDE_TAP_MS = 600;
 /** Hueco entre el saludo pequeño y el icono (en la misma línea). */
 const COACH_GREETING_GAP = 12;
 /** Tamaño de la colita que apunta al icono. */
@@ -108,12 +113,49 @@ export function CoachChat() {
     });
   }, [open, appear]);
 
+  // Con el chat grande abierto, el fondo se oscurece un poco para que el foco esté en el chat y el icono. Es solo visual
+  // (no capta toques: se puede seguir haciendo scroll por detrás). Con el saludo pequeño no se oscurece.
+  const dim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(dim, { toValue: open && expanded ? 1 : 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [open, expanded, dim]);
+
   // Escape lo cierra (web).
   useEffect(() => {
     if (Platform.OS !== 'web' || !open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
+
+  // Web: tocar fuera lo cierra, pero sin una capa que tape la pantalla: así se puede seguir haciendo scroll (también
+  // el horizontal entre pestañas) con el bocadillo abierto. Cuenta como toque si el dedo apenas se mueve y es breve;
+  // un gesto de scroll acaba en `pointercancel` y no cierra nada. El icono y el bocadillo llevan `data-coach`.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !open) return;
+    let start: { x: number; y: number; at: number; inside: boolean } | null = null;
+    const insideCoach = (target: EventTarget | null) => Boolean((target as Element | null)?.closest?.('[data-coach]'));
+    const down = (e: PointerEvent) => {
+      start = { x: e.clientX, y: e.clientY, at: Date.now(), inside: insideCoach(e.target) };
+    };
+    const up = (e: PointerEvent) => {
+      const began = start;
+      start = null;
+      if (!began || began.inside) return;
+      const tap = Math.hypot(e.clientX - began.x, e.clientY - began.y) < OUTSIDE_TAP_SLOP && Date.now() - began.at < OUTSIDE_TAP_MS;
+      if (tap) setOpen(false);
+    };
+    const cancel = () => {
+      start = null;
+    };
+    document.addEventListener('pointerdown', down, true);
+    document.addEventListener('pointerup', up, true);
+    document.addEventListener('pointercancel', cancel, true);
+    return () => {
+      document.removeEventListener('pointerdown', down, true);
+      document.removeEventListener('pointerup', up, true);
+      document.removeEventListener('pointercancel', cancel, true);
+    };
   }, [open, setOpen]);
 
   if (!mounted) return null;
@@ -134,14 +176,19 @@ export function CoachChat() {
 
   return (
     <>
-      {/* Fondo táctil sin color: tocar fuera cierra el bocadillo. */}
-      <Pressable accessibilityLabel="Cerrar el chat" style={styles.backdrop} onPress={() => setOpen(false)} />
+      <Animated.View pointerEvents="none" style={[styles.dim, { opacity: dim }]} />
+
+      {/* En nativo, un fondo táctil sin color: tocar fuera cierra el bocadillo. (En la web se detecta sin tapar la pantalla.) */}
+      {Platform.OS !== 'web' ? (
+        <Pressable accessibilityLabel="Cerrar el chat" style={styles.backdrop} onPress={() => setOpen(false)} />
+      ) : null}
 
       {!expanded ? (
         // El saludo pequeño: en la misma línea que el icono, a su izquierda, con la colita hacia él. Lo vistoso es el
         // icono y el bocadillo; tocar el bocadillo abre el chat entero (sin flecha).
         <Animated.View
           pointerEvents="box-none"
+          {...COACH_MARK}
           style={[
             styles.greetingRow,
             { bottom: iconBottom, right: COACH_EDGE + COACH_ICON + COACH_GREETING_GAP },
@@ -169,6 +216,7 @@ export function CoachChat() {
         </Animated.View>
       ) : (
         <Animated.View
+          {...COACH_MARK}
           style={[
             styles.card,
             {
@@ -258,6 +306,8 @@ export function CoachChat() {
 
 const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 48 },
+  // Por debajo del bocadillo (49) y del icono (50), por encima de todo lo demás.
+  dim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 47, backgroundColor: 'rgba(0, 0, 0, 0.28)' },
   card: {
     position: 'absolute',
     zIndex: 49,
