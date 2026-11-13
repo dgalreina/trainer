@@ -19,6 +19,7 @@ import {
   useCoachIconBottom,
   useKeyboardInset,
 } from '@/components/coach/coach-layout';
+import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, WebTabBarInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -180,12 +181,16 @@ export function CoachChat() {
             },
             appearStyle,
           ]}>
-          <ScrollView
-            ref={scroller}
+          {/* Un ligero desvanecimiento arriba cuando la conversación se ha desplazado. */}
+          <FadingScroll
+            mask
+            fadeBottom={false}
+            fadeTop={24}
+            scrollRef={scroller}
+            containerStyle={styles.messagesBox}
             style={styles.messages}
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
             onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}>
             <Bubble message={{ role: 'coach', text: greeting }} />
             {messages.length === 0 ? (
@@ -206,7 +211,7 @@ export function CoachChat() {
             {messages.map((m) => (
               <Bubble key={m.id} message={m} />
             ))}
-          </ScrollView>
+          </FadingScroll>
 
           <View style={[styles.inputRow, { borderTopColor: theme.skySoft }]}>
             <TextInput
@@ -281,6 +286,8 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     transform: [{ rotate: '45deg' }],
   },
+  // El contenedor se ajusta al contenido y solo encoge si no cabe (el bocadillo tiene un alto máximo).
+  messagesBox: { flex: 0, flexGrow: 0, flexShrink: 1, flexBasis: 'auto' },
   messages: { flexGrow: 0, flexShrink: 1 },
   messagesContent: { padding: Spacing.three, gap: Spacing.two },
   row: { flexDirection: 'row' },

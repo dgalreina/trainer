@@ -66,7 +66,7 @@ function shapePath(radius: number, harmonics: readonly Harmonic[], t: number): s
 }
 
 /** Cuánto más deprisa se deforman cuando el entrenador está «excitado»: se le acaba de pulsar o está respondiendo. */
-const EXCITED_SPEEDUP = 3.5;
+const EXCITED_SPEEDUP = 7;
 
 function DeformingLayer({ layer, excited, still }: { layer: Layer; excited: boolean; still: boolean }) {
   const theme = useTheme();

@@ -1,5 +1,5 @@
 import { calculateTargets, dayEnergy, loggedMacros, routineTitle, workoutExtraKcal } from '@trainer/shared';
-import { usePathname, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
@@ -12,15 +12,14 @@ import { SessionSheet } from '@/components/session-sheet';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { WeighInSheet } from '@/components/weigh-in-card';
+import { COACH_COLUMN } from '@/components/coach/coach-layout';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
 import { addDays, formatTime, isoOf, mondayOf, startOfDay, todayISO } from '@/lib/dates';
-import { useCoachAvoid } from '@/lib/coach';
 import { useEnergyInput } from '@/lib/energy-input';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
-import { TABS, tabIndexFromPath } from '@/lib/tabs';
 import { useTrainings } from '@/lib/trainings';
 import { useWeekEvents, type DayEvent } from '@/lib/week-events';
 
@@ -184,10 +183,6 @@ export function CalendarScreen() {
   const [weighEdit, setWeighEdit] = useState<{ id: string; kg: string } | null>(null);
   // Alto de la tarjeta de abajo: el «centro» de lo visible (el día que se muestra) queda por encima de ella.
   const [summaryHeight, setSummaryHeight] = useState(0);
-  // El icono del entrenador sube por encima de la tarjeta de abajo y del botón «Hoy».
-  // Solo mientras esta es la pestaña a la vista (en la web están todas montadas a la vez).
-  const onCalendar = TABS[tabIndexFromPath(usePathname())]?.key === 'calendario';
-  useCoachAvoid(summaryHeight + Spacing.four + 48, onCalendar);
 
   const onPressSlot = useCallback((time: Date) => {
     setActionDay(isoOf(time));
@@ -389,7 +384,8 @@ export function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  floating: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: Spacing.four, paddingBottom: Spacing.four },
+  // La tarjeta deja libre, a la derecha, la columna del icono del entrenador.
+  floating: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingLeft: Spacing.four, paddingRight: COACH_COLUMN, paddingBottom: Spacing.four },
   error: { position: 'absolute', left: 0, right: 0, paddingHorizontal: Spacing.four },
   todayWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'flex-end', paddingHorizontal: Spacing.four },
   today: {

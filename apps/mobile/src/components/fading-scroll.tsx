@@ -9,6 +9,8 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollViewProps,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
@@ -31,6 +33,7 @@ export function FadingScroll({
   mask = false,
   fadeTop = FADE_HEIGHT,
   fadeBottom = true,
+  containerStyle,
   ...props
 }: ScrollViewProps & {
   children: ReactNode;
@@ -40,6 +43,8 @@ export function FadingScroll({
   fadeTop?: number;
   /** false: sin difuminado abajo (p. ej. si lo de debajo es una tarjeta fija y el contenido debe cortarse limpio contra ella). */
   fadeBottom?: boolean;
+  /** Estilo del contenedor (por defecto ocupa todo el alto disponible: `flex: 1`). */
+  containerStyle?: StyleProp<ViewStyle>;
 }) {
   const theme = useTheme();
   const [top, setTop] = useState(false);
@@ -71,7 +76,7 @@ export function FadingScroll({
   const masked = mask && Platform.OS === 'web';
 
   return (
-    <View style={[styles.root, masked ? maskStyle(top, bottom && fadeBottom, fadeTop) : null]}>
+    <View style={[styles.root, containerStyle, masked ? maskStyle(top, bottom && fadeBottom, fadeTop) : null]}>
       <ScrollView
         {...props}
         ref={scrollRef}

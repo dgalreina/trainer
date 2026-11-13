@@ -3,7 +3,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -40,9 +39,6 @@ interface CoachValue {
   send: (text: string) => void;
   /** Corta la respuesta en curso. */
   stop: () => void;
-  /** Píxeles que el icono flotante debe subir para no tapar lo que haya abajo en la pantalla actual. */
-  avoid: number;
-  registerAvoid: (id: string, px: number) => () => void;
 }
 
 const CoachContext = createContext<CoachValue | null>(null);
@@ -70,7 +66,6 @@ export function CoachProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => {
     if (pokeTimer.current) clearTimeout(pokeTimer.current);
   }, []);
-  const [avoids, setAvoids] = useState<Record<string, number>>({});
 
   // Al cerrar la sesión no queda nada de la conversación (otra persona podría entrar después en este dispositivo).
   const { status } = useAuth();
@@ -137,20 +132,9 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const registerAvoid = useCallback((id: string, px: number) => {
-    setAvoids((prev) => ({ ...prev, [id]: px }));
-    return () =>
-      setAvoids((prev) => {
-        const { [id]: _removed, ...rest } = prev;
-        return rest;
-      });
-  }, []);
-
-  const avoid = Math.max(0, ...Object.values(avoids));
-
   const value = useMemo<CoachValue>(
-    () => ({ open, setOpen, expanded, setExpanded, messages, greeting, busy, excited: busy || poked, send, stop, avoid, registerAvoid }),
-    [open, setOpen, expanded, messages, greeting, busy, poked, send, stop, avoid, registerAvoid],
+    () => ({ open, setOpen, expanded, setExpanded, messages, greeting, busy, excited: busy || poked, send, stop }),
+    [open, setOpen, expanded, messages, greeting, busy, poked, send, stop],
   );
   return <CoachContext.Provider value={value}>{children}</CoachContext.Provider>;
 }
@@ -159,15 +143,4 @@ export function useCoach(): CoachValue {
   const value = useContext(CoachContext);
   if (!value) throw new Error('useCoach debe usarse dentro de CoachProvider');
   return value;
-}
-
-/**
- * Una pantalla con algo fijo abajo (una barra, una tarjeta) pide que el icono del entrenador suba esos píxeles
- * mientras esté en pantalla (`active`: las pestañas de la web están todas montadas a la vez, así que cada una lo pide solo
- * cuando es la que se ve). Con varios a la vez, manda el mayor.
- */
-export function useCoachAvoid(px: number, active = true): void {
-  const { registerAvoid } = useCoach();
-  const id = useId();
-  useEffect(() => (active ? registerAvoid(id, px) : undefined), [registerAvoid, id, px, active]);
 }

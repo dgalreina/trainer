@@ -7,9 +7,9 @@ import { Card } from '@/components/card';
 import { Button, ErrorText, LinkButton, NumberInput } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
+import { COACH_COLUMN } from '@/components/coach/coach-layout';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useCoachAvoid } from '@/lib/coach';
 import { api } from '@/lib/api';
 import { beep, unlockAudio } from '@/lib/beep';
 import { confirmAction } from '@/lib/confirm';
@@ -35,9 +35,6 @@ const REST_DONE_VISIBLE_MS = 4000;
 const REST_STEP_MS = 15_000;
 
 /** Reloj que se actualiza cada `ms` mientras `active`; devuelve la hora actual en ms. */
-/** Lo que sube el icono del entrenador en esta pantalla (px): la barra de «Finalizar» ocupa unos 90. */
-const FOOTER_AVOID = 100;
-
 function useNow(active: boolean, ms: number): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -51,8 +48,6 @@ function useNow(active: boolean, ms: number): number {
 
 /** El entreno del día: una rutina del entrenamiento, con sus series editables, Comenzar y Finalizar. */
 export function WorkoutScreen() {
-  // El icono del entrenador sube por encima de la barra de «Finalizar» (y del descanso, cuando aparece).
-  useCoachAvoid(FOOTER_AVOID);
   const { id, rid, at } = useLocalSearchParams<{ id: string; rid: string; at?: string }>();
   // Si se llega desde el calendario tocando una hora, el entreno empieza a esa hora.
   const startAt = Number(at) > 0 ? Number(at) : null;
@@ -301,8 +296,9 @@ export function WorkoutScreen() {
 
   const restRemaining = draft.restEndsAt === null ? null : Math.ceil((draft.restEndsAt - now) / 1000);
 
+  // La barra de abajo deja libre, a la derecha, la columna del icono del entrenador (la barra ya tiene su margen de 24 px).
   const footer = (
-    <>
+    <View style={{ paddingRight: COACH_COLUMN - Spacing.four, gap: Spacing.two }}>
       {restRemaining !== null && (
         <View style={[styles.restBar, { backgroundColor: theme.primarySoft }]}>
           <View style={styles.restText}>
@@ -330,7 +326,7 @@ export function WorkoutScreen() {
       )}
       <ErrorText message={error} />
       <Button title="Finalizar" onPress={finish} loading={saving} />
-    </>
+    </View>
   );
 
   return (

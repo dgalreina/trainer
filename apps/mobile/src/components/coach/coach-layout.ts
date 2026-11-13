@@ -3,22 +3,25 @@ import { Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomTabInset, Spacing } from '@/constants/theme';
-import { useCoach } from '@/lib/coach';
 
 /** Tamaño del icono flotante y separación del borde de la pantalla. */
 export const COACH_ICON = 60;
 export const COACH_EDGE = Spacing.three;
+/**
+ * Lo que ocupa el icono por la derecha, desde el borde de la pantalla (px): lo que flota abajo (la tarjeta del calendario,
+ * la barra de «Finalizar») deja libre esta columna, para que el icono quede a su lado y no encima.
+ */
+export const COACH_COLUMN = COACH_EDGE + COACH_ICON + Spacing.three;
 /** Hueco entre el icono y el bocadillo. */
 export const COACH_BUBBLE_GAP = 10;
 
 /**
- * Distancia (px) del borde de abajo al icono: la zona segura, la barra de pestañas (solo en nativo: en la web va arriba) y lo
- * que pidan las pantallas con algo fijo abajo (`useCoachAvoid`).
+ * Distancia (px) del borde de abajo al icono: la zona segura y la barra de pestañas (solo en nativo: en la web va arriba).
+ * Es siempre la misma, en todas las pantallas: el icono no se mueve.
  */
 export function useCoachIconBottom(): number {
-  const { avoid } = useCoach();
   const insets = useSafeAreaInsets();
-  return COACH_EDGE + insets.bottom + (Platform.OS === 'web' ? 0 : BottomTabInset) + avoid;
+  return COACH_EDGE + insets.bottom + (Platform.OS === 'web' ? 0 : BottomTabInset);
 }
 
 /**

@@ -9,7 +9,7 @@ import { useCoach } from '@/lib/coach';
 /**
  * El icono del entrenador: flotante abajo a la derecha, por encima de todas las pantallas. En reposo está tranquilo
  * (respira muy despacio y sus ondas se deforman con suavidad); al pulsarlo se excita unos segundos y sale el bocadillo.
- * Pulsarlo con el bocadillo abierto lo cierra. Sube lo que pidan las pantallas con algo fijo abajo (`useCoachAvoid`).
+ * Pulsarlo con el bocadillo abierto lo cierra. Siempre está en el mismo sitio, en todas las pantallas.
  */
 export function CoachButton() {
   const { open, setOpen, excited } = useCoach();
