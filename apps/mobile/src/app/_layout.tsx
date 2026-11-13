@@ -7,7 +7,10 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AutoCalibration } from '@/components/auto-calibration';
+import { CoachButton } from '@/components/coach/coach-button';
+import { CoachChat } from '@/components/coach/coach-chat';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { CoachProvider } from '@/lib/coach';
 import { DietsProvider } from '@/lib/diets';
 import { ExercisesProvider } from '@/lib/exercises';
 import { FoodsProvider } from '@/lib/foods';
@@ -42,6 +45,13 @@ function RootNavigator() {
         <Stack.Screen name="login" />
       </Stack.Protected>
     </Stack>
+    {/* El entrenador: un icono flotante sobre todas las pantallas y su chat. */}
+    {signedIn ? (
+      <>
+        <CoachButton />
+        <CoachChat />
+      </>
+    ) : null}
     </>
   );
 }
@@ -102,8 +112,10 @@ function ThemedApp() {
             <DietsProvider>
               <MeProvider>
                 <SettingsProvider>
-                  <AnimatedSplashOverlay />
-                  <RootNavigator />
+                  <CoachProvider>
+                    <AnimatedSplashOverlay />
+                    <RootNavigator />
+                  </CoachProvider>
                 </SettingsProvider>
               </MeProvider>
             </DietsProvider>

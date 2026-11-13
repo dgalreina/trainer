@@ -1,5 +1,5 @@
 import { calculateTargets, dayEnergy, loggedMacros, routineTitle, workoutExtraKcal } from '@trainer/shared';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
@@ -16,9 +16,11 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmAction } from '@/lib/confirm';
 import { addDays, formatTime, isoOf, mondayOf, startOfDay, todayISO } from '@/lib/dates';
+import { useCoachAvoid } from '@/lib/coach';
 import { useEnergyInput } from '@/lib/energy-input';
 import { useMe } from '@/lib/me';
 import { useSettings } from '@/lib/settings';
+import { TABS, tabIndexFromPath } from '@/lib/tabs';
 import { useTrainings } from '@/lib/trainings';
 import { useWeekEvents, type DayEvent } from '@/lib/week-events';
 
@@ -182,6 +184,10 @@ export function CalendarScreen() {
   const [weighEdit, setWeighEdit] = useState<{ id: string; kg: string } | null>(null);
   // Alto de la tarjeta de abajo: el «centro» de lo visible (el día que se muestra) queda por encima de ella.
   const [summaryHeight, setSummaryHeight] = useState(0);
+  // El icono del entrenador sube por encima de la tarjeta de abajo y del botón «Hoy».
+  // Solo mientras esta es la pestaña a la vista (en la web están todas montadas a la vez).
+  const onCalendar = TABS[tabIndexFromPath(usePathname())]?.key === 'calendario';
+  useCoachAvoid(summaryHeight + Spacing.four + 48, onCalendar);
 
   const onPressSlot = useCallback((time: Date) => {
     setActionDay(isoOf(time));

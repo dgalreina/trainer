@@ -35,6 +35,14 @@ export const Colors = {
     /** Azul cielo muy suave: fondo de lo que es gasto (los entrenos en el calendario). */
     skySoft: '#E6F5FC',
     teal: '#6FD3C8',
+    /** Amarillo verdoso suave: una de las ondas del icono del entrenador. */
+    lime: '#D4E58A',
+    /** Blanco luz (también en modo oscuro): la lucecita del centro del icono del entrenador. */
+    light: '#FFFFFF',
+    /** Todo lo de la IA es azulado y verdoso (no salmón): verde azulado muy suave para fondos... */
+    tealSoft: '#E4F7F4',
+    /** ...y azul verdoso oscuro para el texto y los enlaces de la IA (el color base no tiene contraste sobre blanco). */
+    aiText: '#1F7C8A',
     danger: '#D93B3B',
     dangerSoft: '#FDE4E4',
     /** Blanco translúcido, para elementos que dejan ver las ondas de detrás. */
@@ -58,6 +66,10 @@ export const Colors = {
     sky: '#8ED3F2',
     skySoft: '#1E3039',
     teal: '#6FD3C8',
+    lime: '#D4E58A',
+    light: '#FFFFFF',
+    tealSoft: '#1E3A38',
+    aiText: '#7FD9E0',
     danger: '#FF6B6B',
     dangerSoft: '#3F2224',
     glass: 'rgba(255, 255, 255, 0.10)',
