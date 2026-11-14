@@ -6,12 +6,16 @@ import { SettingsService } from "../settings/settings.service.js";
 import { CoachContextService } from "./coach-context.service.js";
 import { CoachConversationService } from "./coach-conversation.service.js";
 import { CoachUsageService, estimateCostEur, monthKey } from "./coach-usage.service.js";
+import { CoachToolsService } from "./tools/coach-tools.service.js";
+import { TOOLS } from "./tools/definitions.js";
 import { MONTHLY_TOKEN_CAP } from "./plans.js";
 import { SYSTEM_PROMPT, cardPrompt } from "./prompts/index.js";
 
 const MODEL = "claude-sonnet-5-5";
 /** Tope de tokens de cada respuesta: acota lo que puede costar una sola llamada. */
 const MAX_TOKENS = 600;
+/** Cuántas vueltas de «Claude pide una herramienta → la ejecutamos» se permiten por mensaje. Cada vuelta es una llamada que cuesta. */
+const MAX_TOOL_TURNS = 4;
 /** Cuánta conversación se reenvía a Claude en cada llamada (en tokens estimados). La API no tiene memoria: se manda el historial. */
 const HISTORY_TOKEN_BUDGET = 6000;
 
@@ -40,6 +44,7 @@ export class CoachService {
   constructor(
     private readonly context: CoachContextService,
     private readonly conversation: CoachConversationService,
+    private readonly tools: CoachToolsService,
     private readonly usage: CoachUsageService,
     private readonly settings: SettingsService,
   ) {}
@@ -55,13 +60,51 @@ export class CoachService {
   /**
    * El usuario dice `text` y el entrenador contesta. La conversación sale de Mongo (no la manda la app) y, si todo va
    * bien, se guarda la vuelta entera: lo que dijo el usuario y la respuesta.
+   *
+   * Si Claude necesita un dato concreto, pide una herramienta (`tool_use`): la ejecutamos con los datos del usuario, le
+   * devolvemos el resultado y repetimos hasta que responde con texto (o se acaban las vueltas).
    */
   async chat(user: AuthUser, text: string): Promise<string> {
     const { userId } = user;
     await this.assertQuota(user);
     const [card, past] = await Promise.all([this.context.buildCard(userId), this.conversation.history(userId)]);
-    const messages: CoachMessage[] = [...past, { role: "user", content: text }];
+    // Lo que se manda a Claude. Los pasos con herramientas viven solo aquí, en esta llamada: no se guardan en la conversación.
+    const convo: Anthropic.MessageParam[] = trimHistory([...past, { role: "user", content: text }]);
 
+    let reply = "";
+    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+      const response = await this.ask(userId, card, convo, turn === MAX_TOOL_TURNS - 1);
+      if (response.stop_reason !== "tool_use") {
+        reply = this.replyFrom(response);
+        break;
+      }
+
+      // Claude pide una o varias herramientas. Se ejecutan y todos los resultados vuelven en UN solo mensaje.
+      convo.push({ role: "assistant", content: response.content });
+      const results = await Promise.all(
+        response.content
+          .filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use")
+          .map(async (block) => ({
+            type: "tool_result" as const,
+            tool_use_id: block.id,
+            content: JSON.stringify(await this.tools.run(userId, block.name, block.input)),
+          })),
+      );
+      convo.push({ role: "user", content: results });
+    }
+    if (!reply) reply = "No he podido terminar la consulta. Pregúntamelo de otra forma y lo intento de nuevo.";
+
+    await this.conversation.appendExchange(userId, text, reply);
+    return reply;
+  }
+
+  /** Una llamada a Claude: la ficha en el `system`, la conversación y las herramientas. Siempre se contabilizan los tokens. */
+  private async ask(
+    userId: string,
+    card: string,
+    convo: Anthropic.MessageParam[],
+    lastTurn: boolean,
+  ): Promise<Anthropic.Message> {
     let response: Anthropic.Message;
     try {
       response = await this.anthropic().messages.create({
@@ -77,7 +120,10 @@ export class CoachService {
           // ...y la ficha, que cambia con los datos del usuario, después.
           { type: "text", text: cardPrompt(card) },
         ],
-        messages: trimHistory(messages),
+        tools: TOOLS,
+        // En la última vuelta ya no se permiten más herramientas: tiene que contestar con lo que tenga.
+        ...(lastTurn ? { tool_choice: { type: "none" as const } } : {}),
+        messages: convo,
       });
     } catch (error) {
       this.logger.error(`Anthropic falló: ${error instanceof Error ? error.message : String(error)}`);
@@ -90,7 +136,7 @@ export class CoachService {
       throw new ServiceUnavailableException("El entrenador no está disponible ahora mismo.");
     }
 
-    // Control de coste: cada llamada guarda quién gastó cuántos tokens.
+    // Control de coste: cada llamada (también cada vuelta con herramientas) guarda quién gastó cuántos tokens.
     await this.usage.record(
       userId,
       MODEL,
@@ -102,21 +148,21 @@ export class CoachService {
       },
       response.stop_reason,
     );
+    return response;
+  }
 
-    let reply: string;
+  /** El texto de una respuesta que ya no pide herramientas. */
+  private replyFrom(response: Anthropic.Message): string {
     if (response.stop_reason === "refusal") {
-      reply = "Eso no te lo puedo responder. Pregúntame lo que quieras sobre tu entreno, tu dieta o tu progreso.";
-    } else {
-      const answer = response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === "text")
-        .map((block) => block.text)
-        .join("")
-        .trim();
-      // Si se cortó por el tope de tokens, que no acabe a media palabra sin avisar.
-      reply = response.stop_reason === "max_tokens" ? `${answer}…` : answer;
+      return "Eso no te lo puedo responder. Pregúntame lo que quieras sobre tu entreno, tu dieta o tu progreso.";
     }
-    await this.conversation.appendExchange(userId, text, reply);
-    return reply;
+    const answer = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
+    // Si se cortó por el tope de tokens, que no acabe a media palabra sin avisar.
+    return response.stop_reason === "max_tokens" ? `${answer}…` : answer;
   }
 
   /** Lo que ha gastado el usuario este mes, frente a su tope. */
