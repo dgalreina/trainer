@@ -10,7 +10,10 @@ import type { Request } from "express";
 import type { AuthUser } from "./current-user.decorator.js";
 import { IS_PUBLIC_KEY } from "./public.decorator.js";
 
-type Verifier = ReturnType<typeof createVerifier>;
+/** Grupo de Cognito de los administradores. */
+const ADMIN_GROUP = "admin";
+
+type Verifier =ReturnType<typeof createVerifier>;
 
 function createVerifier() {
   const userPoolId = process.env.COGNITO_USER_POOL_ID;
@@ -49,7 +52,9 @@ export class CognitoAuthGuard implements CanActivate {
     this.verifier ??= createVerifier();
     try {
       const payload = await this.verifier.verify(token);
-      req.user = { userId: payload.sub };
+      // Los grupos de Cognito viajan firmados dentro del access token: no se pueden falsear desde la app.
+      const groups = payload["cognito:groups"] ?? [];
+      req.user = { userId: payload.sub, isAdmin: groups.includes(ADMIN_GROUP) };
       return true;
     } catch {
       throw new UnauthorizedException("Token no válido");

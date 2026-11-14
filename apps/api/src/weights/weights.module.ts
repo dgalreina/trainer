@@ -8,5 +8,6 @@ import { WeightsService } from "./weights.service.js";
   imports: [MongooseModule.forFeature([{ name: WeightDoc.name, schema: WeightSchema }])],
   controllers: [WeightsController],
   providers: [WeightsService],
+  exports: [WeightsService],
 })
 export class WeightsModule {}

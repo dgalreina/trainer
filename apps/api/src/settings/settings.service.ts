@@ -1,6 +1,12 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { DietScheduleEntry, UpdateUserSettings, UserSettings } from "@trainer/shared";
+import {
+  AI_PLANS,
+  type AiPlan,
+  type DietScheduleEntry,
+  type UpdateUserSettings,
+  type UserSettings,
+} from "@trainer/shared";
 import { isValidObjectId, type Model } from "mongoose";
 import { DietDoc } from "../diets/diet.schema.js";
 import { TrainingDoc } from "../trainings/training.schema.js";
@@ -34,6 +40,12 @@ export class SettingsService {
       extraBurnKcal: doc?.extraBurnKcal ?? null,
       extraBurnAuto: doc?.extraBurnAuto ?? true,
     };
+  }
+
+  /** El plan de IA del usuario. Sin dato, `gratis` (sin acceso). */
+  async aiPlan(userId: string): Promise<AiPlan> {
+    const doc = await this.model.findOne({ userId }).lean();
+    return AI_PLANS.find((p) => p === doc?.aiPlan) ?? "gratis";
   }
 
   async update(userId: string, dto: UpdateUserSettings): Promise<UserSettings> {

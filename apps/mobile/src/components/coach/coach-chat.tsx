@@ -48,7 +48,7 @@ const COACH_GREETING_GAP = 12;
 /** Tamaño de la colita que apunta al icono. */
 const TAIL = 14;
 
-function Bubble({ message }: { message: Pick<CoachMessage, 'role' | 'text' | 'streaming'> }) {
+function Bubble({ message }: { message: Pick<CoachMessage, 'role' | 'text' | 'streaming' | 'error'> }) {
   const theme = useTheme();
   const mine = message.role === 'user';
   return (
@@ -60,7 +60,9 @@ function Bubble({ message }: { message: Pick<CoachMessage, 'role' | 'text' | 'st
             ? { backgroundColor: theme.skySoft, borderBottomRightRadius: Spacing.one }
             : { backgroundColor: theme.tealSoft, borderBottomLeftRadius: Spacing.one },
         ]}>
-        <ThemedText>{message.text || (message.streaming ? '…' : '')}</ThemedText>
+        <ThemedText themeColor={message.error ? 'textSecondary' : undefined}>
+          {message.text || (message.streaming ? '…' : '')}
+        </ThemedText>
       </View>
     </View>
   );

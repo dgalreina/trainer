@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { CoachUsageCard } from '@/components/coach-usage-card';
 import { Button } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -46,6 +47,8 @@ export function AccountSection() {
           />
         </View>
       </Card>
+
+      <CoachUsageCard />
 
       <Button
         title="Catálogo de ejercicios"

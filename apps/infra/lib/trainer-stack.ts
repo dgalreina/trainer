@@ -27,6 +27,8 @@ export interface TrainerStackProps extends StackProps {
   corsOrigins: string[];
   /** Nombre del parámetro SecureString de SSM con la URI de MongoDB. */
   mongoUriParam: string;
+  /** Nombre del parámetro SecureString de SSM con la clave de Anthropic (solo en el backend). */
+  anthropicKeyParam: string;
   alertEmail: string;
   /** Importe mensual (USD) a partir del cual avisa AWS Budgets. */
   monthlyBudgetUsd: number;
@@ -70,6 +72,9 @@ export class TrainerStack extends Stack {
     const mongoUri = StringParameter.fromSecureStringParameterAttributes(this, "MongoUri", {
       parameterName: props.mongoUriParam,
     });
+    const anthropicKey = StringParameter.fromSecureStringParameterAttributes(this, "AnthropicKey", {
+      parameterName: props.anthropicKeyParam,
+    });
     taskDefinition.addContainer("api", {
       image: ContainerImage.fromDockerImageAsset(image),
       portMappings: [{ containerPort: 3001 }],
@@ -82,8 +87,11 @@ export class TrainerStack extends Stack {
         COGNITO_CLIENT_ID: props.userPoolClientId,
         CORS_ORIGINS: props.corsOrigins.join(","),
       },
-      // La contraseña de Mongo llega como variable desde SSM, no escrita en la plantilla.
-      secrets: { MONGODB_URI: EcsSecret.fromSsmParameter(mongoUri) },
+      // La contraseña de Mongo y la clave de Anthropic llegan como variables desde SSM, no escritas en la plantilla.
+      secrets: {
+        MONGODB_URI: EcsSecret.fromSsmParameter(mongoUri),
+        ANTHROPIC_API_KEY: EcsSecret.fromSsmParameter(anthropicKey),
+      },
       // La imagen no trae curl: la comprobación de salud usa el propio Node.
       healthCheck: {
         command: [

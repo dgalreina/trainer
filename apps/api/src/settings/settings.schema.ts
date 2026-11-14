@@ -21,6 +21,10 @@ export class SettingsDoc {
   @Prop({ type: Boolean, default: true })
   extraBurnAuto!: boolean;
 
+  // Plan de IA: manda el servidor, la app no lo puede cambiar (no está en UpdateUserSettings).
+  @Prop({ type: String, default: "gratis" })
+  aiPlan!: string;
+
   @Prop({ type: [{ _id: false, from: String, dietId: { type: String, default: null } }], default: [] })
   dietSchedule!: { from: string; dietId: string | null }[];
 }

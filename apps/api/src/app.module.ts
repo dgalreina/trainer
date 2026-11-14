@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "./auth/auth.module.js";
 import { getMongoUri } from "./config/mongo-uri.js";
+import { CoachModule } from "./coach/coach.module.js";
 import { DietsModule } from "./diets/diets.module.js";
 import { ExercisesModule } from "./exercises/exercises.module.js";
 import { FoodsModule } from "./foods/foods.module.js";
@@ -15,7 +16,6 @@ import { TrainingTemplatesModule } from "./training-templates/training-templates
 import { MealLogsModule } from "./meal-logs/meal-logs.module.js";
 import { WeightsModule } from "./weights/weights.module.js";
 
-// Aquí irán los módulos de la API (coach...).
 // Todos viven en la misma Lambda: un solo arranque en frío para toda la API.
 @Module({
   imports: [
@@ -29,6 +29,7 @@ import { WeightsModule } from "./weights/weights.module.js";
       }),
     }),
     AuthModule,
+    CoachModule,
     DietsModule,
     ExercisesModule,
     FoodsModule,

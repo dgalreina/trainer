@@ -8,5 +8,6 @@ import { ProfileService } from "./profile.service.js";
   imports: [MongooseModule.forFeature([{ name: ProfileDoc.name, schema: ProfileSchema }])],
   controllers: [ProfileController],
   providers: [ProfileService],
+  exports: [ProfileService],
 })
 export class ProfileModule {}
