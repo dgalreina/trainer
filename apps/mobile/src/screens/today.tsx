@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
+import { LiveDot } from '@/components/live-dot';
 import { ResetButton } from '@/components/reset-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -184,9 +185,9 @@ export function TodayScreen() {
                       {summary.counts}
                     </ThemedText>
                     {started ? (
-                      <ThemedText type="smallBold" themeColor="primaryText" style={styles.tag}>
-                        En curso
-                      </ThemedText>
+                      <View style={styles.tag}>
+                        <LiveDot />
+                      </View>
                     ) : isDone ? (
                       <View style={styles.tag} accessible accessibilityLabel="Hecha">
                         <DoneTick />
