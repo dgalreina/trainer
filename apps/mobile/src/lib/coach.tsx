@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { CoachReply, CoachUsage } from '@trainer/shared';
+import type { CoachReply, CoachStoredMessage, CoachUsage } from '@trainer/shared';
 
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -25,8 +25,6 @@ export interface CoachMessage {
   error?: boolean;
 }
 
-/** Cuántos mensajes de la conversación se mandan como máximo; el servidor recorta además por tokens. */
-const MAX_HISTORY = 40;
 
 interface CoachValue {
   /** El chat está abierto. */
@@ -46,6 +44,8 @@ interface CoachValue {
   send: (text: string) => void;
   /** Corta la respuesta en curso. */
   stop: () => void;
+  /** Borra toda la conversación (también en el servidor). */
+  clearConversation: () => Promise<void>;
   /** Lo que ha gastado de IA este mes (null hasta que se pide). */
   usage: CoachUsage | null;
   refreshUsage: () => Promise<void>;
@@ -70,7 +70,6 @@ export function CoachProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const messagesCount = useRef(0);
-  const messagesRef = useRef<CoachMessage[]>([]);
   const [usage, setUsage] = useState<CoachUsage | null>(null);
   const abort = useRef<AbortController | null>(null);
   const [poked, setPoked] = useState(false);
@@ -94,8 +93,28 @@ export function CoachProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     messagesCount.current = messages.length;
-    messagesRef.current = messages;
-  }, [messages]);
+  }, [messages.length]);
+
+  // La conversación vive en el servidor: al entrar se recupera, así sigue ahí al reabrir la app o desde otro dispositivo.
+  useEffect(() => {
+    if (status !== 'signedIn') return;
+    let cancelled = false;
+    api
+      .get<CoachStoredMessage[]>('/coach/messages')
+      .then((stored) => {
+        if (cancelled) return;
+        // Si el usuario ya ha escrito algo mientras tanto, no se pisa lo que lleva en pantalla.
+        setMessages((current) =>
+          current.length > 0
+            ? current
+            : stored.map((m) => ({ id: m.id, role: m.role === 'user' ? 'user' : 'coach', text: m.content })),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   const refreshUsage = useCallback(async () => {
     try {
@@ -140,11 +159,6 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       if (!text || abort.current) return;
       const userMessage: CoachMessage = { id: newId(), role: 'user', text };
       const reply: CoachMessage = { id: newId(), role: 'coach', text: '', streaming: true };
-      // Lo que se manda: la conversación hasta ahora (sin avisos ni respuestas a medias) más el mensaje nuevo.
-      const history = [...messagesRef.current, userMessage]
-        .filter((m) => !m.error && !m.streaming && m.text)
-        .slice(-MAX_HISTORY)
-        .map((m) => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
       setMessages((prev) => [...prev, userMessage, reply]);
       setBusy(true);
       const controller = new AbortController();
@@ -152,7 +166,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       void (async () => {
         let result: { text: string; error?: boolean };
         try {
-          const { reply: answer } = await api.post<CoachReply>('/coach/chat', { messages: history });
+          const { reply: answer } = await api.post<CoachReply>('/coach/chat', { message: text });
           result = { text: answer };
         } catch (e) {
           // El servidor ya manda el mensaje listo para enseñar («Has llegado al límite de este mes…»).
@@ -180,6 +194,13 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     [refreshUsage],
   );
 
+  const clearConversation = useCallback(async () => {
+    stop();
+    await api.delete('/coach/messages');
+    setMessages([]);
+    setExpanded(false);
+  }, [stop]);
+
   const value = useMemo<CoachValue>(
     () => ({
       open,
@@ -192,10 +213,11 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       excited: busy || poked,
       send,
       stop,
+      clearConversation,
       usage,
       refreshUsage,
     }),
-    [open, setOpen, expanded, messages, greeting, busy, poked, send, stop, usage, refreshUsage],
+    [open, setOpen, expanded, messages, greeting, busy, poked, send, stop, clearConversation, usage, refreshUsage],
   );
   return <CoachContext.Provider value={value}>{children}</CoachContext.Provider>;
 }

@@ -4,6 +4,7 @@ import type { AiPlan, CoachMessage, CoachUsage } from "@trainer/shared";
 import type { AuthUser } from "../auth/current-user.decorator.js";
 import { SettingsService } from "../settings/settings.service.js";
 import { CoachContextService } from "./coach-context.service.js";
+import { CoachConversationService } from "./coach-conversation.service.js";
 import { CoachUsageService, estimateCostEur, monthKey } from "./coach-usage.service.js";
 import { MONTHLY_TOKEN_CAP } from "./plans.js";
 import { SYSTEM_PROMPT, cardPrompt } from "./prompts/index.js";
@@ -38,6 +39,7 @@ export class CoachService {
 
   constructor(
     private readonly context: CoachContextService,
+    private readonly conversation: CoachConversationService,
     private readonly usage: CoachUsageService,
     private readonly settings: SettingsService,
   ) {}
@@ -50,11 +52,15 @@ export class CoachService {
     return (this.client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }));
   }
 
-  /** La respuesta del entrenador al último mensaje de la conversación. */
-  async chat(user: AuthUser, messages: CoachMessage[]): Promise<string> {
+  /**
+   * El usuario dice `text` y el entrenador contesta. La conversación sale de Mongo (no la manda la app) y, si todo va
+   * bien, se guarda la vuelta entera: lo que dijo el usuario y la respuesta.
+   */
+  async chat(user: AuthUser, text: string): Promise<string> {
     const { userId } = user;
     await this.assertQuota(user);
-    const card = await this.context.buildCard(userId);
+    const [card, past] = await Promise.all([this.context.buildCard(userId), this.conversation.history(userId)]);
+    const messages: CoachMessage[] = [...past, { role: "user", content: text }];
 
     let response: Anthropic.Message;
     try {
@@ -97,16 +103,20 @@ export class CoachService {
       response.stop_reason,
     );
 
+    let reply: string;
     if (response.stop_reason === "refusal") {
-      return "Eso no te lo puedo responder. Pregúntame lo que quieras sobre tu entreno, tu dieta o tu progreso.";
+      reply = "Eso no te lo puedo responder. Pregúntame lo que quieras sobre tu entreno, tu dieta o tu progreso.";
+    } else {
+      const answer = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map((block) => block.text)
+        .join("")
+        .trim();
+      // Si se cortó por el tope de tokens, que no acabe a media palabra sin avisar.
+      reply = response.stop_reason === "max_tokens" ? `${answer}…` : answer;
     }
-    const text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("")
-      .trim();
-    // Si se cortó por el tope de tokens, que no acabe a media palabra sin avisar.
-    return response.stop_reason === "max_tokens" ? `${text}…` : text;
+    await this.conversation.appendExchange(userId, text, reply);
+    return reply;
   }
 
   /** Lo que ha gastado el usuario este mes, frente a su tope. */

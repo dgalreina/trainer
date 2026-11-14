@@ -8,6 +8,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { useCoach } from '@/lib/coach';
+import { confirmAction } from '@/lib/confirm';
 import { DARK_MODE_ENABLED, useThemePreference } from '@/lib/theme-preference';
 
 /** Sesión, modo claro, catálogo de ejercicios y cerrar sesión: la parte «Mi cuenta» de «Yo». */
@@ -16,6 +18,7 @@ export function AccountSection() {
   const theme = useTheme();
   const { email, signOut } = useAuth();
   const { forceLight, setForceLight } = useThemePreference();
+  const { messages, clearConversation } = useCoach();
 
   return (
     <>
@@ -52,6 +55,21 @@ export function AccountSection() {
       ) : null}
 
       <CoachUsageCard />
+
+      {messages.length > 0 ? (
+        <Button
+          title="Borrar conversación con el entrenador"
+          variant="secondary"
+          onPress={async () => {
+            const ok = await confirmAction(
+              'Borrar conversación',
+              'Se borrará toda tu conversación con el entrenador. El entrenador seguirá conociendo tu perfil y tus datos.',
+              'Borrar',
+            );
+            if (ok) await clearConversation().catch(() => {});
+          }}
+        />
+      ) : null}
 
       <Button
         title="Catálogo de ejercicios"

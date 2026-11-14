@@ -11,15 +11,26 @@ export const coachMessageSchema = z.object({
 });
 export type CoachMessage = z.infer<typeof coachMessageSchema>;
 
-/** Lo que manda la app: la conversación hasta ahora. El último mensaje es el del usuario. */
-export const coachChatSchema = z.object({
-  messages: z
-    .array(coachMessageSchema)
-    .min(1)
-    .max(200)
-    .refine((m) => m[m.length - 1].role === "user", "El último mensaje debe ser del usuario"),
+/**
+ * Lo que manda la app: solo el mensaje nuevo. La conversación la guarda el servidor (así sigue ahí al reabrir la app o
+ * al entrar desde otro dispositivo) y es él quien decide qué parte de ella lee Claude.
+ */
+export const coachSendSchema = z.object({
+  message: z.string().trim().min(1).max(4000),
 });
-export type CoachChat = z.infer<typeof coachChatSchema>;
+export type CoachSend = z.infer<typeof coachSendSchema>;
+
+/** Un mensaje de la conversación guardada. */
+export interface CoachStoredMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  /** ISO 8601. */
+  createdAt: string;
+}
+
+/** Cuántos mensajes se guardan por usuario; al pasarse, se van borrando los más antiguos. */
+export const COACH_MAX_STORED_MESSAGES = 100;
 
 export interface CoachReply {
   reply: string;
