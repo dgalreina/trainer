@@ -29,7 +29,12 @@ export interface CoachMessage {
 interface CoachValue {
   /** El chat está abierto. */
   open: boolean;
-  setOpen: (open: boolean) => void;
+  /**
+   * Abre o cierra. Al abrir, siempre sale el chat completo (con su cuadro de texto): quien pulsa el icono quiere hablar.
+   * Solo con `{ greeting: true }` sale el saludo pequeño, que es para cuando el entrenador habla primero (por ejemplo,
+   * tras un entreno): lo dispara un evento de la app, nunca el usuario.
+   */
+  setOpen: (open: boolean, options?: { greeting?: boolean }) => void;
   /** Con el bocadillo abierto: false = solo el saludo pequeño; true = el chat completo. */
   expanded: boolean;
   setExpanded: (expanded: boolean) => void;
@@ -69,7 +74,6 @@ export function CoachProvider({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [busy, setBusy] = useState(false);
-  const messagesCount = useRef(0);
   const [usage, setUsage] = useState<CoachUsage | null>(null);
   const abort = useRef<AbortController | null>(null);
   const [poked, setPoked] = useState(false);
@@ -90,10 +94,6 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     setExpanded(false);
     setBusy(false);
   }, [status]);
-
-  useEffect(() => {
-    messagesCount.current = messages.length;
-  }, [messages.length]);
 
   // La conversación vive en el servidor: al entrar se recupera, así sigue ahí al reabrir la app o desde otro dispositivo.
   useEffect(() => {
@@ -137,7 +137,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setOpen = useCallback(
-    (value: boolean) => {
+    (value: boolean, options?: { greeting?: boolean }) => {
       // Cerrar el chat corta lo que se esté escribiendo (con la IA real, también cancela la llamada).
       if (!value) stop();
       // Al abrirlo, el icono se excita unos segundos y luego se calma solo.
@@ -146,8 +146,8 @@ export function CoachProvider({ children }: { children: ReactNode }) {
         if (pokeTimer.current) clearTimeout(pokeTimer.current);
         pokeTimer.current = setTimeout(() => setPoked(false), POKE_MS);
       }
-      // Se abre con el saludo pequeño; si ya hay conversación, directamente el chat entero.
-      setExpanded(value && messagesCount.current > 0);
+      // Abierto por el usuario: el chat entero. El saludo pequeño solo cuando habla primero el entrenador.
+      setExpanded(value && !options?.greeting);
       setOpenState(value);
     },
     [stop],
