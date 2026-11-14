@@ -223,9 +223,11 @@ export function CoachChat() {
             styles.card,
             {
               bottom,
+              // Con el teclado, el chat aprovecha todo el hueco que queda hasta arriba (el espacio escasea).
+              ...(keyboard > 0 ? { top: topLimit } : {}),
               right: COACH_EDGE,
               width: Math.min(BUBBLE_MAX_WIDTH, width - COACH_EDGE * 2),
-              maxHeight,
+              ...(keyboard > 0 ? {} : { maxHeight }),
               backgroundColor: theme.background,
               borderColor: theme.skySoft,
             },
@@ -237,7 +239,7 @@ export function CoachChat() {
             fadeBottom={false}
             fadeTop={24}
             scrollRef={scroller}
-            containerStyle={styles.messagesBox}
+            containerStyle={[styles.messagesBox, keyboard > 0 ? { flexGrow: 1 } : null]}
             style={styles.messages}
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
