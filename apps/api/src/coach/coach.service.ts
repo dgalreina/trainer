@@ -12,8 +12,11 @@ import { MONTHLY_TOKEN_CAP } from "./plans.js";
 import { SYSTEM_PROMPT, cardPrompt } from "./prompts/index.js";
 
 const MODEL = "claude-sonnet-5-5";
-/** Tope de tokens de cada respuesta: acota lo que puede costar una sola llamada. */
-const MAX_TOKENS = 600;
+/**
+ * Tope de tokens de cada respuesta: acota lo que puede costar una sola llamada. Incluye los tokens de pensamiento: con
+ * 600 se llegó a gastar todo pensando tras una consulta con herramientas y la respuesta salió vacía.
+ */
+const MAX_TOKENS = 1600;
 /** Cuántas vueltas de «Claude pide una herramienta → la ejecutamos» se permiten por mensaje. Cada vuelta es una llamada que cuesta. */
 const MAX_TOOL_TURNS = 4;
 /** Cuánta conversación se reenvía a Claude en cada llamada (en tokens estimados). La API no tiene memoria: se manda el historial. */
@@ -92,7 +95,8 @@ export class CoachService {
       );
       convo.push({ role: "user", content: results });
     }
-    if (!reply) reply = "No he podido terminar la consulta. Pregúntamelo de otra forma y lo intento de nuevo.";
+    // Una respuesta vacía no se guarda: ensuciaría la conversación y el siguiente mensaje partiría de ella.
+    if (!reply) throw new ServiceUnavailableException("No he podido terminar la consulta. Inténtalo de nuevo.");
 
     await this.conversation.appendExchange(userId, text, reply);
     return reply;
@@ -161,6 +165,8 @@ export class CoachService {
       .map((block) => block.text)
       .join("")
       .trim();
+    // Sin texto (todo el tope se fue pensando): se devuelve vacío y `chat` avisa sin guardarlo.
+    if (!answer) return "";
     // Si se cortó por el tope de tokens, que no acabe a media palabra sin avisar.
     return response.stop_reason === "max_tokens" ? `${answer}…` : answer;
   }
