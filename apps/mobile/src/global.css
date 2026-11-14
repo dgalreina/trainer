@@ -74,13 +74,6 @@ textarea:focus-visible {
   animation-timing-function: ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  html,
-  body {
-    background-color: #150F12;
-  }
-}
-
 /* Las imágenes no se pueden seleccionar ni abrir con el menú de iOS al mantener pulsado. */
 img {
   -webkit-touch-callout: none;

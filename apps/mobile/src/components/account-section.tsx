@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { useThemePreference } from '@/lib/theme-preference';
+import { DARK_MODE_ENABLED, useThemePreference } from '@/lib/theme-preference';
 
 /** Sesión, modo claro, catálogo de ejercicios y cerrar sesión: la parte «Mi cuenta» de «Yo». */
 export function AccountSection() {
@@ -26,27 +26,30 @@ export function AccountSection() {
         <ThemedText>{email}</ThemedText>
       </Card>
 
-      <Card>
-        <View style={styles.row}>
-          <View style={styles.rowText}>
-            <ThemedText type="smallBold">Usar siempre modo claro</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {forceLight
-                ? 'La app se ve siempre en claro.'
-                : 'Desactivado: la app sigue el modo de tu móvil.'}
-            </ThemedText>
+      {/* El interruptor del modo oscuro solo se ofrece si el modo oscuro está activado (ver theme-preference.tsx). */}
+      {DARK_MODE_ENABLED ? (
+        <Card>
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <ThemedText type="smallBold">Usar siempre modo claro</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {forceLight
+                  ? 'La app se ve siempre en claro.'
+                  : 'Desactivado: la app sigue el modo de tu móvil.'}
+              </ThemedText>
+            </View>
+            <Switch
+              accessibilityLabel="Usar siempre modo claro"
+              value={forceLight}
+              onValueChange={setForceLight}
+              trackColor={{ false: theme.backgroundSelected, true: theme.primary }}
+              thumbColor="#FFFFFF"
+              // En la web el pulgar encendido usa `activeThumbColor` y, si no, sale verde.
+              {...({ activeThumbColor: '#FFFFFF' } as object)}
+            />
           </View>
-          <Switch
-            accessibilityLabel="Usar siempre modo claro"
-            value={forceLight}
-            onValueChange={setForceLight}
-            trackColor={{ false: theme.backgroundSelected, true: theme.primary }}
-            thumbColor="#FFFFFF"
-            // En la web el pulgar encendido usa `activeThumbColor` y, si no, sale verde.
-            {...({ activeThumbColor: '#FFFFFF' } as object)}
-          />
-        </View>
-      </Card>
+        </Card>
+      ) : null}
 
       <CoachUsageCard />
 

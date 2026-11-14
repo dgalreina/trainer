@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { Button, ErrorText, LinkButton } from '@/components/form';
+import { Button, ErrorText } from '@/components/form';
+import { ResetButton } from '@/components/reset-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { TrainingBadge } from '@/components/training-badge';
@@ -12,6 +13,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { api } from '@/lib/api';
 import { startOfDay } from '@/lib/dates';
+import { confirmAction } from '@/lib/confirm';
 import { useExercises } from '@/lib/exercises';
 import { useNewTraining } from '@/lib/new-training';
 import { routineSummary } from '@/lib/routine-summary';
@@ -181,10 +183,20 @@ export function TodayScreen() {
                   </Card>
                 );
               })}
-              {/* Abajo a la derecha y solo si hay algo marcado que descartar. */}
+              {/* Abajo a la izquierda y solo si hay algo marcado que descartar. */}
               {done.size > 0 ? (
                 <View style={styles.resetRow}>
-                  <LinkButton title="Descartar todo" onPress={() => resetRoutines().then(() => setDone(new Set()), () => {})} />
+                  <ResetButton
+                    label="Descartar todo"
+                    onPress={async () => {
+                      const ok = await confirmAction(
+                        'Descartar todo',
+                        'Se desmarcarán todas las rutinas hechas y empezarás un ciclo nuevo.',
+                        'Descartar',
+                      );
+                      if (ok) resetRoutines().then(() => setDone(new Set()), () => {});
+                    }}
+                  />
                 </View>
               ) : null}
             </>
@@ -202,6 +214,6 @@ const styles = StyleSheet.create({
   tag: { position: 'absolute', top: Spacing.four, right: Spacing.three },
   // Una rutina ya hecha en este ciclo se ve más tenue; se puede volver a elegir.
   done: { opacity: 0.55 },
-  resetRow: { alignItems: 'flex-end' },
+  resetRow: { alignItems: 'flex-start' },
   routineName: { fontSize: 26, lineHeight: 32 },
 });

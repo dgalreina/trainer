@@ -13,6 +13,13 @@ import { getItem, setItem } from '@/lib/storage';
 
 const KEY = 'trainer.forceLight';
 
+/**
+ * El modo oscuro está desactivado por ahora: la app es siempre clara, sin importar el modo del móvil, y Mi cuenta no
+ * ofrece el interruptor. Para recuperarlo, poner esto a `true` (y restaurar en `global.css` el fondo oscuro para
+ * `prefers-color-scheme: dark`, que se quitó).
+ */
+export const DARK_MODE_ENABLED = false;
+
 interface ThemePreferenceValue {
   /** true: siempre claro. false: lo decide el móvil. */
   forceLight: boolean;
@@ -20,13 +27,14 @@ interface ThemePreferenceValue {
 }
 
 const ThemePreferenceContext = createContext<ThemePreferenceValue>({
-  forceLight: false,
+  forceLight: !DARK_MODE_ENABLED,
   setForceLight: () => {},
 });
 
 // En la web localStorage es síncrono: se lee ya en el primer render para que quien
 // fuerza el modo claro en un móvil oscuro no vea un destello oscuro al abrir.
 function readInitial(): boolean {
+  if (!DARK_MODE_ENABLED) return true;
   if (Platform.OS !== 'web') return false;
   try {
     return globalThis.localStorage?.getItem(KEY) === '1';
@@ -40,7 +48,7 @@ export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
 
   // En el móvil el llavero es asíncrono: se recupera al arrancar.
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web' || !DARK_MODE_ENABLED) return;
     getItem(KEY).then((saved) => setForceLightState(saved === '1'));
   }, []);
 
