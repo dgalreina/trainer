@@ -75,6 +75,7 @@ export class CoachService {
     const convo: Anthropic.MessageParam[] = trimHistory([...past, { role: "user", content: text }]);
 
     let reply = "";
+    let usedTools = false;
     for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
       const response = await this.ask(userId, card, convo, turn === MAX_TOOL_TURNS - 1);
       if (response.stop_reason !== "tool_use") {
@@ -82,6 +83,7 @@ export class CoachService {
         break;
       }
 
+      usedTools = true;
       // Claude pide una o varias herramientas. Se ejecutan y todos los resultados vuelven en UN solo mensaje.
       convo.push({ role: "assistant", content: response.content });
       const results = await Promise.all(
@@ -98,7 +100,7 @@ export class CoachService {
     // Una respuesta vacía no se guarda: ensuciaría la conversación y el siguiente mensaje partiría de ella.
     if (!reply) throw new ServiceUnavailableException("No he podido terminar la consulta. Inténtalo de nuevo.");
 
-    await this.conversation.appendExchange(userId, text, reply);
+    await this.conversation.appendExchange(userId, text, reply, usedTools);
     return reply;
   }
 

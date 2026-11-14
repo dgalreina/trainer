@@ -16,6 +16,10 @@ export class CoachMessageDoc {
   @Prop({ type: String, required: true })
   content!: string;
 
+  /** La respuesta se apoyó en datos consultados con herramientas (esas consultas no se guardan, solo este aviso). */
+  @Prop({ type: Boolean, default: false })
+  usedTools?: boolean;
+
   // Se pone a mano (no con `timestamps`): el mensaje del usuario y la respuesta se guardan a la vez y deben quedar en orden.
   @Prop({ type: Date, required: true })
   createdAt!: Date;
