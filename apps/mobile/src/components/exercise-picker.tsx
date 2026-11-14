@@ -46,7 +46,9 @@ export function ExercisePicker({
           <View style={styles.header}>
             <ThemedText type="subtitle">Elegir ejercicio</ThemedText>
             <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} hitSlop={10}>
-              <ThemedText type="linkPrimary">Cerrar</ThemedText>
+              <ThemedText type="subtitle" themeColor="textSecondary">
+                ✕
+              </ThemedText>
             </Pressable>
           </View>
           <ExerciseBrowser active={visible} onPick={onSelect} />

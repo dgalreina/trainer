@@ -321,7 +321,19 @@ export function WorkoutScreen() {
               />
             </>
           )}
-          <LinkButton title={restRemaining > 0 ? 'Saltar' : 'Cerrar'} onPress={() => patch((d) => ({ ...d, restEndsAt: null }))} />
+          {restRemaining > 0 ? (
+            <LinkButton title="Saltar" onPress={() => patch((d) => ({ ...d, restEndsAt: null }))} />
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+              onPress={() => patch((d) => ({ ...d, restEndsAt: null }))}
+              hitSlop={12}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                ✕
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
       )}
       <ErrorText message={error} />

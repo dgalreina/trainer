@@ -2,6 +2,7 @@ import { dayLabel, doneRoutineIds, routineTitle, type WorkoutSession } from '@tr
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
@@ -22,6 +23,16 @@ import { useSettings } from '@/lib/settings';
 import { getItem } from '@/lib/storage';
 import { useTrainings } from '@/lib/trainings';
 import { draftKey, parseDraft } from '@/lib/workout-draft';
+
+/** El tick gris de una rutina ya hecha en este ciclo. */
+function DoneTick() {
+  const theme = useTheme();
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4 12.5l5 5L20 6.5" />
+    </Svg>
+  );
+}
 
 export function TodayScreen() {
   const router = useRouter();
@@ -101,6 +112,7 @@ export function TodayScreen() {
   return (
     <Screen
       title="¿Qué vas a entrenar hoy?"
+      compactTitle
       action={
         activeTraining ? (
           <TrainingBadge
@@ -176,9 +188,9 @@ export function TodayScreen() {
                         En curso
                       </ThemedText>
                     ) : isDone ? (
-                      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.tag}>
-                        Hecha
-                      </ThemedText>
+                      <View style={styles.tag} accessible accessibilityLabel="Hecha">
+                        <DoneTick />
+                      </View>
                     ) : null}
                   </Card>
                 );

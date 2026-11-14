@@ -30,6 +30,8 @@ interface ScreenProps {
   subtitle?: string;
   /** Contenido a la derecha del título (por ejemplo, un botón). */
   action?: ReactNode;
+  /** Título más pequeño y alineado arriba con la acción (por ejemplo, con el círculo del entrenamiento actual). */
+  compactTitle?: boolean;
   /** Pantalla apilada con flecha de «atrás» a la izquierda y el título centrado. */
   onBack?: () => void;
   /** false si el contenido gestiona su propio scroll (una FlatList). */
@@ -72,6 +74,7 @@ export function Screen({
   title,
   subtitle,
   action,
+  compactTitle,
   onBack,
   scroll = true,
   fade,
@@ -112,9 +115,13 @@ export function Screen({
       <View style={{ width: BACK_BUTTON_SIZE }} />
     </View>
   ) : title || action ? (
-    <View style={[styles.header, styles.headerPlain]}>
+    <View style={[styles.header, compactTitle ? styles.headerTop : styles.headerPlain]}>
       <View style={styles.headerText}>
-        {title ? <ThemedText type="subtitle">{title}</ThemedText> : null}
+        {title ? (
+          <ThemedText type="subtitle" style={compactTitle ? styles.compactTitle : undefined}>
+            {title}
+          </ThemedText>
+        ) : null}
         {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
       </View>
       {action}
@@ -261,6 +268,9 @@ const styles = StyleSheet.create({
   },
   headerText: { flex: 1 },
   headerPlain: { alignItems: 'flex-end' },
+  // El título arriba, a la altura del borde superior de la acción (el círculo).
+  headerTop: { alignItems: 'flex-start' },
+  compactTitle: { fontSize: 24, lineHeight: 30 },
   headerCentered: { alignItems: 'center' },
   // Sin subtítulo, la flecha y el título van a la misma altura.
   headerMiddle: { alignItems: 'center' },
