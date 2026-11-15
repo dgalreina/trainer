@@ -19,6 +19,7 @@ import {
   useCoachIconBottom,
   useKeyboardInset,
 } from '@/components/coach/coach-layout';
+import { RichText } from '@/components/coach/rich-text';
 import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -61,9 +62,12 @@ function Bubble({ message }: { message: Pick<CoachMessage, 'role' | 'text' | 'st
             ? { backgroundColor: theme.skySoft, borderBottomRightRadius: Spacing.one }
             : { backgroundColor: theme.tealSoft, borderBottomLeftRadius: Spacing.one },
         ]}>
-        <ThemedText themeColor={message.error ? 'textSecondary' : undefined}>
-          {message.text || (message.streaming ? '…' : '')}
-        </ThemedText>
+        {mine ? (
+          <ThemedText>{message.text}</ThemedText>
+        ) : (
+          // Las respuestas del entrenador llevan Markdown (negritas, listas): se pintan con formato.
+          <RichText text={message.text || (message.streaming ? '…' : '')} themeColor={message.error ? 'textSecondary' : undefined} />
+        )}
       </View>
     </View>
   );
