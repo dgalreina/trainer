@@ -30,3 +30,23 @@ export interface AdminOverview {
 
 export const adminPlanSchema = z.object({ plan: z.enum(AI_PLANS) });
 export type AdminPlanUpdate = z.infer<typeof adminPlanSchema>;
+
+/** Algo que la IA quiso hacer y la app no puede representar, agrupado por tipo. No dice quién lo pidió. */
+export const SUGGESTION_STATUSES = ["open", "done", "dismissed"] as const;
+export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
+
+export interface AppSuggestion {
+  id: string;
+  /** Tipo estable, por ejemplo `technique_partial_sets` o `tempo`. */
+  code: string;
+  /** Cuántas veces ha salido. */
+  count: number;
+  /** Los últimos ejemplos, tal como los describió la IA. */
+  examples: string[];
+  status: SuggestionStatus;
+  /** Última vez que salió (ISO 8601). */
+  lastSeenAt: string;
+}
+
+export const suggestionStatusSchema = z.object({ status: z.enum(SUGGESTION_STATUSES) });
+export type SuggestionStatusUpdate = z.infer<typeof suggestionStatusSchema>;

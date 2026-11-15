@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { CoachReply, CoachStoredMessage, CoachUsage } from '@trainer/shared';
+import type { CoachJob, CoachJobStarted, CoachStoredMessage, CoachUsage, TrainingProposal } from '@trainer/shared';
 
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -23,7 +23,16 @@ export interface CoachMessage {
   streaming?: boolean;
   /** Un aviso (sin conexión, tope del mes...) en vez de una respuesta: no se manda a la IA como parte de la conversación. */
   error?: boolean;
+  /** El entrenamiento que el entrenador propone en este mensaje (se enseña como tarjeta). */
+  proposal?: TrainingProposal;
 }
+
+/** Cada cuánto se pregunta al servidor si ya hay respuesta, y cuánto se espera como máximo (ms). */
+const POLL_MS = 1500;
+const POLL_TIMEOUT_MS = 4 * 60 * 1000;
+/** Cuántos fallos de red seguidos se aguantan al preguntar por la respuesta. */
+const POLL_MAX_FAILURES = 5;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
 interface CoachValue {
@@ -47,6 +56,8 @@ interface CoachValue {
   /** El icono está «excitado»: se acaba de pulsar (unos segundos) o hay una respuesta en curso. */
   excited: boolean;
   send: (text: string) => void;
+  /** Cambia la propuesta de un mensaje (por ejemplo, al guardarla o descartarla). */
+  updateProposal: (messageId: string, proposal: TrainingProposal) => void;
   /** Corta la respuesta en curso. */
   stop: () => void;
   /** Borra toda la conversación (también en el servidor). */
@@ -107,7 +118,12 @@ export function CoachProvider({ children }: { children: ReactNode }) {
         setMessages((current) =>
           current.length > 0
             ? current
-            : stored.map((m) => ({ id: m.id, role: m.role === 'user' ? 'user' : 'coach', text: m.content })),
+            : stored.map((m) => ({
+                id: m.id,
+                role: m.role === 'user' ? 'user' : 'coach',
+                text: m.content,
+                proposal: m.proposal,
+              })),
         );
       })
       .catch(() => {});
@@ -138,8 +154,8 @@ export function CoachProvider({ children }: { children: ReactNode }) {
 
   const setOpen = useCallback(
     (value: boolean, options?: { greeting?: boolean }) => {
-      // Cerrar el chat corta lo que se esté escribiendo (con la IA real, también cancela la llamada).
-      if (!value) stop();
+      // Cerrar el chat NO corta la respuesta en camino: el servidor la sigue trabajando y aquí se sigue esperando, así
+      // aparece al volver a abrirlo. Solo el botón de parar la descarta.
       // Al abrirlo, el icono se excita unos segundos y luego se calma solo.
       if (value) {
         setPoked(true);
@@ -150,7 +166,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       setExpanded(value && !options?.greeting);
       setOpenState(value);
     },
-    [stop],
+    [],
   );
 
   const send = useCallback(
@@ -164,10 +180,27 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController();
       abort.current = controller;
       void (async () => {
-        let result: { text: string; error?: boolean };
+        let result: { text: string; error?: boolean; proposal?: TrainingProposal };
         try {
-          const { reply: answer } = await api.post<CoachReply>('/coach/chat', { message: text });
-          result = { text: answer };
+          // El chat es asíncrono: se envía el mensaje, el servidor lo trabaja en segundo plano y aquí se pregunta por él.
+          const { jobId } = await api.post<CoachJobStarted>('/coach/chat', { message: text });
+          const startedAt = Date.now();
+          let job: CoachJob = { status: 'running' };
+          let failures = 0;
+          while (job.status === 'running' && !controller.signal.aborted && Date.now() - startedAt < POLL_TIMEOUT_MS) {
+            await sleep(POLL_MS);
+            if (controller.signal.aborted) break;
+            try {
+              job = await api.get<CoachJob>(`/coach/jobs/${jobId}`);
+              failures = 0;
+            } catch (e) {
+              // Un fallo puntual de red no es el fin: el servidor sigue trabajando. Se rinde tras varios seguidos.
+              if (++failures >= POLL_MAX_FAILURES) throw e;
+            }
+          }
+          if (job.status === 'done') result = { text: job.reply ?? '', proposal: job.proposal };
+          else if (job.status === 'error') result = { text: job.error?.message ?? 'No he podido responder.', error: true };
+          else result = { text: 'Está tardando más de lo normal. Vuelve a abrir el chat en un momento.', error: true };
         } catch (e) {
           // El servidor ya manda el mensaje listo para enseñar («Has llegado al límite de este mes…»).
           result = {
@@ -178,7 +211,11 @@ export function CoachProvider({ children }: { children: ReactNode }) {
         // Si se cerró el chat mientras tanto, la respuesta se descarta (la llamada ya se ha hecho y se ha cobrado).
         if (!controller.signal.aborted) {
           setMessages((prev) =>
-            prev.map((m) => (m.id === reply.id ? { ...m, text: result.text, error: result.error, streaming: false } : m)),
+            prev.map((m) =>
+              m.id === reply.id
+                ? { ...m, text: result.text, error: result.error, proposal: result.proposal, streaming: false }
+                : m,
+            ),
           );
         } else {
           setMessages((prev) => prev.filter((m) => m.id !== reply.id));
@@ -193,6 +230,10 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     },
     [refreshUsage],
   );
+
+  const updateProposal = useCallback((messageId: string, proposal: TrainingProposal) => {
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, proposal } : m)));
+  }, []);
 
   const clearConversation = useCallback(async () => {
     stop();
@@ -212,12 +253,13 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       busy,
       excited: busy || poked,
       send,
+      updateProposal,
       stop,
       clearConversation,
       usage,
       refreshUsage,
     }),
-    [open, setOpen, expanded, messages, greeting, busy, poked, send, stop, clearConversation, usage, refreshUsage],
+    [open, setOpen, expanded, messages, greeting, busy, poked, send, updateProposal, stop, clearConversation, usage, refreshUsage],
   );
   return <CoachContext.Provider value={value}>{children}</CoachContext.Provider>;
 }

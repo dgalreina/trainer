@@ -11,6 +11,12 @@ import { CoachConversationService } from "./coach-conversation.service.js";
 import { CoachMessageDoc, CoachMessageSchema } from "./coach-message.schema.js";
 import { CoachUsageDoc, CoachUsageSchema } from "./coach-usage.schema.js";
 import { CoachUsageService } from "./coach-usage.service.js";
+import { AppSuggestionDoc, AppSuggestionSchema } from "./proposals/app-suggestion.schema.js";
+import { CoachJobDoc, CoachJobSchema } from "./coach-job.schema.js";
+import { CoachJobsService } from "./coach-jobs.service.js";
+import { CoachProposalDoc, CoachProposalSchema } from "./proposals/coach-proposal.schema.js";
+import { CoachProposalsService } from "./proposals/coach-proposals.service.js";
+import { TrainingTranslator } from "./proposals/training-translator.js";
 import { CoachToolsService } from "./tools/coach-tools.service.js";
 import { CoachController } from "./coach.controller.js";
 import { CoachService } from "./coach.service.js";
@@ -20,6 +26,9 @@ import { CoachService } from "./coach.service.js";
     MongooseModule.forFeature([
       { name: CoachUsageDoc.name, schema: CoachUsageSchema },
       { name: CoachMessageDoc.name, schema: CoachMessageSchema },
+      { name: CoachJobDoc.name, schema: CoachJobSchema },
+      { name: CoachProposalDoc.name, schema: CoachProposalSchema },
+      { name: AppSuggestionDoc.name, schema: AppSuggestionSchema },
     ]),
     ExercisesModule,
     ProfileModule,
@@ -29,7 +38,16 @@ import { CoachService } from "./coach.service.js";
     WeightsModule,
   ],
   controllers: [CoachController],
-  providers: [CoachService, CoachContextService, CoachConversationService, CoachToolsService, CoachUsageService],
+  providers: [
+    CoachService,
+    CoachContextService,
+    CoachConversationService,
+    CoachJobsService,
+    CoachProposalsService,
+    CoachToolsService,
+    CoachUsageService,
+    TrainingTranslator,
+  ],
   // Sin dependencia de HTTP: la Lambda del chat con streaming reutilizará CoachService.
   exports: [CoachService, CoachUsageService],
 })

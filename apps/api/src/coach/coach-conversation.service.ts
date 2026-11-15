@@ -4,11 +4,15 @@ import { COACH_MAX_STORED_MESSAGES, type CoachMessage, type CoachStoredMessage }
 import type { Model } from "mongoose";
 import { CoachMessageDoc, type CoachMessageDocument } from "./coach-message.schema.js";
 
-const toStored = (doc: CoachMessageDocument): CoachStoredMessage => ({
+/** Un mensaje guardado, con el id de la propuesta que lo acompaña (la tarjeta se completa en `CoachService.messages`). */
+export type StoredWithProposal = CoachStoredMessage & { proposalId?: string | null };
+
+const toStored = (doc: CoachMessageDocument): StoredWithProposal => ({
   id: doc.id,
   role: doc.role,
   content: doc.content,
   createdAt: doc.createdAt.toISOString(),
+  proposalId: doc.proposalId ?? null,
 });
 
 /** La conversación del usuario con el entrenador, guardada en Mongo. */
@@ -17,7 +21,7 @@ export class CoachConversationService {
   constructor(@InjectModel(CoachMessageDoc.name) private readonly model: Model<CoachMessageDoc>) {}
 
   /** Los últimos mensajes, del más antiguo al más reciente. */
-  async list(userId: string, limit = COACH_MAX_STORED_MESSAGES): Promise<CoachStoredMessage[]> {
+  async list(userId: string, limit = COACH_MAX_STORED_MESSAGES): Promise<StoredWithProposal[]> {
     const docs = await this.model.find({ userId }).sort({ createdAt: -1 }).limit(limit);
     return docs.reverse().map(toStored);
   }
@@ -36,11 +40,17 @@ export class CoachConversationService {
   }
 
   /** Guarda una vuelta completa: lo que dijo el usuario y lo que contestó el entrenador. */
-  async appendExchange(userId: string, userText: string, reply: string, usedTools = false): Promise<void> {
+  async appendExchange(
+    userId: string,
+    userText: string,
+    reply: string,
+    usedTools = false,
+    proposalId: string | null = null,
+  ): Promise<void> {
     const now = Date.now();
     await this.model.insertMany([
       { userId, role: "user", content: userText, createdAt: new Date(now) },
-      { userId, role: "assistant", content: reply, usedTools, createdAt: new Date(now + 1) },
+      { userId, role: "assistant", content: reply, usedTools, proposalId, createdAt: new Date(now + 1) },
     ]);
     await this.prune(userId);
   }

@@ -6,10 +6,11 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { AdminOverview, AdminUser, AiPlan } from "@trainer/shared";
-import type { Model } from "mongoose";
+import type { AdminOverview, AdminUser, AiPlan, AppSuggestion, SuggestionStatus } from "@trainer/shared";
+import { isValidObjectId, type Model } from "mongoose";
 import { CoachUsageService, estimateCostEur, monthKey } from "../coach/coach-usage.service.js";
 import { MONTHLY_TOKEN_CAP } from "../coach/plans.js";
+import { AppSuggestionDoc } from "../coach/proposals/app-suggestion.schema.js";
 import { ProfileDoc } from "../profile/profile.schema.js";
 import { SettingsService } from "../settings/settings.service.js";
 
@@ -26,6 +27,7 @@ export class AdminService {
     private readonly usage: CoachUsageService,
     private readonly settings: SettingsService,
     @InjectModel(ProfileDoc.name) private readonly profiles: Model<ProfileDoc>,
+    @InjectModel(AppSuggestionDoc.name) private readonly suggestionsModel: Model<AppSuggestionDoc>,
   ) {}
 
   private client() {
@@ -98,6 +100,27 @@ export class AdminService {
       },
       users,
     };
+  }
+
+  /** Las sugerencias de mejora de la app (lo que la IA no pudo representar), de más a menos frecuentes. */
+  async suggestions(resolved: boolean): Promise<AppSuggestion[]> {
+    const docs = await this.suggestionsModel
+      .find({ status: resolved ? { $ne: "open" } : "open" })
+      .sort({ count: -1, updatedAt: -1 })
+      .limit(200);
+    return docs.map((d) => ({
+      id: d.id,
+      code: d.code,
+      count: d.count,
+      examples: d.examples,
+      status: d.status,
+      lastSeenAt: d.updatedAt.toISOString(),
+    }));
+  }
+
+  async setSuggestionStatus(id: string, status: SuggestionStatus): Promise<void> {
+    if (!isValidObjectId(id)) return;
+    await this.suggestionsModel.updateOne({ _id: id }, { $set: { status } });
   }
 
   setPlan(userId: string, plan: AiPlan): Promise<void> {

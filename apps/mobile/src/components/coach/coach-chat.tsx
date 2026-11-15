@@ -19,6 +19,7 @@ import {
   useCoachIconBottom,
   useKeyboardInset,
 } from '@/components/coach/coach-layout';
+import { ProposalCard } from '@/components/coach/proposal-card';
 import { RichText } from '@/components/coach/rich-text';
 import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -50,10 +51,17 @@ const COACH_GREETING_GAP = 12;
 /** Tamaño de la colita que apunta al icono. */
 const TAIL = 14;
 
-function Bubble({ message }: { message: Pick<CoachMessage, 'role' | 'text' | 'streaming' | 'error'> }) {
+function Bubble({
+  message,
+  onRequestChanges,
+}: {
+  message: Pick<CoachMessage, 'role' | 'text' | 'streaming' | 'error'> & { id?: string; proposal?: CoachMessage['proposal'] };
+  onRequestChanges?: () => void;
+}) {
   const theme = useTheme();
   const mine = message.role === 'user';
   return (
+    <>
     <View style={[styles.row, mine ? styles.rowMine : styles.rowCoach]}>
       <View
         style={[
@@ -70,6 +78,17 @@ function Bubble({ message }: { message: Pick<CoachMessage, 'role' | 'text' | 'st
         )}
       </View>
     </View>
+    {/* Si el entrenador propone un entrenamiento, debajo de su mensaje va la tarjeta para guardarlo o pedir cambios. */}
+    {!mine && message.proposal && message.id ? (
+      <View style={[styles.row, styles.rowCoach]}>
+        <ProposalCard
+          messageId={message.id}
+          proposal={message.proposal}
+          onRequestChanges={onRequestChanges ?? (() => {})}
+        />
+      </View>
+    ) : null}
+    </>
   );
 }
 
@@ -103,6 +122,7 @@ export function CoachChat() {
   const iconBottom = useCoachIconBottom();
   const keyboard = useKeyboardInset(open && expanded);
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   const fullHeight = useRef(height);
 
@@ -167,6 +187,12 @@ export function CoachChat() {
   }, [open, setOpen]);
 
   if (!mounted) return null;
+
+  // «Pedir cambios» de una propuesta: el cuadro de texto queda listo para decir qué cambiar.
+  function requestChanges() {
+    setDraft((prev) => prev || 'Cámbiame ');
+    inputRef.current?.focus();
+  }
 
   function submit() {
     if (!draft.trim() || busy) return;
@@ -267,12 +293,13 @@ export function CoachChat() {
               </View>
             ) : null}
             {messages.map((m) => (
-              <Bubble key={m.id} message={m} />
+              <Bubble key={m.id} message={m} onRequestChanges={requestChanges} />
             ))}
           </FadingScroll>
 
           <View style={[styles.inputRow, { borderTopColor: theme.skySoft }]}>
             <TextInput
+              ref={inputRef}
               accessibilityLabel="Escribe a tu entrenador"
               value={draft}
               onChangeText={setDraft}

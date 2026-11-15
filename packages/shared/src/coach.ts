@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { TrainingProposal } from "./coach-proposal";
 
 /** Plan de IA del usuario. `gratis` no puede hablar con el entrenador; `prueba` y `pro` sí, con distinto tope. */
 export const AI_PLANS = ["gratis", "prueba", "pro"] as const;
@@ -27,6 +28,8 @@ export interface CoachStoredMessage {
   content: string;
   /** ISO 8601. */
   createdAt: string;
+  /** Si el entrenador propuso un entrenamiento en este mensaje, la tarjeta con su estado actual. */
+  proposal?: TrainingProposal;
 }
 
 /** Cuántos mensajes se guardan por usuario; al pasarse, se van borrando los más antiguos. */
@@ -34,6 +37,21 @@ export const COACH_MAX_STORED_MESSAGES = 100;
 
 export interface CoachReply {
   reply: string;
+}
+
+/**
+ * El chat es asíncrono: una respuesta con herramientas o un entrenamiento tarda más de lo que aguanta el API Gateway
+ * (30 s). La app envía el mensaje, recibe un `jobId` y pregunta cada poco hasta que está.
+ */
+export interface CoachJobStarted {
+  jobId: string;
+}
+export type CoachJobStatus = "running" | "done" | "error";
+export interface CoachJob {
+  status: CoachJobStatus;
+  reply?: string;
+  proposal?: TrainingProposal;
+  error?: { message: string; code?: string };
 }
 
 /** Cuánta IA ha usado el usuario en un mes (tokens y coste estimado, calculado por el servidor). */

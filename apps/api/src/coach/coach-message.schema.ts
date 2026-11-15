@@ -20,6 +20,10 @@ export class CoachMessageDoc {
   @Prop({ type: Boolean, default: false })
   usedTools?: boolean;
 
+  /** La propuesta de entrenamiento que acompaña a esta respuesta (la tarjeta del chat). */
+  @Prop({ type: String, default: null })
+  proposalId?: string | null;
+
   // Se pone a mano (no con `timestamps`): el mensaje del usuario y la respuesta se guardan a la vez y deben quedar en orden.
   @Prop({ type: Date, required: true })
   createdAt!: Date;

@@ -55,6 +55,81 @@ export const TOOLS: Anthropic.Tool[] = [
       "planeados (series, repeticiones y peso previsto). Úsala para hablar de lo que le toca entrenar o de su plan.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
+  {
+    name: "searchExercises",
+    description:
+      "Busca ejercicios en el catálogo de la app por nombre (tolera erratas y palabras sueltas): devuelve los que existen, " +
+      "con su categoría. Úsala al diseñar un entrenamiento para usar nombres de ejercicios que existen y ver qué opciones hay " +
+      "de un movimiento. Si no hay resultados, puedes diseñar con ese ejercicio igualmente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Nombre o parte del nombre, por ejemplo «curl femoral» o «remo»" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "proposeTraining",
+    description:
+      "Propone al usuario un entrenamiento completo que acabas de diseñar. Diséñalo como lo haría un buen entrenador, sin " +
+      "preocuparte de cómo se guarda: ejercicios por su nombre, cada serie con sus repeticiones (un número por serie) y " +
+      "peso orientativo si lo sabes, y técnicas especiales y notas en texto libre (por ejemplo «rest-pause solo en la " +
+      "última serie»). La app lo convertirá y le enseñará al usuario una tarjeta para guardarlo; no se guarda sin que él " +
+      "lo acepte. Llámala UNA vez con el entrenamiento entero.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nombre del entrenamiento, por ejemplo «Fuerza»" },
+        durationWeeks: { type: "integer", minimum: 1, maximum: 52, description: "Duración en semanas (por defecto 8)" },
+        days: {
+          type: "array",
+          description: "Un día de entreno cada uno, en orden",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Por ejemplo «Pecho + Tríceps»" },
+              restSeconds: { type: "integer", description: "Descanso entre series de este día, en segundos" },
+              exercises: {
+                type: "array",
+                description: "Los ejercicios del día, en el orden en que se hacen",
+                items: {
+                  type: "object",
+                  properties: {
+                    exercise: { type: "string", description: "Nombre del ejercicio" },
+                    sets: {
+                      type: "array",
+                      description: "Una entrada por serie, en orden",
+                      items: {
+                        type: "object",
+                        properties: {
+                          reps: { type: "integer", description: "Repeticiones de esa serie" },
+                          weightKg: { type: "number", description: "Peso orientativo en kg, solo si lo sabes" },
+                        },
+                        additionalProperties: false,
+                      },
+                    },
+                    technique: {
+                      type: "string",
+                      description: "Técnica especial en texto libre (superserie con el siguiente, rest-pause, descendente…), si la hay",
+                    },
+                    notes: { type: "string", description: "Indicaciones para ese ejercicio" },
+                  },
+                  required: ["exercise", "sets"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["exercises"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["name", "days"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 // Lo que Claude manda se valida siempre: no se fía de que respete el esquema.
@@ -69,3 +144,8 @@ export const exerciseProgressInput = z.object({
 export const weightTrendInput = z.object({
   weeks: z.number().int().min(1).max(52).default(12),
 });
+export const searchExercisesInput = z.object({
+  query: z.string().trim().min(1).max(100),
+});
+// El diseño libre lo valida el esquema compartido: es el mismo que usa el traductor.
+export { trainingDesignSchema } from "@trainer/shared";

@@ -1,4 +1,11 @@
-import { AI_PLANS, type AdminOverview, type AdminUser, type AiPlan } from '@trainer/shared';
+import {
+  AI_PLANS,
+  type AdminOverview,
+  type AdminUser,
+  type AiPlan,
+  type AppSuggestion,
+  type SuggestionStatus,
+} from '@trainer/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -70,11 +77,98 @@ function UserCard({ user, onPlan }: { user: AdminUser; onPlan: (plan: AiPlan) =>
   );
 }
 
+/** «technique_partial_sets» → «technique partial sets». */
+const codeLabel = (code: string) => code.replace(/[_:.-]+/g, ' ');
+
+/**
+ * Lo que la IA quiso hacer al diseñar entrenamientos y la app no pudo representar (una técnica solo en algunas series,
+ * un tempo, un ejercicio que falta…), de más a menos frecuente. Sirve para decidir qué mejorar. No dice quién lo pidió.
+ */
+function SuggestionsPanel() {
+  const [resolved, setResolved] = useState(false);
+  const [items, setItems] = useState<AppSuggestion[] | null>(null);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setItems(await api.get<AppSuggestion[]>(`/admin/suggestions${resolved ? '?resolved=1' : ''}`));
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }, [resolved]);
+  useEffect(() => {
+    setItems(null);
+    void load();
+  }, [load]);
+
+  async function setStatus(item: AppSuggestion, status: SuggestionStatus) {
+    try {
+      await api.patch(`/admin/suggestions/${item.id}`, { status });
+      await load();
+    } catch {
+      setError(true);
+    }
+  }
+
+  return (
+    <>
+      <View style={styles.plans}>
+        <Chip compact label="Pendientes" active={!resolved} onPress={() => setResolved(false)} />
+        <Chip compact label="Resueltas" active={resolved} onPress={() => setResolved(true)} />
+      </View>
+      {error ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          No se ha podido cargar.
+        </ThemedText>
+      ) : null}
+      {items === null ? (
+        <ThemedText themeColor="textSecondary">Cargando…</ThemedText>
+      ) : items.length === 0 ? (
+        <ThemedText themeColor="textSecondary">
+          {resolved ? 'Todavía no has resuelto ninguna.' : 'Nada pendiente: la app ha podido con todo lo que ha pedido la IA.'}
+        </ThemedText>
+      ) : (
+        items.map((item) => (
+          <Card key={item.id}>
+            <View style={styles.header}>
+              <ThemedText type="smallBold" style={styles.headerText}>
+                {codeLabel(item.code)}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                ×{item.count}
+              </ThemedText>
+            </View>
+            {item.examples.length > 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {item.examples[item.examples.length - 1]}
+              </ThemedText>
+            ) : null}
+            <ThemedText type="small" themeColor="textSecondary">
+              Última vez: {new Date(item.lastSeenAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+            </ThemedText>
+            <View style={styles.plans}>
+              {item.status === 'open' ? (
+                <>
+                  <Chip compact label="Hecha" active={false} onPress={() => void setStatus(item, 'done')} />
+                  <Chip compact label="Descartar" active={false} onPress={() => void setStatus(item, 'dismissed')} />
+                </>
+              ) : (
+                <Chip compact label="Reabrir" active={false} onPress={() => void setStatus(item, 'open')} />
+              )}
+            </View>
+          </Card>
+        ))
+      )}
+    </>
+  );
+}
+
 /**
  * «Admin» (solo administradores): quién usa la app y cuánta IA gasta cada uno este mes, y el plan de cada uno. Solo
  * números: nunca se ven conversaciones ni datos de salud de nadie.
  */
-export function AdminSection() {
+function UsersPanel() {
   const [data, setData] = useState<AdminOverview | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
@@ -176,3 +270,17 @@ const styles = StyleSheet.create({
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
   plans: { flexDirection: 'row', gap: Spacing.two },
 });
+
+/** El panel de administración: usuarios y gasto de IA, y las sugerencias de mejora de la app. */
+export function AdminSection() {
+  const [view, setView] = useState<'usuarios' | 'sugerencias'>('usuarios');
+  return (
+    <>
+      <View style={styles.plans}>
+        <Chip compact label="Usuarios" active={view === 'usuarios'} onPress={() => setView('usuarios')} />
+        <Chip compact label="Sugerencias" active={view === 'sugerencias'} onPress={() => setView('sugerencias')} />
+      </View>
+      {view === 'usuarios' ? <UsersPanel /> : <SuggestionsPanel />}
+    </>
+  );
+}

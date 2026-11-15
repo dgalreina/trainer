@@ -1,24 +1,36 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { HttpException, HttpStatus, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
-import type { AiPlan, CoachMessage, CoachUsage } from "@trainer/shared";
+import type Anthropic from "@anthropic-ai/sdk";
+import {
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import type { AiPlan, CoachJob, CoachMessage, CoachStoredMessage, CoachUsage } from "@trainer/shared";
+import { RateLimitError } from "@anthropic-ai/sdk";
 import type { AuthUser } from "../auth/current-user.decorator.js";
 import { SettingsService } from "../settings/settings.service.js";
+import { anthropic, MODEL } from "./anthropic.js";
 import { CoachContextService } from "./coach-context.service.js";
 import { CoachConversationService } from "./coach-conversation.service.js";
+import { CoachJobsService } from "./coach-jobs.service.js";
 import { CoachUsageService, estimateCostEur, monthKey } from "./coach-usage.service.js";
+import { CoachProposalsService } from "./proposals/coach-proposals.service.js";
 import { CoachToolsService } from "./tools/coach-tools.service.js";
 import { TOOLS } from "./tools/definitions.js";
 import { MONTHLY_TOKEN_CAP } from "./plans.js";
 import { SYSTEM_PROMPT, cardPrompt } from "./prompts/index.js";
 
-const MODEL = "claude-sonnet-5-5";
 /**
- * Tope de tokens de cada respuesta: acota lo que puede costar una sola llamada. Incluye los tokens de pensamiento: con
- * 600 se llegó a gastar todo pensando tras una consulta con herramientas y la respuesta salió vacía.
+ * Tope de tokens de cada respuesta: acota lo que puede costar una sola llamada. Incluye los tokens de pensamiento (con
+ * 600 se llegó a gastar todo pensando tras una consulta y la respuesta salió vacía) y el diseño de un entrenamiento,
+ * que es largo (varios días con todas sus series).
  */
-const MAX_TOKENS = 1600;
+const MAX_TOKENS = 6000;
 /** Cuántas vueltas de «Claude pide una herramienta → la ejecutamos» se permiten por mensaje. Cada vuelta es una llamada que cuesta. */
-const MAX_TOOL_TURNS = 4;
+const MAX_TOOL_TURNS = 6;
 /** Cuánta conversación se reenvía a Claude en cada llamada (en tokens estimados). La API no tiene memoria: se manda el historial. */
 const HISTORY_TOKEN_BUDGET = 6000;
 
@@ -39,69 +51,154 @@ export function trimHistory(messages: CoachMessage[], budget = HISTORY_TOKEN_BUD
   return kept;
 }
 
+/** El error de una llamada, como lo ve la app: un mensaje listo para enseñar y, a veces, un código. */
+function describeError(error: unknown): { message: string; code?: string } {
+  if (error instanceof HttpException) {
+    const body = error.getResponse();
+    if (typeof body === "object" && body !== null) {
+      const { message, code } = body as { message?: string; code?: string };
+      return { message: message ?? error.message, code };
+    }
+    return { message: error.message };
+  }
+  return { message: "No he podido responder ahora mismo. Inténtalo de nuevo." };
+}
+
 @Injectable()
 export class CoachService {
   private readonly logger = new Logger(CoachService.name);
-  private client: Anthropic | null = null;
 
   constructor(
     private readonly context: CoachContextService,
     private readonly conversation: CoachConversationService,
+    private readonly jobs: CoachJobsService,
+    private readonly proposals: CoachProposalsService,
     private readonly tools: CoachToolsService,
     private readonly usage: CoachUsageService,
     private readonly settings: SettingsService,
   ) {}
 
-  // Se crea la primera vez que hace falta: así la API arranca aunque no haya clave (y el resto de la app funciona).
-  private anthropic(): Anthropic {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new ServiceUnavailableException("El entrenador no está disponible ahora mismo.");
+  /**
+   * El usuario dice `text`. Se comprueba el plan y el tope, se crea un «trabajo» y se contesta EN SEGUNDO PLANO: una
+   * respuesta con herramientas o un entrenamiento tarda más de lo que aguanta el API Gateway (30 s). La app recibe el
+   * `jobId` y pregunta por él hasta que está. El servidor es de arranque continuo (Fargate), así que el trabajo sigue
+   * aunque la app cierre; la respuesta se guarda igualmente en la conversación.
+   */
+  async startChat(user: AuthUser, text: string): Promise<{ jobId: string }> {
+    await this.assertQuota(user);
+    await this.jobs.expireStale(user.userId);
+    let job;
+    try {
+      job = await this.jobs.create(user.userId);
+    } catch (error) {
+      // El índice único de la base de datos rechaza un segundo mensaje en marcha del mismo usuario.
+      if ((error as { code?: number }).code === 11000) {
+        throw new ConflictException({ code: "coach_busy", message: "Todavía estoy contestando tu mensaje anterior." });
+      }
+      throw error;
     }
-    return (this.client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }));
+    void this.runJob(job.id, user, text);
+    return { jobId: job.id };
+  }
+
+  private async runJob(jobId: string, user: AuthUser, text: string): Promise<void> {
+    try {
+      const { reply, proposalId } = await this.chat(user, text);
+      await this.jobs.complete(jobId, reply, proposalId);
+    } catch (error) {
+      const { message, code } = describeError(error);
+      if (!(error instanceof HttpException)) {
+        this.logger.error(`El mensaje falló: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      await this.jobs.fail(jobId, message, code).catch(() => undefined);
+    }
+  }
+
+  /** El estado de un mensaje en curso, para que la app lo consulte. */
+  async job(userId: string, jobId: string): Promise<CoachJob> {
+    const job = await this.jobs.get(userId, jobId);
+    if (!job) throw new NotFoundException("Mensaje no encontrado");
+    if (job.status === "error") {
+      return { status: "error", error: { message: job.errorMessage ?? "No he podido responder.", code: job.errorCode ?? undefined } };
+    }
+    if (job.status === "running") return { status: "running" };
+    const proposal = job.proposalId ? (await this.proposals.views(userId, [job.proposalId])).get(job.proposalId) : undefined;
+    return { status: "done", reply: job.reply ?? "", proposal };
+  }
+
+  /** Borra la conversación y las propuestas del usuario. Si hay un mensaje en marcha, no: reaparecería al terminar. */
+  async clearConversation(userId: string): Promise<void> {
+    if (await this.jobs.findRunning(userId)) {
+      throw new ConflictException({ code: "coach_busy", message: "Espera a que termine de contestarte para borrar la conversación." });
+    }
+    await this.conversation.clear(userId);
+    await this.proposals.clearAll(userId);
+  }
+
+  /** La conversación guardada, con la tarjeta de propuesta (y su estado actual) en los mensajes que la llevan. */
+  async messages(userId: string): Promise<CoachStoredMessage[]> {
+    const stored = await this.conversation.list(userId);
+    const ids = stored.flatMap((m) => (m.proposalId ? [m.proposalId] : []));
+    const views = await this.proposals.views(userId, ids);
+    return stored.map(({ proposalId, ...m }) => ({ ...m, ...(proposalId && views.has(proposalId) ? { proposal: views.get(proposalId) } : {}) }));
   }
 
   /**
-   * El usuario dice `text` y el entrenador contesta. La conversación sale de Mongo (no la manda la app) y, si todo va
-   * bien, se guarda la vuelta entera: lo que dijo el usuario y la respuesta.
-   *
-   * Si Claude necesita un dato concreto, pide una herramienta (`tool_use`): la ejecutamos con los datos del usuario, le
-   * devolvemos el resultado y repetimos hasta que responde con texto (o se acaban las vueltas).
+   * La vuelta de conversación: la conversación sale de Mongo (no la manda la app) y, si todo va bien, se guarda la vuelta
+   * entera. Si Claude necesita un dato concreto, pide una herramienta (`tool_use`): la ejecutamos con los datos del
+   * usuario, le devolvemos el resultado y repetimos hasta que responde con texto (o se acaban las vueltas).
    */
-  async chat(user: AuthUser, text: string): Promise<string> {
+  private async chat(user: AuthUser, text: string): Promise<{ reply: string; proposalId: string | null }> {
     const { userId } = user;
-    await this.assertQuota(user);
     const [card, past] = await Promise.all([this.context.buildCard(userId), this.conversation.history(userId)]);
     // Lo que se manda a Claude. Los pasos con herramientas viven solo aquí, en esta llamada: no se guardan en la conversación.
     const convo: Anthropic.MessageParam[] = trimHistory([...past, { role: "user", content: text }]);
 
     let reply = "";
     let usedTools = false;
-    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
-      const response = await this.ask(userId, card, convo, turn === MAX_TOOL_TURNS - 1);
-      if (response.stop_reason !== "tool_use") {
-        reply = this.replyFrom(response);
-        break;
-      }
+    let proposalId: string | null = null;
+    try {
+      for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+        // Cada vuelta es una llamada que cuesta: el tope mensual se vuelve a comprobar (la primera ya lo hizo `startChat`).
+        if (turn > 0) await this.assertQuota(user);
+        const response = await this.ask(userId, card, convo, turn === MAX_TOOL_TURNS - 1);
+        if (response.stop_reason !== "tool_use") {
+          reply = this.replyFrom(response);
+          break;
+        }
 
-      usedTools = true;
-      // Claude pide una o varias herramientas. Se ejecutan y todos los resultados vuelven en UN solo mensaje.
-      convo.push({ role: "assistant", content: response.content });
-      const results = await Promise.all(
-        response.content
-          .filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use")
-          .map(async (block) => ({
-            type: "tool_result" as const,
-            tool_use_id: block.id,
-            content: JSON.stringify(await this.tools.run(userId, block.name, block.input)),
-          })),
-      );
-      convo.push({ role: "user", content: results });
+        usedTools = true;
+        // Claude pide una o varias herramientas. Se ejecutan una tras otra (nunca en paralelo: una propuesta cuesta una
+        // traducción) y todos los resultados vuelven en UN solo mensaje.
+        convo.push({ role: "assistant", content: response.content });
+        const results: Anthropic.ToolResultBlockParam[] = [];
+        for (const block of response.content) {
+          if (block.type !== "tool_use") continue;
+          let content: unknown;
+          if (block.name === "proposeTraining" && proposalId) {
+            // Solo una propuesta por mensaje: la segunda no se prepara.
+            content = { error: "Ya has propuesto un entrenamiento en este mensaje. Si hay que cambiarlo, el usuario lo pedirá." };
+          } else {
+            const outcome = await this.tools.run(userId, block.name, block.input);
+            if (outcome.proposalId) proposalId = outcome.proposalId;
+            content = outcome.content;
+          }
+          results.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(content) });
+        }
+        convo.push({ role: "user", content: results });
+      }
+    } catch (error) {
+      // Si ya se había preparado una propuesta, no se pierde (ni su coste): se guarda con un texto fijo.
+      if (!proposalId) throw error;
+      this.logger.warn(`La respuesta falló tras preparar una propuesta: ${error instanceof Error ? error.message : String(error)}`);
     }
+
+    if (!reply && proposalId) reply = "Te he preparado el entrenamiento. Debajo tienes la tarjeta para guardarlo o pedirme cambios.";
     // Una respuesta vacía no se guarda: ensuciaría la conversación y el siguiente mensaje partiría de ella.
     if (!reply) throw new ServiceUnavailableException("No he podido terminar la consulta. Inténtalo de nuevo.");
 
-    await this.conversation.appendExchange(userId, text, reply, usedTools);
-    return reply;
+    await this.conversation.appendExchange(userId, text, reply, usedTools, proposalId);
+    return { reply, proposalId };
   }
 
   /** Una llamada a Claude: la ficha en el `system`, la conversación y las herramientas. Siempre se contabilizan los tokens. */
@@ -113,7 +210,7 @@ export class CoachService {
   ): Promise<Anthropic.Message> {
     let response: Anthropic.Message;
     try {
-      response = await this.anthropic().messages.create({
+      response = await anthropic().messages.create({
         model: MODEL,
         max_tokens: MAX_TOKENS,
         // Un chat no necesita razonar a fondo: sin pensamiento extra y esfuerzo bajo (más rápido y barato). Los tokens
@@ -133,7 +230,7 @@ export class CoachService {
       });
     } catch (error) {
       this.logger.error(`Anthropic falló: ${error instanceof Error ? error.message : String(error)}`);
-      if (error instanceof Anthropic.RateLimitError) {
+      if (error instanceof RateLimitError) {
         throw new HttpException(
           "El entrenador está muy solicitado. Prueba de nuevo en un momento.",
           HttpStatus.TOO_MANY_REQUESTS,

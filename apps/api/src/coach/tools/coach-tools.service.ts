@@ -1,11 +1,18 @@
 import { Injectable } from "@nestjs/common";
-import { dayLabel, mondayOfIso, trainingProgress } from "@trainer/shared";
+import { dayLabel, mondayOfIso, searchExercises, trainingProgress } from "@trainer/shared";
 import { ExercisesService } from "../../exercises/exercises.service.js";
 import { SessionsService } from "../../sessions/sessions.service.js";
 import { SettingsService } from "../../settings/settings.service.js";
 import { TrainingsService } from "../../trainings/trainings.service.js";
 import { WeightsService } from "../../weights/weights.service.js";
-import { exerciseProgressInput, recentSessionsInput, weightTrendInput } from "./definitions.js";
+import { CoachProposalsService, ProposalError } from "../proposals/coach-proposals.service.js";
+import {
+  exerciseProgressInput,
+  recentSessionsInput,
+  searchExercisesInput,
+  trainingDesignSchema,
+  weightTrendInput,
+} from "./definitions.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_PROGRESS_ROWS = 60;
@@ -18,6 +25,12 @@ const setText = (s: { reps: number; weightKg: number }) => `${s.reps}×${kg(s.we
 /** Una serie planeada: puede no tener repeticiones o peso previstos («8×—», «—×60»). */
 const plannedSetText = (s: { reps?: number; weightKg?: number }) =>
   `${s.reps ?? "—"}×${s.weightKg === undefined ? "—" : kg(s.weightKg)}`;
+
+/** Lo que devuelve una herramienta: el resultado para Claude y, si preparó un entrenamiento, el id de la propuesta. */
+export interface ToolOutcome {
+  content: unknown;
+  proposalId?: string;
+}
 
 /**
  * Ejecuta las herramientas del entrenador. Cada una lee datos del usuario con los mismos servicios que usa la app y
@@ -32,25 +45,70 @@ export class CoachToolsService {
     private readonly weights: WeightsService,
     private readonly settings: SettingsService,
     private readonly trainings: TrainingsService,
+    private readonly proposals: CoachProposalsService,
   ) {}
 
   /** Ejecuta la herramienta `name`. Un fallo no rompe el chat: se devuelve `{ error }` para que Claude lo explique. */
-  async run(userId: string, name: string, input: unknown): Promise<unknown> {
+  async run(userId: string, name: string, input: unknown): Promise<ToolOutcome> {
     try {
-      switch (name) {
-        case "getRecentSessions":
-          return await this.recentSessions(userId, recentSessionsInput.parse(input));
-        case "getExerciseProgress":
-          return await this.exerciseProgress(userId, exerciseProgressInput.parse(input));
-        case "getWeightTrend":
-          return await this.weightTrend(userId, weightTrendInput.parse(input));
-        case "getActiveTraining":
-          return await this.activeTraining(userId);
-        default:
-          return { error: `Herramienta desconocida: ${name}` };
-      }
+      if (name === "proposeTraining") return await this.proposeTraining(userId, input);
+      return { content: await this.runRead(userId, name, input) };
     } catch {
-      return { error: "No he podido consultar ese dato ahora mismo." };
+      return { content: { error: "No he podido consultar ese dato ahora mismo." } };
+    }
+  }
+
+  private async runRead(userId: string, name: string, input: unknown): Promise<unknown> {
+    switch (name) {
+      case "getRecentSessions":
+        return await this.recentSessions(userId, recentSessionsInput.parse(input));
+      case "getExerciseProgress":
+        return await this.exerciseProgress(userId, exerciseProgressInput.parse(input));
+      case "getWeightTrend":
+        return await this.weightTrend(userId, weightTrendInput.parse(input));
+      case "getActiveTraining":
+        return await this.activeTraining(userId);
+      case "searchExercises":
+        return await this.searchCatalog(userId, searchExercisesInput.parse(input));
+      default:
+        return { error: `Herramienta desconocida: ${name}` };
+    }
+  }
+
+  private async searchCatalog(userId: string, { query }: { query: string }) {
+    const found = searchExercises(await this.exercises.list(userId), query, 12);
+    if (found.length === 0) {
+      return { message: `No hay ningún ejercicio parecido a «${query}» en el catálogo. Puedes diseñar con él igualmente.` };
+    }
+    return { exercises: found.map((e) => ({ name: e.name, category: e.category })) };
+  }
+
+  /** Fase 1 → fase 2: valida el diseño libre, lo hace traducir y deja la propuesta guardada para la tarjeta del chat. */
+  private async proposeTraining(userId: string, input: unknown): Promise<ToolOutcome> {
+    const design = trainingDesignSchema.safeParse(input);
+    if (!design.success) {
+      const problem = design.error.issues[0];
+      return { content: { error: `El diseño no es válido (${problem?.path.join(".") ?? ""}: ${problem?.message ?? ""}). Corrígelo y vuelve a llamar.` } };
+    }
+    try {
+      const { proposal, substitutions } = await this.proposals.createTraining(userId, design.data);
+      const exercises = proposal.training.routines.reduce((n, r) => n + r.slots.length, 0);
+      return {
+        proposalId: proposal.id,
+        content: {
+          ok: true,
+          summary: `${proposal.training.routines.length} días, ${exercises} ejercicios, ${proposal.training.durationWeeks} semanas.`,
+          // Ejercicios que se han cambiado por otro parecido: menciónalo con naturalidad para que lo que dices coincida con la tarjeta.
+          ...(substitutions.length > 0 ? { exercisesChanged: substitutions } : {}),
+          note:
+            "La propuesta ya está lista y el usuario la ve como una tarjeta debajo de tu mensaje, con «Guardar como mi " +
+            "entrenamiento» y «Pedir cambios». Resúmesela en pocas líneas (idea general y por qué) y dile que puede guardarla " +
+            "o pedirte cambios. No digas que ya está guardada ni enumeres todos los ejercicios. Si hay exercisesChanged, di en una " +
+            "frase cuáles has sustituido y por qué (por ejemplo «el curl nórdico invertido te lo he puesto como sissy squat»).",
+        },
+      };
+    } catch (error) {
+      return { content: { error: error instanceof ProposalError ? error.message : "No he podido preparar el entrenamiento ahora mismo." } };
     }
   }
 
