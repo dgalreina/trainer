@@ -1,4 +1,4 @@
-import { type Exercise, type ExerciseCategory } from '@trainer/shared';
+import { exerciseNameKey, type Exercise, type ExerciseCategory } from '@trainer/shared';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import {
   Modal,
@@ -13,7 +13,7 @@ import {
 
 import { ExerciseMotion } from '@/components/exercise-motion';
 import { FadingScroll } from '@/components/fading-scroll';
-import { Field } from '@/components/form';
+import { Button, Field } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -39,6 +39,19 @@ export function ExercisePicker({
   onSelect: (exercise: Exercise) => void;
   onClose: () => void;
 }) {
+  const { exercises, create } = useExercises();
+  const [creating, setCreating] = useState(false);
+
+  // Si lo que se busca no existe, se ofrece crearlo (en «Otros») y elegirlo de una vez.
+  async function createAndSelect(name: string) {
+    setCreating(true);
+    try {
+      onSelect(await create(name, 'otros'));
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <ThemedView style={styles.root}>
@@ -51,7 +64,18 @@ export function ExercisePicker({
               </ThemedText>
             </Pressable>
           </View>
-          <ExerciseBrowser active={visible} onPick={onSelect} />
+          <ExerciseBrowser
+            active={visible}
+            onPick={onSelect}
+            placeholder="Buscar o crear un ejercicio…"
+            extra={(query) => {
+              const key = exerciseNameKey(query);
+              const canCreate = key.length > 0 && !exercises.some((e) => exerciseNameKey(e.name) === key);
+              return canCreate ? (
+                <Button title={`Crear «${query.trim()}» en Otros`} onPress={() => createAndSelect(query.trim())} loading={creating} />
+              ) : null;
+            }}
+          />
         </View>
       </ThemedView>
     </Modal>

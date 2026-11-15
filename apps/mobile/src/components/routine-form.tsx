@@ -1,5 +1,4 @@
 import {
-  exerciseNameKey,
   legacyTechnique,
   REST_SECONDS_OPTIONS,
   TECHNIQUES,
@@ -19,7 +18,6 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useExercises } from '@/lib/exercises';
-import { searchExercises } from '@/lib/exercise-search';
 
 // El editor trabaja con texto en los campos numéricos y lo convierte al guardar.
 interface EditorSet {
@@ -39,8 +37,6 @@ interface EditorSlot {
 }
 
 const DEFAULT_SETS = 4;
-const MIN_QUERY = 2;
-const MAX_SUGGESTIONS = 6;
 const SAVE_DELAY_MS = 700;
 
 let keyCounter = 0;
@@ -113,7 +109,9 @@ export function RoutineForm({
   const theme = useTheme();
   const { byId } = useExercises();
 
-  const [name, setName] = useState(routine.name);
+  // El nombre de la rutina va siempre en mayúsculas (también el que ya tuviera guardado).
+  const [name, setNameRaw] = useState(routine.name.toLocaleUpperCase('es'));
+  const setName = (text: string) => setNameRaw(text.toLocaleUpperCase('es'));
   const [restSeconds, setRestSeconds] = useState<number>(routine.restSeconds);
   const [slots, setSlots] = useState<EditorSlot[]>(() => fromRoutine(routine));
 
@@ -133,7 +131,7 @@ export function RoutineForm({
     return () => clearTimeout(timer);
   }, [name, restSeconds, slots, onSave]);
 
-  // Qué hueco acaba de crear el «+»: ese lleva el cursor en el buscador.
+  // Qué hueco acaba de crear el «+»: ese abre directamente el selector de ejercicios.
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const addSlot = () =>
     setSlots((prev) => {
@@ -383,8 +381,8 @@ export function RoutineForm({
         accessibilityLabel="Nombre de la rutina"
         value={name}
         onChangeText={setName}
-        autoCapitalize="sentences"
-        placeholder="Pecho + Espalda, Pierna…"
+        autoCapitalize="characters"
+        placeholder="PECHO + ESPALDA, PIERNA…"
         placeholderTextColor={theme.textSecondary}
         style={[styles.nameInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
       />
@@ -408,7 +406,7 @@ export function RoutineForm({
               onDragMove={moveDrag}
               onDragEnd={endDrag}
               onToggleSuperset={() => toggleSuperset(slot.key)}
-              autoFocusSearch={slot.key === focusKey}
+              autoOpenPicker={slot.key === focusKey}
               routineRest={restSeconds}
               exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
             />
@@ -459,7 +457,7 @@ function SlotRow({
   onDragMove,
   onDragEnd,
   onToggleSuperset,
-  autoFocusSearch,
+  autoOpenPicker,
   routineRest,
 }: {
   slot: EditorSlot;
@@ -473,18 +471,20 @@ function SlotRow({
   onDragMove: (dy: number, fingerY: number) => void;
   onDragEnd: (dy: number) => void;
   onToggleSuperset: () => void;
-  /** El cursor entra directo en el buscador (el hueco lo acaba de crear el «+»). */
-  autoFocusSearch: boolean;
+  /** Se abre el selector de ejercicios nada más aparecer (el hueco lo acaba de crear el «+»). */
+  autoOpenPicker: boolean;
   /** Descanso de la rutina: el que se hereda si el ejercicio no tiene uno propio. */
   routineRest: number;
 }) {
   const theme = useTheme();
-  const { exercises, create } = useExercises();
   const [noteOpen, setNoteOpen] = useState(Boolean(slot.notes));
   const [restOpen, setRestOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [creating, setCreating] = useState(false);
   const [picking, setPicking] = useState(false);
+  useEffect(() => {
+    if (autoOpenPicker) setPicking(true);
+    // Solo al aparecer el hueco.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Los callbacks cambian en cada render: el gesto usa siempre los últimos.
   const dragCallbacks = useRef({ onDragStart, onDragMove, onDragEnd });
@@ -504,26 +504,6 @@ function SlotRow({
       }),
     [],
   );
-
-  const key = exerciseNameKey(query);
-  const suggestions = key.length >= MIN_QUERY ? searchExercises(exercises, query, MAX_SUGGESTIONS) : [];
-  const exact = suggestions.some((e) => exerciseNameKey(e.name) === key);
-
-  function pick(exercise: Exercise) {
-    setQuery('');
-    onPick(exercise);
-  }
-
-  async function createTyped() {
-    const typed = query.trim();
-    if (!typed || creating) return;
-    setCreating(true);
-    try {
-      pick(await create(typed, 'otros'));
-    } finally {
-      setCreating(false);
-    }
-  }
 
   const hasExercise = slot.exerciseId !== null;
   const setField = (i: number, field: keyof EditorSet, text: string) =>
@@ -555,20 +535,17 @@ function SlotRow({
             </Pressable>
           </View>
         ) : (
-          <View style={[styles.searchBox, { backgroundColor: theme.backgroundSelected }]}>
+          // Ya no se escribe aquí: tocar el campo abre el selector con las ilustraciones, y ahí se busca.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Elegir ejercicio"
+            onPress={() => setPicking(true)}
+            style={[styles.searchBox, { backgroundColor: theme.backgroundSelected }]}>
             <GridButton label="Ver todos los ejercicios por grupo muscular" onPress={() => setPicking(true)} />
-            <TextInput
-              accessibilityLabel="Buscar ejercicio"
-              value={query}
-              onChangeText={setQuery}
-              onSubmitEditing={() => (suggestions[0] ? pick(suggestions[0]) : createTyped())}
-              placeholder="Escribe para buscar un ejercicio…"
-              placeholderTextColor={theme.textSecondary}
-              autoCapitalize="none"
-              autoFocus={autoFocusSearch}
-              style={[styles.search, { color: theme.text }]}
-            />
-          </View>
+            <ThemedText themeColor="textSecondary" style={styles.search}>
+              Elegir ejercicio…
+            </ThemedText>
+          </Pressable>
         )}
 
         {hasExercise && (
@@ -583,23 +560,6 @@ function SlotRow({
           </View>
         )}
       </View>
-
-      {!hasExercise && key.length >= MIN_QUERY && (
-        <View style={styles.suggestions}>
-          {suggestions.map((e) => (
-            <Pressable key={e.id} accessibilityRole="button" onPress={() => pick(e)} style={styles.suggestion}>
-              <ThemedText>{e.name}</ThemedText>
-            </Pressable>
-          ))}
-          {!exact && (
-            <Pressable accessibilityRole="button" onPress={createTyped} style={styles.suggestion}>
-              <ThemedText type="small" themeColor="primaryText">
-                {creating ? 'Guardando…' : `Añadir «${query.trim()}» como ejercicio nuevo`}
-              </ThemedText>
-            </Pressable>
-          )}
-        </View>
-      )}
 
       {hasExercise && (
         <>
@@ -726,7 +686,7 @@ function SlotRow({
         onClose={() => setPicking(false)}
         onSelect={(exercise) => {
           setPicking(false);
-          pick(exercise);
+          onPick(exercise);
         }}
       />
     </View>
@@ -774,8 +734,6 @@ const styles = StyleSheet.create({
   dragCard: { position: 'absolute', top: -8, bottom: -8, left: -12, right: -12, borderRadius: Radius.card, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   handle: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },
   handleBar: { width: 18, height: 2, borderRadius: 1 },
-  suggestions: { marginLeft: 36 },
-  suggestion: { paddingVertical: Spacing.two },
   gridRow: { flexDirection: 'row', alignItems: 'flex-start', paddingLeft: 36 },
   gridScroll: { flex: 1 },
   // Aire alrededor: el scroll recorta lo que sobresale, y el borde del campo enfocado se cortaba.

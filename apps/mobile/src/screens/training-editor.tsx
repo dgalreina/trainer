@@ -99,12 +99,16 @@ export function TrainingEditorScreen() {
     return () => clearTimeout(timer);
   }, [existing, name, startDate, weeksNumber, datesValid, update]);
 
-  /** Crea la siguiente rutina, vacía y sin nombre: «Día N» es su posición, el nombre y los ejercicios se ponen al abrirla. */
+  /** Crea la siguiente rutina (vacía y sin nombre: «Día N» es su posición) y entra directamente en ella para ponerle nombre y ejercicios. */
   async function onAddRoutine() {
     if (!existing) return;
     setError(null);
     try {
-      await addRoutine(existing.id, { name: '' });
+      const updated = await addRoutine(existing.id, { name: '' });
+      const created = updated.routines[updated.routines.length - 1];
+      if (created) {
+        router.push({ pathname: '/entrenamiento/[id]/rutina/[rid]', params: { id: existing.id, rid: created.id } });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido añadir la rutina');
     }
@@ -193,18 +197,10 @@ export function TrainingEditorScreen() {
         <>
           <View style={styles.sectionHeader}>
             <ThemedText type="smallBold">Rutinas</ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Añadir rutina"
-              onPress={onAddRoutine}
-              style={[styles.plus, { backgroundColor: theme.primary }]}>
-              <View style={[styles.plusBar, styles.plusH, { backgroundColor: theme.onPrimary }]} />
-              <View style={[styles.plusBar, styles.plusV, { backgroundColor: theme.onPrimary }]} />
-            </Pressable>
           </View>
           {existing.routines.length === 0 ? (
             <ThemedText themeColor="textSecondary">
-              Aún no tiene rutinas. Toca + para crear el Día 1, el Día 2… y luego ábrelos para ponerles nombre y ejercicios.
+              Aún no tiene rutinas. Toca + abajo para crear el Día 1, el Día 2… y entrar a ponerles nombre y ejercicios.
             </ThemedText>
           ) : (
             existing.routines.map((routine, index) => {
@@ -244,6 +240,15 @@ export function TrainingEditorScreen() {
               );
             })
           )}
+          {/* El «+» va debajo de la última rutina: crea la siguiente y entra en ella. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Añadir rutina"
+            onPress={onAddRoutine}
+            style={[styles.plus, styles.plusBottom, { backgroundColor: theme.primary }]}>
+            <View style={[styles.plusBar, styles.plusH, { backgroundColor: theme.onPrimary }]} />
+            <View style={[styles.plusBar, styles.plusV, { backgroundColor: theme.onPrimary }]} />
+          </Pressable>
           <Button variant="danger" title="Borrar entrenamiento" onPress={onDelete} />
         </>
       )}
@@ -286,6 +291,7 @@ const styles = StyleSheet.create({
   weeksText: { flex: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.two },
   plus: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  plusBottom: { alignSelf: 'center', width: 52, height: 52, borderRadius: 26 },
   plusBar: { position: 'absolute', borderRadius: 1 },
   plusH: { width: 18, height: 2.5 },
   plusV: { width: 2.5, height: 18 },
