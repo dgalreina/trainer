@@ -3,6 +3,7 @@ import { CfnOutput, Duration, Stack, type StackProps } from "aws-cdk-lib";
 import { HttpApi, HttpStage, VpcLink } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpServiceDiscoveryIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { CfnBudget } from "aws-cdk-lib/aws-budgets";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import { Port, SecurityGroup, SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
 import {
@@ -75,6 +76,13 @@ export class TrainerStack extends Stack {
     const anthropicKey = StringParameter.fromSecureStringParameterAttributes(this, "AnthropicKey", {
       parameterName: props.anthropicKeyParam,
     });
+    // El panel de administración lista los usuarios de Cognito (solo lectura, solo este user pool).
+    taskDefinition.addToTaskRolePolicy(
+      new PolicyStatement({
+        actions: ["cognito-idp:ListUsers", "cognito-idp:ListUsersInGroup"],
+        resources: [`arn:aws:cognito-idp:${this.region}:${this.account}:userpool/${props.userPoolId}`],
+      }),
+    );
     taskDefinition.addContainer("api", {
       image: ContainerImage.fromDockerImageAsset(image),
       portMappings: [{ containerPort: 3001 }],

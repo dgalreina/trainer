@@ -13,3 +13,4 @@ export * from "./session";
 export * from "./health";
 export * from "./weight-trend";
 export * from "./coach";
+export * from "./admin";

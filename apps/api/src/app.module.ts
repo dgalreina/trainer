@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
+import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { getMongoUri } from "./config/mongo-uri.js";
 import { CoachModule } from "./coach/coach.module.js";
@@ -28,6 +29,7 @@ import { WeightsModule } from "./weights/weights.module.js";
         maxPoolSize: 5,
       }),
     }),
+    AdminModule,
     AuthModule,
     CoachModule,
     DietsModule,

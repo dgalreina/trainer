@@ -181,6 +181,7 @@ export class CoachService {
     return {
       month,
       plan,
+      isAdmin: user.isAdmin,
       calls: totals.calls,
       inputTokens,
       outputTokens: totals.outputTokens,

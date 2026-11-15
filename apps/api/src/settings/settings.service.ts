@@ -48,6 +48,17 @@ export class SettingsService {
     return AI_PLANS.find((p) => p === doc?.aiPlan) ?? "gratis";
   }
 
+  /** Cambia el plan de IA (solo desde el panel de administración: la app normal no puede). */
+  async setAiPlan(userId: string, plan: AiPlan): Promise<void> {
+    await this.model.updateOne({ userId }, { $set: { aiPlan: plan } }, { upsert: true });
+  }
+
+  /** El plan guardado de varios usuarios a la vez. */
+  async aiPlans(userIds: string[]): Promise<Map<string, AiPlan>> {
+    const docs = await this.model.find({ userId: { $in: userIds } }).lean();
+    return new Map(docs.map((d) => [d.userId, AI_PLANS.find((p) => p === d.aiPlan) ?? "gratis"]));
+  }
+
   async update(userId: string, dto: UpdateUserSettings): Promise<UserSettings> {
     if (dto.activeTrainingId) {
       const exists =

@@ -67,4 +67,24 @@ export class CoachUsageService {
       cacheWriteTokens: row?.cacheWriteTokens ?? 0,
     };
   }
+
+  /** Lo gastado por cada usuario en un mes, con la última llamada. Solo números: nunca texto. */
+  async monthByUser(month = monthKey(new Date())): Promise<(UsageTotals & { userId: string; lastUsedAt: Date })[]> {
+    const { from, to } = monthRange(month);
+    const rows = await this.model.aggregate<UsageTotals & { _id: string; lastUsedAt: Date }>([
+      { $match: { createdAt: { $gte: from, $lt: to } } },
+      {
+        $group: {
+          _id: "$userId",
+          calls: { $sum: 1 },
+          inputTokens: { $sum: "$inputTokens" },
+          outputTokens: { $sum: "$outputTokens" },
+          cacheReadTokens: { $sum: "$cacheReadTokens" },
+          cacheWriteTokens: { $sum: "$cacheWriteTokens" },
+          lastUsedAt: { $max: "$createdAt" },
+        },
+      },
+    ]);
+    return rows.map(({ _id, ...rest }) => ({ userId: _id, ...rest }));
+  }
 }

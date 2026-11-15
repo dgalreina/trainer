@@ -41,6 +41,8 @@ export interface CoachUsage {
   /** Mes consultado, "AAAA-MM". */
   month: string;
   plan: AiPlan;
+  /** Es administrador (grupo `admin` de Cognito): la app le enseña el panel de administración. */
+  isAdmin: boolean;
   calls: number;
   inputTokens: number;
   outputTokens: number;

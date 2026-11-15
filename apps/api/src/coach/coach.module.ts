@@ -31,6 +31,6 @@ import { CoachService } from "./coach.service.js";
   controllers: [CoachController],
   providers: [CoachService, CoachContextService, CoachConversationService, CoachToolsService, CoachUsageService],
   // Sin dependencia de HTTP: la Lambda del chat con streaming reutilizará CoachService.
-  exports: [CoachService],
+  exports: [CoachService, CoachUsageService],
 })
 export class CoachModule {}
