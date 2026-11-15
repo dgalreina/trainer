@@ -36,7 +36,7 @@ const SUGGESTIONS = [
 /** Ancho máximo del chat y fracción de la pantalla que puede ocupar a lo alto (luego hace scroll por dentro). */
 const BUBBLE_MAX_WIDTH = 380;
 /** Alto máximo del bocadillo respecto a la pantalla completa. Es un tamaño fijo: no cambia al salir el teclado (cabe con él abierto). */
-const BUBBLE_MAX_HEIGHT_FRACTION = 0.36;
+const BUBBLE_MAX_HEIGHT_FRACTION = 0.4;
 /** Ancho máximo del saludo pequeño. */
 const GREETING_MAX_WIDTH = 300;
 /** Marca (solo web) para reconocer que un toque cae dentro del bocadillo o del icono y no cuenta como «fuera». */
