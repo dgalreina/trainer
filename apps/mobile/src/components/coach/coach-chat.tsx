@@ -96,7 +96,17 @@ export function CoachChat() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const iconBottom = useCoachIconBottom();
-  const keyboard = useKeyboardInset(open && expanded);
+  const keyboardInset = useKeyboardInset(open && expanded);
+  // En la PWA de iOS el teclado encoge la ventana entera y la medición anterior da 0: en pantallas táctiles, tener el
+  // cuadro de texto con el foco cuenta como teclado abierto (la ventana ya termina justo encima de él).
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!open || !expanded) setFocused(false);
+  }, [open, expanded]);
+  const touchScreen = Platform.OS !== 'web' || (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches);
+  const typing = keyboardInset > 0 || (focused && touchScreen);
+  // Con el teclado medido se sube hasta él; si la ventana ya se ha encogido, basta un pequeño margen.
+  const keyboard = keyboardInset;
   const [draft, setDraft] = useState('');
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -169,6 +179,7 @@ export function CoachChat() {
   }
 
   // Encima del icono; con el teclado abierto, encima del teclado.
+  // Si el teclado se mide (navegador), sube hasta él; si no, termina encima del icono, que no se tapa.
   const bottom = keyboard > 0 ? keyboard + COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
   const topLimit = insets.top + (Platform.OS === 'web' ? WebTabBarInset : Spacing.four);
   const maxHeight = Math.max(160, Math.min(height * BUBBLE_MAX_HEIGHT_FRACTION, height - bottom - topLimit));
@@ -224,10 +235,10 @@ export function CoachChat() {
             {
               bottom,
               // Con el teclado, el chat aprovecha todo el hueco que queda hasta arriba (el espacio escasea).
-              ...(keyboard > 0 ? { top: topLimit } : {}),
+              ...(typing ? { top: topLimit } : {}),
               right: COACH_EDGE,
               width: Math.min(BUBBLE_MAX_WIDTH, width - COACH_EDGE * 2),
-              ...(keyboard > 0 ? {} : { maxHeight }),
+              ...(typing ? {} : { maxHeight }),
               backgroundColor: theme.background,
               borderColor: theme.skySoft,
             },
@@ -239,7 +250,7 @@ export function CoachChat() {
             fadeBottom={false}
             fadeTop={24}
             scrollRef={scroller}
-            containerStyle={[styles.messagesBox, keyboard > 0 ? { flexGrow: 1 } : null]}
+            containerStyle={[styles.messagesBox, typing ? { flexGrow: 1 } : null]}
             style={styles.messages}
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
@@ -273,6 +284,8 @@ export function CoachChat() {
               placeholder="Escribe tu pregunta…"
               placeholderTextColor={theme.textSecondary}
               autoComplete="off"
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               multiline
               onKeyPress={(e) => {
                 // En la web, Enter envía y Mayús+Enter hace salto de línea.
@@ -301,7 +314,7 @@ export function CoachChat() {
             </Pressable>
           </View>
 
-          {keyboard === 0 ? <Tail /> : null}
+          {!typing ? <Tail /> : null}
         </Animated.View>
       )}
     </>
