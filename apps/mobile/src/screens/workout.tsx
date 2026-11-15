@@ -514,7 +514,9 @@ export function WorkoutScreen() {
                     onPress={() => addSet(entryIndex)}
                     hitSlop={8}
                     style={[styles.roundButton, { backgroundColor: theme.backgroundSelected }]}>
-                    <ThemedText style={[styles.plus, { color: theme.primaryText }]}>+</ThemedText>
+                    {/* Dos barras en vez del carácter «+»: así queda exactamente centrado en cualquier tipografía. */}
+                    <View style={[styles.plusBar, { backgroundColor: theme.primaryText }]} />
+                    <View style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: theme.primaryText }]} />
                   </Pressable>
                   <Chip
                     label="Nota"
@@ -579,7 +581,8 @@ const styles = StyleSheet.create({
   setsBlock: { gap: Spacing.two + 2 },
   exerciseActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
   roundButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  plus: { fontSize: 26, lineHeight: 30, fontWeight: '500' },
+  plusBar: { position: 'absolute', width: 18, height: 3, borderRadius: 1.5 },
+  plusBarVertical: { width: 3, height: 18 },
   feedbackText: { flex: 1 },
   feedbackInput: {
     borderRadius: Spacing.three,
