@@ -21,7 +21,7 @@ import {
 } from '@/components/coach/coach-layout';
 import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing, WebTabBarInset } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCoach, type CoachMessage } from '@/lib/coach';
 
@@ -35,7 +35,8 @@ const SUGGESTIONS = [
 
 /** Ancho máximo del chat y fracción de la pantalla que puede ocupar a lo alto (luego hace scroll por dentro). */
 const BUBBLE_MAX_WIDTH = 380;
-const BUBBLE_MAX_HEIGHT_FRACTION = 0.5;
+/** Alto máximo del bocadillo respecto a la pantalla completa. Es un tamaño fijo: no cambia al salir el teclado (cabe con él abierto). */
+const BUBBLE_MAX_HEIGHT_FRACTION = 0.36;
 /** Ancho máximo del saludo pequeño. */
 const GREETING_MAX_WIDTH = 300;
 /** Marca (solo web) para reconocer que un toque cae dentro del bocadillo o del icono y no cuenta como «fuera». */
@@ -99,6 +100,7 @@ export function CoachChat() {
   const keyboard = useKeyboardInset(open && expanded);
   const [draft, setDraft] = useState('');
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
+  const fullHeight = useRef(height);
 
   // Aparece desde el icono: crece y se aclara (y se queda montado mientras se va, para poder animar la salida).
   const [mounted, setMounted] = useState(open);
@@ -170,8 +172,10 @@ export function CoachChat() {
 
   // Encima del icono; con el teclado abierto, encima del teclado.
   const bottom = keyboard > 0 ? keyboard + COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
-  const topLimit = insets.top + (Platform.OS === 'web' ? WebTabBarInset : Spacing.four);
-  const maxHeight = Math.max(160, Math.min(height * BUBBLE_MAX_HEIGHT_FRACTION, height - bottom - topLimit));
+  const topLimit = insets.top + Spacing.two;
+  // Constante: se calcula sobre la altura completa de la pantalla (la mayor vista), no sobre la que deja el teclado.
+  fullHeight.current = Math.max(fullHeight.current, height);
+  const maxHeight = Math.max(160, Math.min(fullHeight.current * BUBBLE_MAX_HEIGHT_FRACTION, height - bottom - topLimit));
   const scale = appear.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   // Crece desde el icono: la esquina de abajo a la derecha es el origen.
   const appearStyle = { opacity: appear, transform: [{ scale }], transformOrigin: 'right bottom' } as object;
