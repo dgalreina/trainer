@@ -46,6 +46,15 @@ function FinishedTick() {
   );
 }
 
+/** Cruz gris de un ejercicio que hoy no se ha hecho (la misma cruz, sin pulsar, que el botón de la cabecera). */
+function CrossIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 6l12 12M18 6L6 18" />
+    </Svg>
+  );
+}
+
 /** Tick del botón «terminado» (dentro de un círculo). */
 function FinishIcon({ color }: { color: string }) {
   return (
@@ -249,6 +258,13 @@ export function WorkoutScreen() {
     patch((d) => ({ ...d, entries: d.entries.map((e, i) => (i === entryIndex ? { ...e, finished } : e)) }));
   }
 
+  function setEntrySkipped(entryIndex: number, skipped: boolean) {
+    patch((d) => ({
+      ...d,
+      entries: d.entries.map((e, i) => (i === entryIndex ? { ...e, skipped, finished: skipped ? false : e.finished } : e)),
+    }));
+  }
+
   function changeFeedback(entryIndex: number, text: string) {
     patch((d) => ({ ...d, entries: d.entries.map((e, i) => (i === entryIndex ? { ...e, feedback: text } : e)) }));
   }
@@ -402,12 +418,25 @@ export function WorkoutScreen() {
           <Card
             key={`${entry.exerciseId}-${entryIndex}`}
             // Un ejercicio terminado se ve atenuado, como las rutinas hechas de «Hoy».
-            style={[styles.exercise, entry.finished && styles.finishedCard]}>
+            style={[styles.exercise, (entry.finished || entry.skipped) && styles.finishedCard]}>
             <View style={styles.exerciseHeader}>
               <ThemedText type="smallBold" style={styles.exerciseTitle}>
                 {byId.get(entry.exerciseId)?.name ?? 'Ejercicio eliminado'}
               </ThemedText>
-              {entry.finished ? <FinishedTick /> : null}
+              {entry.finished ? (
+                <FinishedTick />
+              ) : entry.skipped ? (
+                <CrossIcon color={theme.textSecondary} />
+              ) : (
+                // La cruz de la cabecera: «este ejercicio no lo he hecho hoy».
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Hoy no he hecho este ejercicio"
+                  onPress={() => setEntrySkipped(entryIndex, true)}
+                  hitSlop={10}>
+                  <CrossIcon color={theme.textSecondary} />
+                </Pressable>
+              )}
             </View>
             {entry.technique && (
               <ThemedText type="small" themeColor="primaryText">
@@ -425,7 +454,7 @@ export function WorkoutScreen() {
               </ThemedText>
             ) : null}
             {/* Terminado: las series no se tocan hasta «Retomar». */}
-            <View pointerEvents={entry.finished ? 'none' : 'auto'} style={styles.setsBlock}>
+            <View pointerEvents={entry.finished || entry.skipped ? 'none' : 'auto'} style={styles.setsBlock}>
             {/* Cabecera de las columnas: mismos huecos que una fila de serie, para que cada título quede sobre su campo. */}
             <View style={styles.setRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <View style={styles.checkSpace} />
@@ -498,7 +527,14 @@ export function WorkoutScreen() {
             })}
             </View>
 
-            {entry.finished ? (
+            {entry.skipped ? (
+              <View style={styles.exerciseActions}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.feedbackText}>
+                  Hoy no lo has hecho: no se guardará.
+                </ThemedText>
+                <LinkButton title="Deshacer" onPress={() => setEntrySkipped(entryIndex, false)} />
+              </View>
+            ) : entry.finished ? (
               <View style={styles.exerciseActions}>
                 {entry.feedback?.trim() ? (
                   <ThemedText type="small" themeColor="textSecondary" style={styles.feedbackText}>

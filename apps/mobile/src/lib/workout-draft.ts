@@ -29,6 +29,8 @@ export interface DraftEntry {
   notes?: string;
   /** Lo que el usuario anota sobre cómo le ha ido el ejercicio; se guarda en la sesión. */
   feedback?: string;
+  /** No se ha hecho hoy: la tarjeta se atenúa y el ejercicio no se guarda en la sesión. Solo vive en el borrador. */
+  skipped?: boolean;
   /** El ejercicio está terminado: la tarjeta se atenúa y se bloquea hasta «Retomar». Solo vive en el borrador. */
   finished?: boolean;
 }
@@ -138,10 +140,12 @@ export function toSessionPayload(
   now: number,
   allSetsIfNoneDone: boolean,
 ): { payload: CreateWorkoutSession; summary: WorkoutSummary } | null {
-  const anyDone = draft.entries.some((e) => e.sets.some((s) => s.done));
+  // Los ejercicios que no se han hecho hoy no cuentan para nada: ni se guardan ni deciden qué series valen.
+  const done = draft.entries.filter((e) => !e.skipped);
+  const anyDone = done.some((e) => e.sets.some((s) => s.done));
   const useSet = (s: DraftSet) => (anyDone || !allSetsIfNoneDone ? s.done : true);
 
-  const entries = draft.entries
+  const entries = done
     .map((entry) => ({
       exerciseId: entry.exerciseId,
       technique: entry.technique,
