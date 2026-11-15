@@ -5,9 +5,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DietProposalCard } from '@/components/coach/diet-proposal-card';
 import { ActionButton } from '@/components/coach/proposal-button';
+import { SupersetMark } from '@/components/superset-mark';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { chainBlocks } from '@/lib/superset';
 import { api } from '@/lib/api';
 import { useCoach } from '@/lib/coach';
 import { todayISO } from '@/lib/dates';
@@ -108,15 +110,23 @@ function TrainingProposalCard({
             </Pressable>
             {open === i ? (
               <View style={styles.exercises}>
-                {routine.slots.map((slot, j) => (
-                  <View key={j} style={styles.exerciseRow}>
-                    <ThemedText type="small" style={styles.exerciseName}>
-                      {slot.exerciseName}
-                      {slot.technique ? ` (${slot.technique.toUpperCase()})` : ''}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {setsText(slot.sets)}
-                    </ThemedText>
+                {chainBlocks(routine.slots).map((block, k) => (
+                  <View key={k} style={block.length > 1 ? [styles.chain, { borderLeftColor: theme.primary }] : undefined}>
+                    {block.map(({ item: slot, index: j }, pos) => (
+                      <View key={j}>
+                        <View style={styles.exerciseRow}>
+                          <ThemedText type="small" style={styles.exerciseName}>
+                            {block.length > 1 ? `${k + 1}${String.fromCharCode(97 + pos)}  ` : ''}
+                            {slot.exerciseName}
+                            {slot.technique && slot.technique !== 'ss' ? ` (${slot.technique.toUpperCase()})` : ''}
+                          </ThemedText>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {setsText(slot.sets)}
+                          </ThemedText>
+                        </View>
+                        {pos < block.length - 1 ? <SupersetMark /> : null}
+                      </View>
+                    ))}
                   </View>
                 ))}
               </View>
@@ -183,6 +193,7 @@ const styles = StyleSheet.create({
   },
   routineTitle: { flex: 1, fontWeight: '700' },
   exercises: { gap: Spacing.one, paddingVertical: Spacing.two, paddingHorizontal: Spacing.three },
+  chain: { borderLeftWidth: 4, paddingLeft: Spacing.two, borderRadius: 4 },
   exerciseRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.three },
   exerciseName: { flex: 1 },
   actions: { gap: Spacing.two },

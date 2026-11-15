@@ -17,7 +17,9 @@ import { useScrollControl } from '@/components/scroll-control';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { SupersetMark } from '@/components/superset-mark';
 import { useExercises } from '@/lib/exercises';
+import { chainLabels, chainPosition } from '@/lib/superset';
 
 // El editor trabaja con texto en los campos numéricos y lo convierte al guardar.
 interface EditorSet {
@@ -388,17 +390,24 @@ export function RoutineForm({
       />
 
       {slots.map((slot, at) => {
+        const labels = chainLabels(slots);
         const dragging = draggingKey === slot.key;
+        const { inChain, hasNext } = chainPosition(slots, at);
         return (
           <Animated.View
             key={slot.key}
             onLayout={(e) => heights.current.set(slot.key, e.nativeEvent.layout.height)}
-            style={[styles.slotWrap, dragging && styles.slotDragging, { transform: [{ translateY: offsetOf(slot.key) }] }]}>
+            style={[
+              styles.slotWrap,
+              inChain && [styles.chained, { borderLeftColor: theme.primary }],
+              dragging && styles.slotDragging,
+              { transform: [{ translateY: offsetOf(slot.key) }] },
+            ]}>
             {/* Al arrastrar, la tarjeta lleva un fondo sólido y redondeado que tapa lo de debajo. */}
             {dragging && <View pointerEvents="none" style={[styles.dragCard, { backgroundColor: theme.background }]} />}
             <SlotRow
               slot={slot}
-              label={String(at + 1)}
+              label={labels[at]}
               onChange={(change) => updateSlot(slot.key, change)}
               onPick={(exercise) => updateSlot(slot.key, (s) => ({ ...s, exerciseId: exercise.id }))}
               onRemove={() => removeSlot(slot.key)}
@@ -410,6 +419,9 @@ export function RoutineForm({
               routineRest={restSeconds}
               exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
             />
+            {hasNext ? <SupersetMark /> : null}
+            {/* Une el filo con el del siguiente ejercicio por encima del espacio entre tarjetas. */}
+            {hasNext ? <View pointerEvents="none" style={[styles.bridge, { backgroundColor: theme.primary }]} /> : null}
           </Animated.View>
         );
       })}
@@ -647,10 +659,9 @@ function SlotRow({
               onPress={() => setRestOpen((open) => !open)}
             />
           </ChipRow>
-          {slot.technique && (
+          {slot.technique && slot.technique !== 'ss' && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.techniqueHint}>
               {TECHNIQUE_LABELS[slot.technique]}
-              {slot.technique === 'ss' ? ': encadenado con el siguiente ejercicio' : ''}
             </ThemedText>
           )}
           {noteOpen && (
@@ -730,6 +741,8 @@ const styles = StyleSheet.create({
   chosen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   chosenName: { flex: 1 },
   slotWrap: { zIndex: 0 },
+  bridge: { position: 'absolute', left: -4, bottom: -Spacing.three, width: 4, height: Spacing.three },
+  chained: { borderLeftWidth: 4, paddingLeft: Spacing.two },
   slotDragging: { zIndex: 10 },
   dragCard: { position: 'absolute', top: -8, bottom: -8, left: -12, right: -12, borderRadius: Radius.card, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   handle: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center', gap: 4 },

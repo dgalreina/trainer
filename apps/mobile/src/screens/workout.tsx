@@ -11,6 +11,8 @@ import { ThemedText } from '@/components/themed-text';
 import { COACH_COLUMN } from '@/components/coach/coach-layout';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { SupersetMark } from '@/components/superset-mark';
+import { chainBlocks, chainLabels } from '@/lib/superset';
 import { api } from '@/lib/api';
 import { beep, unlockAudio } from '@/lib/beep';
 import { confirmAction } from '@/lib/confirm';
@@ -401,6 +403,8 @@ export function WorkoutScreen() {
     </View>
   );
 
+  const labels = chainLabels(draft.entries);
+
   return (
     <Screen title={title} subtitle={training.name} stacked fade onBack={goBack} footer={footer}>
       {/* En marcha, el tiempo va en el botón «Finalizar» de abajo: aquí arriba ya no hace falta nada. */}
@@ -412,16 +416,18 @@ export function WorkoutScreen() {
           : 'Sin descanso entre series'}
       </ThemedText>
 
-      {draft.entries.map((entry, entryIndex) => {
+      {chainBlocks(draft.entries).map((block, blockIndex) => (
+        <View key={blockIndex} style={block.length > 1 ? [styles.chain, { borderLeftColor: theme.primary }] : undefined}>
+      {block.map(({ item: entry, index: entryIndex }, pos) => {
         const last = lastByExercise.get(entry.exerciseId);
         return (
+          <View key={`${entry.exerciseId}-${entryIndex}`} style={block.length > 1 ? styles.chainItem : undefined}>
           <Card
-            key={`${entry.exerciseId}-${entryIndex}`}
             // Un ejercicio terminado se ve atenuado, como las rutinas hechas de «Hoy».
             style={[styles.exercise, (entry.finished || entry.skipped) && styles.finishedCard]}>
             <View style={styles.exerciseHeader}>
               <ThemedText type="smallBold" style={styles.exerciseTitle}>
-                {byId.get(entry.exerciseId)?.name ?? 'Ejercicio eliminado'}
+                {labels[entryIndex]}{'  '}{byId.get(entry.exerciseId)?.name ?? 'Ejercicio eliminado'}
               </ThemedText>
               {entry.finished ? (
                 <FinishedTick />
@@ -438,9 +444,10 @@ export function WorkoutScreen() {
                 </Pressable>
               )}
             </View>
-            {entry.technique && (
+            {/* La superserie ya se ve en el bloque (filo, 1a/1b y marca «SUPERSERIE»). */}
+            {entry.technique && entry.technique !== 'ss' && (
               <ThemedText type="small" themeColor="primaryText">
-                {entry.technique === 'ss' ? 'Superserie con el siguiente' : TECHNIQUE_LABELS[entry.technique]}
+                {TECHNIQUE_LABELS[entry.technique]}
               </ThemedText>
             )}
             {entry.notes ? (
@@ -595,8 +602,12 @@ export function WorkoutScreen() {
               </>
             )}
           </Card>
+          {pos < block.length - 1 ? <SupersetMark /> : null}
+          </View>
         );
       })}
+        </View>
+      ))}
 
       <LinkButton title="Descartar entreno" onPress={discard} />
     </Screen>
@@ -615,6 +626,8 @@ const formatDelta = (diff: number) => `${diff > 0 ? '+' : '−'}${Math.abs(diff)
 
 const styles = StyleSheet.create({
   exercise: { gap: Spacing.two + 2 },
+  chain: { borderLeftWidth: 4, paddingLeft: Spacing.two, borderRadius: 4, gap: Spacing.one },
+  chainItem: { gap: 0 },
   finishedCard: { opacity: 0.55 },
   exerciseHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
   exerciseTitle: { flex: 1 },
