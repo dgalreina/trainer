@@ -2,19 +2,32 @@ import { ConflictException, Injectable, Logger, NotFoundException } from "@nestj
 import { InjectModel } from "@nestjs/mongoose";
 import {
   type AcceptProposal,
-  searchExercises,
+  type CoachProposal,
+  type Diet,
+  type DietDesign,
+  type DietProposal,
   type Limitation,
   type Training,
   type TrainingDesign,
   type TrainingProposal,
+  dietLimitProblem,
+  dietProposalPayloadSchema,
+  foodMacros,
+  searchExercises,
+  searchFoods,
+  sumMacros,
   trainingProposalPayloadSchema,
 } from "@trainer/shared";
 import { isValidObjectId, type Model } from "mongoose";
+import { DietsService } from "../../diets/diets.service.js";
 import { ExercisesService } from "../../exercises/exercises.service.js";
+import { FoodsService } from "../../foods/foods.service.js";
 import { SettingsService } from "../../settings/settings.service.js";
 import { TrainingsService } from "../../trainings/trainings.service.js";
 import { AppSuggestionDoc } from "./app-suggestion.schema.js";
 import { CoachProposalDoc, type CoachProposalDocument } from "./coach-proposal.schema.js";
+import { NutritionTargetsService } from "../nutrition-targets.service.js";
+import { DietTranslator } from "./diet-translator.js";
 import { TrainingTranslator } from "./training-translator.js";
 
 /** Cuántos ejemplos de cada sugerencia se guardan (los más recientes). */
@@ -28,15 +41,31 @@ export interface Substitution {
   used: string;
 }
 
+/** Un alimento del diseño que se ha cambiado por otro parecido del catálogo. */
+export interface FoodSubstitution {
+  asked: string;
+  used: string;
+}
+
 /** Un fallo al preparar la propuesta: el texto es para Claude (que se lo explica al usuario con sus palabras). */
 export class ProposalError extends Error {}
 
-const toView = (doc: CoachProposalDocument): TrainingProposal => ({
-  id: doc.id,
-  status: doc.status,
-  training: doc.training,
-  ...(doc.trainingId ? { trainingId: doc.trainingId } : {}),
-});
+const toView = (doc: CoachProposalDocument): CoachProposal =>
+  doc.kind === "diet"
+    ? {
+        kind: "diet",
+        id: doc.id,
+        status: doc.status,
+        diet: doc.diet!,
+        ...(doc.dietId ? { dietId: doc.dietId } : {}),
+      }
+    : {
+        kind: "training",
+        id: doc.id,
+        status: doc.status,
+        training: doc.training!,
+        ...(doc.trainingId ? { trainingId: doc.trainingId } : {}),
+      };
 
 /**
  * Los entrenamientos que propone el entrenador. Fase 1 (diseño libre, lo manda Claude) → fase 2 (traductor al formato de
@@ -54,6 +83,10 @@ export class CoachProposalsService {
     private readonly translator: TrainingTranslator,
     private readonly trainings: TrainingsService,
     private readonly settings: SettingsService,
+    private readonly foods: FoodsService,
+    private readonly diets: DietsService,
+    private readonly dietTranslator: DietTranslator,
+    private readonly targets: NutritionTargetsService,
   ) {}
 
   async createTraining(
@@ -128,7 +161,94 @@ export class CoachProposalsService {
         }
       }),
     );
-    return { proposal: toView(doc), substitutions };
+    return { proposal: toView(doc) as TrainingProposal, substitutions };
+  }
+
+  /**
+   * Fase 1 → fase 2 de una dieta: el traductor elige los alimentos del catálogo, el código calcula las macros y comprueba
+   * los topes duros (déficit, mínimo seguro, proteína). Si se salen, la propuesta no se guarda y el motivo vuelve al
+   * entrenador para que reajuste las cantidades.
+   */
+  async createDiet(
+    userId: string,
+    design: DietDesign,
+  ): Promise<{ proposal: DietProposal; substitutions: FoodSubstitution[] }> {
+    const nutrition = await this.targets.forUser(userId, design.goal);
+    if ("missing" in nutrition) {
+      throw new ProposalError(
+        `Faltan datos del usuario para calcular sus topes (${nutrition.missing.join(", ")}). Pídele que los complete en Yo > Mis datos antes de diseñar la dieta.`,
+      );
+    }
+
+    const catalog = await this.foods.list(userId);
+    const byId = new Map(catalog.map((f) => [f.id, f]));
+    let translated;
+    try {
+      translated = await this.dietTranslator.translate(userId, design, catalog);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "translator_error";
+      throw new ProposalError(
+        code === "translator_too_long"
+          ? "La dieta es demasiado larga para prepararla de una vez. Propón una con menos comidas o alimentos."
+          : "No he podido preparar la dieta ahora mismo.",
+      );
+    }
+
+    // La traducción solo elige alimentos: comidas, horas y gramos son los del diseño.
+    const shapeOk =
+      translated.meals.length === design.meals.length &&
+      translated.meals.every((m, i) => m.foodIds.length === design.meals[i].foods.length);
+    if (!shapeOk) throw new ProposalError("La traducción no respetó las comidas y alimentos del diseño.");
+
+    // Se conserva el orden del diseño para comparar alimentos pedidos y usados; la dieta guardada va ordenada por hora.
+    const built = design.meals.map((meal, i) => {
+      const items = meal.foods.map((f, j) => {
+        const food = byId.get(translated.meals[i].foodIds[j]);
+        if (!food) throw new ProposalError("El traductor usó un alimento que no existe en el catálogo.");
+        return { asked: f.food, food, grams: f.grams };
+      });
+      return {
+        name: meal.name,
+        time: meal.time,
+        items,
+        macros: sumMacros(items.map((it) => foodMacros(it.food, it.grams))),
+      };
+    });
+    const totals = sumMacros(built.map((m) => m.macros));
+
+    const problem = dietLimitProblem(nutrition.limits, totals);
+    if (problem) throw new ProposalError(problem);
+
+    const parsed = dietProposalPayloadSchema.safeParse({
+      name: design.name,
+      goal: design.goal,
+      meals: [...built]
+        .sort((a, b) => a.time.localeCompare(b.time))
+        .map((m) => ({
+          name: m.name,
+          time: m.time,
+          macros: m.macros,
+          items: m.items.map((it) => ({ foodId: it.food.id, foodName: it.food.name, grams: it.grams })),
+        })),
+      totals,
+    });
+    if (!parsed.success) {
+      this.logger.warn(`Dieta no válida: ${JSON.stringify(parsed.error.issues).slice(0, 500)}`);
+      throw new ProposalError("La dieta preparada no es válida.");
+    }
+
+    const doc = await this.model.create({ userId, kind: "diet", status: "pending", diet: parsed.data });
+    await this.recordLimitations(translated.limitations).catch((e) =>
+      this.logger.warn(`No se pudieron guardar las sugerencias: ${e instanceof Error ? e.message : String(e)}`),
+    );
+
+    // Alimentos cambiados por otro del catálogo (los parecidos de nombre no cuentan): el entrenador puede decírselo al usuario.
+    const substitutions: FoodSubstitution[] = built.flatMap((m) =>
+      m.items
+        .filter((it) => searchFoods([it.food], it.asked).length === 0)
+        .map((it) => ({ asked: it.asked, used: it.food.name })),
+    );
+    return { proposal: toView(doc) as DietProposal, substitutions };
   }
 
   /** Cada limitación se agrupa por su código: sube el contador y se guardan unos pocos ejemplos recientes. */
@@ -150,7 +270,7 @@ export class CoachProposalsService {
   }
 
   /** Las propuestas (con su estado actual) de estos ids, solo si son del usuario. */
-  async views(userId: string, ids: string[]): Promise<Map<string, TrainingProposal>> {
+  async views(userId: string, ids: string[]): Promise<Map<string, CoachProposal>> {
     const valid = ids.filter((id) => isValidObjectId(id));
     if (valid.length === 0) return new Map();
     const docs = await this.model.find({ _id: { $in: valid }, userId });
@@ -172,10 +292,35 @@ export class CoachProposalsService {
     throw new NotFoundException("Propuesta no encontrada");
   }
 
-  /** El usuario acepta: se crea el entrenamiento de verdad (y, si quiere, pasa a ser el actual). */
-  async accept(userId: string, id: string, { startDate, setActive }: AcceptProposal): Promise<Training> {
+  /** El usuario acepta: se crea de verdad el entrenamiento o la dieta (y, si quiere, pasa a ser el actual). */
+  async accept(userId: string, id: string, dto: AcceptProposal): Promise<Training | Diet> {
     const doc = await this.claim(userId, id, "accepted");
-    const { training } = doc;
+    return doc.kind === "diet" ? this.acceptDiet(userId, doc, dto) : this.acceptTraining(userId, doc, dto);
+  }
+
+  private async acceptDiet(userId: string, doc: CoachProposalDocument, { startDate, setActive }: AcceptProposal): Promise<Diet> {
+    const diet = doc.diet!;
+    let created: Diet;
+    try {
+      created = await this.diets.createWithMeals(
+        userId,
+        { name: diet.name, goal: diet.goal, startDate },
+        diet.meals.map((m) => ({ name: m.name, time: m.time, items: m.items.map((i) => ({ foodId: i.foodId, grams: i.grams })) })),
+      );
+    } catch (error) {
+      // No se pudo crear (por ejemplo, un alimento archivado mientras tanto): la propuesta vuelve a estar pendiente.
+      await this.model.updateOne({ _id: doc.id, userId }, { $set: { status: "pending" } });
+      throw error;
+    }
+    doc.dietId = created.id;
+    await doc.save();
+    if (setActive) await this.settings.update(userId, { activeDietId: created.id });
+    return created;
+  }
+
+  private async acceptTraining(userId: string, doc: CoachProposalDocument, { startDate, setActive }: AcceptProposal): Promise<Training> {
+    const training = doc.training!;
+    const id = doc.id;
     let created: Training;
     try {
       created = await this.trainings.createWithRoutines(

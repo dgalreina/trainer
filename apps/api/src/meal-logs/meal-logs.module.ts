@@ -9,5 +9,6 @@ import { MealLogsService } from "./meal-logs.service.js";
   imports: [MongooseModule.forFeature([{ name: MealLogDoc.name, schema: MealLogSchema }]), FoodsModule],
   controllers: [MealLogsController],
   providers: [MealLogsService],
+  exports: [MealLogsService],
 })
 export class MealLogsModule {}

@@ -157,6 +157,7 @@ export class CoachService {
     let reply = "";
     let usedTools = false;
     let proposalId: string | null = null;
+    let proposalKind: "training" | "diet" = "training";
     try {
       for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
         // Cada vuelta es una llamada que cuesta: el tope mensual se vuelve a comprobar (la primera ya lo hizo `startChat`).
@@ -175,12 +176,15 @@ export class CoachService {
         for (const block of response.content) {
           if (block.type !== "tool_use") continue;
           let content: unknown;
-          if (block.name === "proposeTraining" && proposalId) {
+          if ((block.name === "proposeTraining" || block.name === "proposeDiet") && proposalId) {
             // Solo una propuesta por mensaje: la segunda no se prepara.
-            content = { error: "Ya has propuesto un entrenamiento en este mensaje. Si hay que cambiarlo, el usuario lo pedirá." };
+            content = { error: "Ya has hecho una propuesta en este mensaje. Si hay que cambiarla, el usuario lo pedirá." };
           } else {
             const outcome = await this.tools.run(userId, block.name, block.input);
-            if (outcome.proposalId) proposalId = outcome.proposalId;
+            if (outcome.proposalId) {
+              proposalId = outcome.proposalId;
+              proposalKind = outcome.proposalKind ?? "training";
+            }
             content = outcome.content;
           }
           results.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(content) });
@@ -193,7 +197,12 @@ export class CoachService {
       this.logger.warn(`La respuesta falló tras preparar una propuesta: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    if (!reply && proposalId) reply = "Te he preparado el entrenamiento. Debajo tienes la tarjeta para guardarlo o pedirme cambios.";
+    if (!reply && proposalId) {
+      reply =
+        proposalKind === "diet"
+          ? "Te he preparado la dieta. Debajo tienes la tarjeta para guardarla o pedirme cambios."
+          : "Te he preparado el entrenamiento. Debajo tienes la tarjeta para guardarlo o pedirme cambios.";
+    }
     // Una respuesta vacía no se guarda: ensuciaría la conversación y el siguiente mensaje partiría de ella.
     if (!reply) throw new ServiceUnavailableException("No he podido terminar la consulta. Inténtalo de nuevo.");
 

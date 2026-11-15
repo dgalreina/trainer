@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import type { ProposalStatus, TrainingProposalPayload } from "@trainer/shared";
+import type { DietProposalPayload, ProposalStatus, TrainingProposalPayload } from "@trainer/shared";
 import type { HydratedDocument } from "mongoose";
 
-/** Un entrenamiento que el entrenador ha propuesto en el chat. No existe como entrenamiento hasta que el usuario lo acepta. */
+/** Un entrenamiento o una dieta que el entrenador ha propuesto en el chat. No existe de verdad hasta que el usuario lo acepta. */
 @Schema({ timestamps: true, collection: "coach_proposals" })
 export class CoachProposalDoc {
   @Prop({ type: String, required: true })
@@ -11,9 +11,21 @@ export class CoachProposalDoc {
   @Prop({ type: String, enum: ["pending", "accepted", "rejected"], default: "pending" })
   status!: ProposalStatus;
 
-  /** Ya traducido al formato de la app y validado con los esquemas de `@trainer/shared`. */
-  @Prop({ type: Object, required: true })
-  training!: TrainingProposalPayload;
+  /** Qué se propone. Las propuestas de antes de las dietas no lo llevan: son entrenamientos. */
+  @Prop({ type: String, enum: ["training", "diet"], default: "training" })
+  kind!: "training" | "diet";
+
+  /** Ya traducido al formato de la app y validado con los esquemas de `@trainer/shared` (si es un entrenamiento). */
+  @Prop({ type: Object })
+  training?: TrainingProposalPayload;
+
+  /** Lo mismo, si es una dieta. */
+  @Prop({ type: Object })
+  diet?: DietProposalPayload;
+
+  /** La dieta creada al aceptar. */
+  @Prop({ type: String, default: null })
+  dietId?: string | null;
 
   /** El entrenamiento creado al aceptar. */
   @Prop({ type: String, default: null })

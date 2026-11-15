@@ -6,6 +6,7 @@ import {
   type CoachSend,
   type CoachStoredMessage,
   type CoachUsage,
+  type Diet,
   type Training,
   acceptProposalSchema,
   coachSendSchema,
@@ -48,13 +49,13 @@ export class CoachController {
     await this.coach.clearConversation(user.userId);
   }
 
-  /** El usuario acepta el entrenamiento propuesto: se crea de verdad (y, si quiere, pasa a ser el actual). */
+  /** El usuario acepta la propuesta (entrenamiento o dieta): se crea de verdad (y, si quiere, pasa a ser la actual). */
   @Post("proposals/:id/accept")
   accept(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
     @Body(new ZodPipe(acceptProposalSchema)) body: AcceptProposal,
-  ): Promise<Training> {
+  ): Promise<Training | Diet> {
     return this.proposals.accept(user.userId, id, body);
   }
 

@@ -1,4 +1,5 @@
 import { exerciseNameKey, type Exercise } from "./exercise";
+import type { Food } from "./food";
 
 /** Palabras que no ayudan a encontrar un ejercicio («press de banca» = «press banca»). */
 const STOPWORDS = new Set(["de", "del", "la", "el", "con", "en", "a", "al", "y"]);
@@ -37,16 +38,15 @@ function wordScore(query: string, word: string): 0 | 1 | 2 {
 }
 
 /**
- * Busca ejercicios por lo escrito, perdonando erratas y palabras sueltas: «presa banca» encuentra
- * «Press de banca con barra». Todas las palabras escritas tienen que aparecer; salen antes los
- * que coinciden exactamente.
+ * Busca por nombre perdonando erratas y palabras sueltas: «presa banca» encuentra «Press de banca con barra». Todas las
+ * palabras escritas tienen que aparecer; salen antes los que coinciden exactamente.
  */
-export function searchExercises(exercises: Exercise[], query: string, limit = 8): Exercise[] {
+function searchByName<T extends { name: string }>(items: T[], query: string, limit: number): T[] {
   const wanted = words(query);
   if (wanted.length === 0) return [];
-  const scored: { exercise: Exercise; score: number }[] = [];
-  for (const exercise of exercises) {
-    const own = words(exercise.name);
+  const scored: { item: T; score: number }[] = [];
+  for (const item of items) {
+    const own = words(item.name);
     let score = 0;
     let all = true;
     for (const w of wanted) {
@@ -57,8 +57,13 @@ export function searchExercises(exercises: Exercise[], query: string, limit = 8)
       }
       score += best;
     }
-    if (all) scored.push({ exercise, score });
+    if (all) scored.push({ item, score });
   }
-  scored.sort((a, b) => b.score - a.score || a.exercise.name.localeCompare(b.exercise.name));
-  return scored.slice(0, limit).map((s) => s.exercise);
+  scored.sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name));
+  return scored.slice(0, limit).map((s) => s.item);
 }
+
+export const searchExercises = (exercises: Exercise[], query: string, limit = 8): Exercise[] =>
+  searchByName(exercises, query, limit);
+
+export const searchFoods = (foods: Food[], query: string, limit = 8): Food[] => searchByName(foods, query, limit);

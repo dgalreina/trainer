@@ -14,5 +14,6 @@ import { DietsService } from "./diets.service.js";
   ],
   controllers: [DietsController],
   providers: [DietsService],
+  exports: [DietsService],
 })
 export class DietsModule {}

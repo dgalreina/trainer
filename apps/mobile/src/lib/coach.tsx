@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { CoachJob, CoachJobStarted, CoachStoredMessage, CoachUsage, TrainingProposal } from '@trainer/shared';
+import type { CoachJob, CoachJobStarted, CoachStoredMessage, CoachProposal, CoachUsage } from '@trainer/shared';
 
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -24,7 +24,7 @@ export interface CoachMessage {
   /** Un aviso (sin conexión, tope del mes...) en vez de una respuesta: no se manda a la IA como parte de la conversación. */
   error?: boolean;
   /** El entrenamiento que el entrenador propone en este mensaje (se enseña como tarjeta). */
-  proposal?: TrainingProposal;
+  proposal?: CoachProposal;
 }
 
 /** Cada cuánto se pregunta al servidor si ya hay respuesta, y cuánto se espera como máximo (ms). */
@@ -57,7 +57,7 @@ interface CoachValue {
   excited: boolean;
   send: (text: string) => void;
   /** Cambia la propuesta de un mensaje (por ejemplo, al guardarla o descartarla). */
-  updateProposal: (messageId: string, proposal: TrainingProposal) => void;
+  updateProposal: (messageId: string, proposal: CoachProposal) => void;
   /** Corta la respuesta en curso. */
   stop: () => void;
   /** Borra toda la conversación (también en el servidor). */
@@ -180,7 +180,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController();
       abort.current = controller;
       void (async () => {
-        let result: { text: string; error?: boolean; proposal?: TrainingProposal };
+        let result: { text: string; error?: boolean; proposal?: CoachProposal };
         try {
           // El chat es asíncrono: se envía el mensaje, el servidor lo trabaja en segundo plano y aquí se pregunta por él.
           const { jobId } = await api.post<CoachJobStarted>('/coach/chat', { message: text });
@@ -231,7 +231,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     [refreshUsage],
   );
 
-  const updateProposal = useCallback((messageId: string, proposal: TrainingProposal) => {
+  const updateProposal = useCallback((messageId: string, proposal: CoachProposal) => {
     setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, proposal } : m)));
   }, []);
 

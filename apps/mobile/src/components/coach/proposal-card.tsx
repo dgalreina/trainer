@@ -1,8 +1,10 @@
-import { dayLabel, type Training, type TrainingProposal } from '@trainer/shared';
+import { dayLabel, type CoachProposal, type Training, type TrainingProposal } from '@trainer/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { DietProposalCard } from '@/components/coach/diet-proposal-card';
+import { ActionButton } from '@/components/coach/proposal-button';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -15,41 +17,11 @@ import { useTrainings } from '@/lib/trainings';
 /** «4 × 10-10-9-8»: las series de un ejercicio de un vistazo. */
 const setsText = (sets: { reps?: number }[]) => `${sets.length} × ${sets.map((s) => s.reps ?? '?').join('-')}`;
 
-function ActionButton({
-  label,
-  onPress,
-  kind = 'primary',
-  disabled,
-}: {
-  label: string;
-  onPress: () => void;
-  kind?: 'primary' | 'secondary';
-  disabled?: boolean;
-}) {
-  const theme = useTheme();
-  const primary = kind === 'primary';
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={[
-        styles.button,
-        primary ? { backgroundColor: theme.teal } : { borderColor: theme.sky, borderWidth: 1 },
-        disabled && { opacity: 0.5 },
-      ]}>
-      <ThemedText type="smallBold" style={{ color: primary ? theme.onPrimary : theme.aiText }}>
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
-}
-
 /**
  * El entrenamiento que propone el entrenador, como tarjeta bajo su mensaje. Nada se guarda hasta que el usuario pulsa
  * «Guardar como mi entrenamiento». Ya guardada, se puede abrir o marcar como actual; descartada, queda una línea discreta.
  */
-export function ProposalCard({
+function TrainingProposalCard({
   messageId,
   proposal,
   onRequestChanges,
@@ -215,12 +187,21 @@ const styles = StyleSheet.create({
   exerciseName: { flex: 1 },
   actions: { gap: Spacing.two },
   row: { flexDirection: 'row', gap: Spacing.two },
-  button: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    paddingVertical: Spacing.two + 2,
-    paddingHorizontal: Spacing.three,
-  },
 });
+
+/** La tarjeta de lo que propone el entrenador en el chat: un entrenamiento o una dieta. */
+export function ProposalCard({
+  messageId,
+  proposal,
+  onRequestChanges,
+}: {
+  messageId: string;
+  proposal: CoachProposal;
+  onRequestChanges: () => void;
+}) {
+  return proposal.kind === 'diet' ? (
+    <DietProposalCard messageId={messageId} proposal={proposal} onRequestChanges={onRequestChanges} />
+  ) : (
+    <TrainingProposalCard messageId={messageId} proposal={proposal} onRequestChanges={onRequestChanges} />
+  );
+}

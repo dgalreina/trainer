@@ -1,6 +1,9 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { DietsModule } from "../diets/diets.module.js";
 import { ExercisesModule } from "../exercises/exercises.module.js";
+import { FoodsModule } from "../foods/foods.module.js";
+import { MealLogsModule } from "../meal-logs/meal-logs.module.js";
 import { ProfileModule } from "../profile/profile.module.js";
 import { SessionsModule } from "../sessions/sessions.module.js";
 import { SettingsModule } from "../settings/settings.module.js";
@@ -16,6 +19,8 @@ import { CoachJobDoc, CoachJobSchema } from "./coach-job.schema.js";
 import { CoachJobsService } from "./coach-jobs.service.js";
 import { CoachProposalDoc, CoachProposalSchema } from "./proposals/coach-proposal.schema.js";
 import { CoachProposalsService } from "./proposals/coach-proposals.service.js";
+import { DietTranslator } from "./proposals/diet-translator.js";
+import { NutritionTargetsService } from "./nutrition-targets.service.js";
 import { TrainingTranslator } from "./proposals/training-translator.js";
 import { CoachToolsService } from "./tools/coach-tools.service.js";
 import { CoachController } from "./coach.controller.js";
@@ -30,7 +35,10 @@ import { CoachService } from "./coach.service.js";
       { name: CoachProposalDoc.name, schema: CoachProposalSchema },
       { name: AppSuggestionDoc.name, schema: AppSuggestionSchema },
     ]),
+    DietsModule,
     ExercisesModule,
+    FoodsModule,
+    MealLogsModule,
     ProfileModule,
     SessionsModule,
     SettingsModule,
@@ -46,6 +54,8 @@ import { CoachService } from "./coach.service.js";
     CoachProposalsService,
     CoachToolsService,
     CoachUsageService,
+    DietTranslator,
+    NutritionTargetsService,
     TrainingTranslator,
   ],
   // Sin dependencia de HTTP: la Lambda del chat con streaming reutilizará CoachService.

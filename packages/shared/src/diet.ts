@@ -183,3 +183,32 @@ export function calculateTargets(input: TargetInput): DailyTargets | null {
     raisedToSafeMinimum: adjustment < 1 && kcal > wanted,
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Topes duros de una dieta propuesta (los comprueba el código, nunca la IA)
+
+// Solo hay tope por abajo (decidido el 2026-11-16): por arriba no se limita ni calorías ni proteína.
+
+export interface DietLimits {
+  /** Calorías mínimas del día: ni un déficit de más del 25 % ni por debajo del mínimo seguro. */
+  minKcal: number;
+}
+
+/** Los topes de una dieta para esta persona; null si faltan datos del perfil. */
+export function dietLimits(input: Omit<TargetInput, "goal"> & { goal?: Goal }): DietLimits | null {
+  const targets = calculateTargets({ ...input, goal: input.goal ?? "mantener" });
+  if (!targets || !input.sex || !input.weightKg) return null;
+  const safeMin = Math.min(Math.max(MIN_KCAL[input.sex], targets.bmr), targets.tdee);
+  const goal = input.goal ?? "mantener";
+  // Coherente con el objetivo: ganar músculo nunca por debajo del gasto.
+  const minKcal = Math.ceil(Math.max(targets.tdee * (1 - MAX_DEFICIT), safeMin));
+  return { minKcal: goal === "ganar_musculo" ? Math.max(minKcal, targets.tdee) : minKcal };
+}
+
+/** Por qué unos totales se salen de los topes (texto para el entrenador), o null si están dentro. */
+export function dietLimitProblem(limits: DietLimits, totals: Macros): string | null {
+  if (totals.kcal < limits.minKcal) {
+    return `La dieta suma ${totals.kcal} kcal al día y el mínimo seguro para esta persona es ${limits.minKcal}. Sube las cantidades.`;
+  }
+  return null;
+}

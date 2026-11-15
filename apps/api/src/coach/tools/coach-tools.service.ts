@@ -1,15 +1,31 @@
 import { Injectable } from "@nestjs/common";
-import { dayLabel, mondayOfIso, searchExercises, trainingProgress } from "@trainer/shared";
+import {
+  dayLabel,
+  dietMacros,
+  mondayOfIso,
+  searchExercises,
+  searchFoods,
+  sumMacros,
+  trainingProgress,
+} from "@trainer/shared";
+import { DietsService } from "../../diets/diets.service.js";
 import { ExercisesService } from "../../exercises/exercises.service.js";
+import { FoodsService } from "../../foods/foods.service.js";
+import { MealLogsService } from "../../meal-logs/meal-logs.service.js";
 import { SessionsService } from "../../sessions/sessions.service.js";
 import { SettingsService } from "../../settings/settings.service.js";
 import { TrainingsService } from "../../trainings/trainings.service.js";
 import { WeightsService } from "../../weights/weights.service.js";
+import { NutritionTargetsService } from "../nutrition-targets.service.js";
 import { CoachProposalsService, ProposalError } from "../proposals/coach-proposals.service.js";
 import {
+  dietDesignSchema,
+  dietTargetsInput,
   exerciseProgressInput,
+  nutritionSummaryInput,
   recentSessionsInput,
   searchExercisesInput,
+  searchFoodsInput,
   trainingDesignSchema,
   weightTrendInput,
 } from "./definitions.js";
@@ -30,6 +46,7 @@ const plannedSetText = (s: { reps?: number; weightKg?: number }) =>
 export interface ToolOutcome {
   content: unknown;
   proposalId?: string;
+  proposalKind?: "training" | "diet";
 }
 
 /**
@@ -46,12 +63,17 @@ export class CoachToolsService {
     private readonly settings: SettingsService,
     private readonly trainings: TrainingsService,
     private readonly proposals: CoachProposalsService,
+    private readonly foods: FoodsService,
+    private readonly diets: DietsService,
+    private readonly mealLogs: MealLogsService,
+    private readonly nutrition: NutritionTargetsService,
   ) {}
 
   /** Ejecuta la herramienta `name`. Un fallo no rompe el chat: se devuelve `{ error }` para que Claude lo explique. */
   async run(userId: string, name: string, input: unknown): Promise<ToolOutcome> {
     try {
       if (name === "proposeTraining") return await this.proposeTraining(userId, input);
+      if (name === "proposeDiet") return await this.proposeDiet(userId, input);
       return { content: await this.runRead(userId, name, input) };
     } catch {
       return { content: { error: "No he podido consultar ese dato ahora mismo." } };
@@ -70,6 +92,14 @@ export class CoachToolsService {
         return await this.activeTraining(userId);
       case "searchExercises":
         return await this.searchCatalog(userId, searchExercisesInput.parse(input));
+      case "getDietTargets":
+        return await this.dietTargets(userId, dietTargetsInput.parse(input));
+      case "searchFoods":
+        return await this.searchFoodCatalog(userId, searchFoodsInput.parse(input));
+      case "getNutritionSummary":
+        return await this.nutritionSummary(userId, nutritionSummaryInput.parse(input));
+      case "getActiveDiet":
+        return await this.activeDiet(userId);
       default:
         return { error: `Herramienta desconocida: ${name}` };
     }
@@ -95,6 +125,7 @@ export class CoachToolsService {
       const exercises = proposal.training.routines.reduce((n, r) => n + r.slots.length, 0);
       return {
         proposalId: proposal.id,
+        proposalKind: "training" as const,
         content: {
           ok: true,
           summary: `${proposal.training.routines.length} días, ${exercises} ejercicios, ${proposal.training.durationWeeks} semanas.`,
@@ -110,6 +141,112 @@ export class CoachToolsService {
     } catch (error) {
       return { content: { error: error instanceof ProposalError ? error.message : "No he podido preparar el entrenamiento ahora mismo." } };
     }
+  }
+
+  /** Fase 1 → fase 2 de una dieta (ver `CoachProposalsService.createDiet`). Los topes los comprueba el código. */
+  private async proposeDiet(userId: string, input: unknown): Promise<ToolOutcome> {
+    const design = dietDesignSchema.safeParse(input);
+    if (!design.success) {
+      const problem = design.error.issues[0];
+      return { content: { error: `El diseño no es válido (${problem?.path.join(".") ?? ""}: ${problem?.message ?? ""}). Corrígelo y vuelve a llamar.` } };
+    }
+    try {
+      const { proposal, substitutions } = await this.proposals.createDiet(userId, design.data);
+      const { totals, meals } = proposal.diet;
+      return {
+        proposalId: proposal.id,
+        proposalKind: "diet" as const,
+        content: {
+          ok: true,
+          // Estas cifras las ha calculado la app con el catálogo: son las que ve el usuario en la tarjeta. No hagas cuentas propias.
+          totalsPerDay: totals,
+          meals: meals.map((m) => ({ name: m.name, time: m.time, kcal: m.macros.kcal })),
+          ...(substitutions.length > 0 ? { foodsChanged: substitutions } : {}),
+          note:
+            "La propuesta ya está lista y el usuario la ve como una tarjeta debajo de tu mensaje, con «Guardar como mi " +
+            "dieta» y «Pedir cambios». Resúmesela en pocas líneas (idea general, reparto de comidas y los totales de totalsPerDay) " +
+            "y dile que puede guardarla o pedirte cambios. No digas que ya está guardada ni enumeres todos los alimentos. Si " +
+            "hay foodsChanged, di en una frase cuáles has sustituido.",
+        },
+      };
+    } catch (error) {
+      return { content: { error: error instanceof ProposalError ? error.message : "No he podido preparar la dieta ahora mismo." } };
+    }
+  }
+
+  private async dietTargets(userId: string, { goal }: { goal?: "perder_grasa" | "mantener" | "ganar_musculo" }) {
+    const result = await this.nutrition.forUser(userId, goal);
+    if ("missing" in result) {
+      return {
+        missing: result.missing,
+        message: "Faltan estos datos del usuario. No diseñes la dieta todavía: pídeselos (los rellena en Yo > Mis datos, y el peso en Yo > Mi peso).",
+      };
+    }
+    const { targets, limits } = result;
+    return {
+      goal: result.goal,
+      suggestedPerDay: { kcal: targets.kcal, proteinG: targets.protein, carbsG: targets.carbs, fatG: targets.fat },
+      hardLimitsPerDay: { minKcal: limits.minKcal },
+      maintenanceKcal: targets.tdee,
+      note: "Son orientativos. Diseña dentro de los topes duros; la app rechaza lo que se salga.",
+    };
+  }
+
+  private async searchFoodCatalog(userId: string, { query }: { query: string }) {
+    const found = searchFoods(await this.foods.list(userId), query, 10);
+    if (found.length === 0) {
+      return { message: `No hay ningún alimento parecido a «${query}» en el catálogo. Puedes diseñar con él igualmente.` };
+    }
+    return {
+      foods: found.map((f) => ({
+        name: f.name,
+        category: f.category,
+        per100g: { kcal: f.kcal, proteinG: f.protein, carbsG: f.carbs, fatG: f.fat },
+        ...(f.portions.length > 0 ? { portions: f.portions.map((p) => `${p.name} = ${p.grams} g`) } : {}),
+      })),
+    };
+  }
+
+  private async nutritionSummary(userId: string, { days }: { days: number }) {
+    const logs = (await this.mealLogs.list(userId, daysAgo(days), new Date(Date.now() + DAY_MS))).filter((l) => !l.skipped);
+    if (logs.length === 0) return { message: `No hay comidas registradas en los últimos ${days} días.` };
+    const byDay = new Map<string, typeof logs>();
+    for (const log of logs) {
+      const day = log.date.slice(0, 10);
+      byDay.set(day, [...(byDay.get(day) ?? []), log]);
+    }
+    const perDay = [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, list]) => {
+        const total = sumMacros(list.flatMap((l) => l.items.map((i) => ({ kcal: i.kcal, protein: i.protein, carbs: i.carbs, fat: i.fat }))));
+        return { date, meals: list.length, kcal: total.kcal, proteinG: total.protein, carbsG: total.carbs, fatG: total.fat };
+      });
+    const n = perDay.length;
+    const avg = (pick: (d: (typeof perDay)[number]) => number) => Math.round(perDay.reduce((a, d) => a + pick(d), 0) / n);
+    return {
+      note: "Solo cuentan los días con comidas registradas; un día sin registro no significa que no comiera.",
+      daysWithRecords: n,
+      average: { kcal: avg((d) => d.kcal), proteinG: avg((d) => d.proteinG), carbsG: avg((d) => d.carbsG), fatG: avg((d) => d.fatG) },
+      perDay,
+    };
+  }
+
+  private async activeDiet(userId: string) {
+    const settings = await this.settings.get(userId);
+    if (!settings.activeDietId) return { message: "El usuario no tiene una dieta asignada." };
+    const diet = await this.diets.get(userId, settings.activeDietId).catch(() => null);
+    if (!diet) return { message: "El usuario no tiene una dieta asignada." };
+    const catalog = new Map((await this.foods.list(userId)).map((f) => [f.id, f]));
+    return {
+      name: diet.name,
+      goal: diet.goal,
+      totalsPerDay: dietMacros(diet, catalog),
+      meals: diet.meals.map((m) => ({
+        name: m.name,
+        time: m.time,
+        foods: m.items.map((i) => `${catalog.get(i.foodId)?.name ?? "Alimento"} ${i.grams} g`),
+      })),
+    };
   }
 
   /** id → nombre de todos los ejercicios visibles para el usuario. */

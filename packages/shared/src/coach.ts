@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { TrainingProposal } from "./coach-proposal";
+import type { CoachProposal } from "./coach-proposal";
 
 /** Plan de IA del usuario. `gratis` no puede hablar con el entrenador; `prueba` y `pro` sí, con distinto tope. */
 export const AI_PLANS = ["gratis", "prueba", "pro"] as const;
@@ -29,7 +29,7 @@ export interface CoachStoredMessage {
   /** ISO 8601. */
   createdAt: string;
   /** Si el entrenador propuso un entrenamiento en este mensaje, la tarjeta con su estado actual. */
-  proposal?: TrainingProposal;
+  proposal?: CoachProposal;
 }
 
 /** Cuántos mensajes se guardan por usuario; al pasarse, se van borrando los más antiguos. */
@@ -50,7 +50,7 @@ export type CoachJobStatus = "running" | "done" | "error";
 export interface CoachJob {
   status: CoachJobStatus;
   reply?: string;
-  proposal?: TrainingProposal;
+  proposal?: CoachProposal;
   error?: { message: string; code?: string };
 }
 

@@ -62,6 +62,12 @@ export class DietsService {
     return toDiet(await this.model.create({ userId, ...dto }));
   }
 
+  /** Crea la dieta con todas sus comidas de una vez (por ejemplo, al aceptar la propuesta del entrenador). */
+  async createWithMeals(userId: string, dto: CreateDiet, meals: CreateMeal[]): Promise<Diet> {
+    await this.foods.assertVisible(userId, meals.flatMap((m) => m.items.map((i) => i.foodId)));
+    return toDiet(await this.model.create({ userId, ...dto, meals }));
+  }
+
   async update(userId: string, id: string, dto: UpdateDiet): Promise<Diet> {
     const doc = await this.findOwn(userId, id);
     if (dto.name !== undefined) doc.name = dto.name;

@@ -130,6 +130,95 @@ export const TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getDietTargets",
+    description:
+      "Los datos para diseñar una dieta a esta persona, calculados por la app: sus calorías y macros orientativos de cada " +
+      "día y los topes duros (mínimo y máximo de calorías, máximo de proteína). Si faltan datos de su perfil (peso, altura, " +
+      "edad, sexo, actividad u objetivo) devuelve cuáles faltan: entonces NO diseñes la dieta, pídeselos. Llámala SIEMPRE " +
+      "antes de proponer una dieta.",
+    input_schema: {
+      type: "object",
+      properties: {
+        goal: { type: "string", enum: ["perder_grasa", "mantener", "ganar_musculo"], description: "Solo si el usuario quiere un objetivo distinto al de su perfil" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "searchFoods",
+    description:
+      "Busca alimentos en el catálogo de la app por nombre (tolera erratas y palabras sueltas): devuelve los que existen " +
+      "con sus calorías y macros por 100 g y sus porciones caseras (por ejemplo «1 huevo» = 58 g). Úsala al diseñar una " +
+      "dieta para usar alimentos que existen y para saber cuántos gramos son una unidad.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Nombre o parte del nombre, por ejemplo «pechuga» o «arroz»" } },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "getNutritionSummary",
+    description:
+      "Lo que ha comido el usuario en los últimos días según lo que ha registrado: por día, calorías y macros totales y " +
+      "cuántas comidas; y la media de los días con registro. Úsala para hablar de cómo está comiendo.",
+    input_schema: {
+      type: "object",
+      properties: { days: { type: "integer", minimum: 1, maximum: 28, description: "Cuántos días hacia atrás (por defecto 7)" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "getActiveDiet",
+    description:
+      "La dieta que el usuario tiene como actual: nombre, objetivo, comidas con su hora y alimentos con gramos, y los " +
+      "totales del día. Úsala para hablar de su dieta o para modificarla.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "proposeDiet",
+    description:
+      "Propone al usuario una dieta completa (un día tipo) que acabas de diseñar. Diseña las comidas con su hora y, en " +
+      "cada una, los alimentos por su nombre con los GRAMOS de cada uno (no pongas calorías ni macros: las calcula la app). " +
+      "La app comprueba los topes: si la dieta se sale, te devuelve el motivo y debes ajustar las cantidades y volver a " +
+      "llamar. Se le enseña al usuario una tarjeta para guardarla; no se guarda sin que la acepte. Llámala UNA vez con la " +
+      "dieta entera.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Nombre de la dieta, por ejemplo «Definición 2200»" },
+        goal: { type: "string", enum: ["perder_grasa", "mantener", "ganar_musculo"] },
+        meals: {
+          type: "array",
+          description: "Las comidas del día",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Por ejemplo «Desayuno»" },
+              time: { type: "string", description: "Hora «HH:MM», por ejemplo «08:30»" },
+              foods: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    food: { type: "string", description: "Nombre del alimento" },
+                    grams: { type: "number", description: "Gramos de ese alimento" },
+                  },
+                  required: ["food", "grams"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["name", "time", "foods"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["name", "goal", "meals"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 // Lo que Claude manda se valida siempre: no se fía de que respete el esquema.
@@ -147,5 +236,8 @@ export const weightTrendInput = z.object({
 export const searchExercisesInput = z.object({
   query: z.string().trim().min(1).max(100),
 });
+export const searchFoodsInput = searchExercisesInput;
+export const dietTargetsInput = z.object({ goal: z.enum(["perder_grasa", "mantener", "ganar_musculo"]).optional() });
+export const nutritionSummaryInput = z.object({ days: z.number().int().min(1).max(28).default(7) });
 // El diseño libre lo valida el esquema compartido: es el mismo que usa el traductor.
-export { trainingDesignSchema } from "@trainer/shared";
+export { dietDesignSchema, trainingDesignSchema } from "@trainer/shared";
