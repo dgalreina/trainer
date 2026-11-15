@@ -57,3 +57,21 @@ export function useKeyboardInset(active: boolean): number {
   }, [active]);
   return inset;
 }
+
+/**
+ * Alto (px) de lo que realmente se ve en la web: la «vista visual», que sí se encoge cuando sale el teclado (en la PWA de
+ * iOS, `innerHeight` y las medidas de la página no siempre lo hacen a tiempo). En nativo devuelve null: se usa el de la ventana.
+ */
+export function useVisibleHeight(): number | null {
+  const [visible, setVisible] = useState<number | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => setVisible(Math.round(viewport.height));
+    update();
+    viewport.addEventListener('resize', update);
+    return () => viewport.removeEventListener('resize', update);
+  }, []);
+  return visible;
+}
