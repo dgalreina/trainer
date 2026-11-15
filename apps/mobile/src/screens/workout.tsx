@@ -1,10 +1,11 @@
 import { routineTitle, TECHNIQUE_LABELS, type PerformedSet, type WorkoutSession } from '@trainer/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Vibration, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, Vibration, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
-import { Button, ErrorText, LinkButton, NumberInput } from '@/components/form';
+import { Button, Chip, ErrorText, LinkButton, NumberInput } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { COACH_COLUMN } from '@/components/coach/coach-layout';
@@ -20,6 +21,7 @@ import { useTrainings } from '@/lib/trainings';
 import {
   buildDraft,
   draftKey,
+  FEEDBACK_MAX_LENGTH,
   formatClock,
   lastPerformed,
   parseDraft,
@@ -33,6 +35,25 @@ import {
 const REST_DONE_VISIBLE_MS = 4000;
 /** Cuánto se ajusta el descanso con los botones −15 / +15. */
 const REST_STEP_MS = 15_000;
+
+/** Tick gris de un ejercicio terminado (el mismo gesto que las rutinas hechas de «Hoy»). */
+function FinishedTick() {
+  const theme = useTheme();
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4 12.5l5 5L20 6.5" />
+    </Svg>
+  );
+}
+
+/** Tick del botón «terminado» (dentro de un círculo). */
+function FinishIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4 12.5l5 5L20 6.5" />
+    </Svg>
+  );
+}
 
 /** Reloj que se actualiza cada `ms` mientras `active`; devuelve la hora actual en ms. */
 function useNow(active: boolean, ms: number): number {
@@ -70,6 +91,8 @@ export function WorkoutScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState<WorkoutSummary | null>(null);
+  // Ejercicios con el campo de nota abierto (por posición).
+  const [noteOpen, setNoteOpen] = useState<Set<number>>(new Set());
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -211,6 +234,14 @@ export function WorkoutScreen() {
         return { ...e, sets: [...e.sets, { reps: previous.reps, weightKg: previous.weightKg, done: false }] };
       }),
     }));
+  }
+
+  function setEntryFinished(entryIndex: number, finished: boolean) {
+    patch((d) => ({ ...d, entries: d.entries.map((e, i) => (i === entryIndex ? { ...e, finished } : e)) }));
+  }
+
+  function changeFeedback(entryIndex: number, text: string) {
+    patch((d) => ({ ...d, entries: d.entries.map((e, i) => (i === entryIndex ? { ...e, feedback: text } : e)) }));
   }
 
   function removeSet(entryIndex: number, setIndex: number) {
@@ -363,8 +394,16 @@ export function WorkoutScreen() {
       {draft.entries.map((entry, entryIndex) => {
         const last = lastByExercise.get(entry.exerciseId);
         return (
-          <Card key={`${entry.exerciseId}-${entryIndex}`} style={styles.exercise}>
-            <ThemedText type="smallBold">{byId.get(entry.exerciseId)?.name ?? 'Ejercicio eliminado'}</ThemedText>
+          <Card
+            key={`${entry.exerciseId}-${entryIndex}`}
+            // Un ejercicio terminado se ve atenuado, como las rutinas hechas de «Hoy».
+            style={[styles.exercise, entry.finished && styles.finishedCard]}>
+            <View style={styles.exerciseHeader}>
+              <ThemedText type="smallBold" style={styles.exerciseTitle}>
+                {byId.get(entry.exerciseId)?.name ?? 'Ejercicio eliminado'}
+              </ThemedText>
+              {entry.finished ? <FinishedTick /> : null}
+            </View>
             {entry.technique && (
               <ThemedText type="small" themeColor="primaryText">
                 {entry.technique === 'ss' ? 'Superserie con el siguiente' : TECHNIQUE_LABELS[entry.technique]}
@@ -380,6 +419,8 @@ export function WorkoutScreen() {
                 {entry.restSeconds === 0 ? 'Sin descanso en este ejercicio' : `Descanso de este ejercicio: ${entry.restSeconds} s`}
               </ThemedText>
             ) : null}
+            {/* Terminado: las series no se tocan hasta «Retomar». */}
+            <View pointerEvents={entry.finished ? 'none' : 'auto'} style={styles.setsBlock}>
             {/* Cabecera de las columnas: mismos huecos que una fila de serie, para que cada título quede sobre su campo. */}
             <View style={styles.setRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <View style={styles.checkSpace} />
@@ -450,7 +491,66 @@ export function WorkoutScreen() {
               </View>
               );
             })}
-            <LinkButton title="+ Serie" onPress={() => addSet(entryIndex)} />
+            </View>
+
+            {entry.finished ? (
+              <View style={styles.exerciseActions}>
+                {entry.feedback?.trim() ? (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.feedbackText}>
+                    {entry.feedback.trim()}
+                  </ThemedText>
+                ) : (
+                  <View style={styles.feedbackText} />
+                )}
+                <LinkButton title="Retomar" onPress={() => setEntryFinished(entryIndex, false)} />
+              </View>
+            ) : (
+              <>
+                {/* Izquierda «+» (otra serie), en medio la nota sobre cómo ha ido, derecha «terminado». */}
+                <View style={styles.exerciseActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Añadir serie"
+                    onPress={() => addSet(entryIndex)}
+                    hitSlop={8}
+                    style={[styles.roundButton, { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText style={[styles.plus, { color: theme.primaryText }]}>+</ThemedText>
+                  </Pressable>
+                  <Chip
+                    label="Nota"
+                    active={noteOpen.has(entryIndex) || !!entry.feedback?.trim()}
+                    onPress={() =>
+                      setNoteOpen((open) => {
+                        const next = new Set(open);
+                        if (next.has(entryIndex)) next.delete(entryIndex);
+                        else next.add(entryIndex);
+                        return next;
+                      })
+                    }
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Marcar el ejercicio como terminado"
+                    onPress={() => setEntryFinished(entryIndex, true)}
+                    hitSlop={8}
+                    style={[styles.roundButton, { borderColor: theme.primaryText, borderWidth: 2 }]}>
+                    <FinishIcon color={theme.primaryText} />
+                  </Pressable>
+                </View>
+                {noteOpen.has(entryIndex) || entry.feedback ? (
+                  <TextInput
+                    accessibilityLabel="Nota sobre cómo te ha ido el ejercicio"
+                    value={entry.feedback ?? ''}
+                    onChangeText={(text) => changeFeedback(entryIndex, text)}
+                    placeholder="¿Cómo te ha ido este ejercicio?"
+                    placeholderTextColor={theme.textSecondary}
+                    maxLength={FEEDBACK_MAX_LENGTH}
+                    multiline
+                    style={[styles.feedbackInput, { backgroundColor: theme.backgroundSelected, color: theme.text }]}
+                  />
+                ) : null}
+              </>
+            )}
           </Card>
         );
       })}
@@ -473,6 +573,22 @@ const formatDelta = (diff: number) => `${diff > 0 ? '+' : '−'}${Math.abs(diff)
 const styles = StyleSheet.create({
   clockCard: { gap: Spacing.half },
   exercise: { gap: Spacing.two + 2 },
+  finishedCard: { opacity: 0.55 },
+  exerciseHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  exerciseTitle: { flex: 1 },
+  setsBlock: { gap: Spacing.two + 2 },
+  exerciseActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
+  roundButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  plus: { fontSize: 26, lineHeight: 30, fontWeight: '500' },
+  feedbackText: { flex: 1 },
+  feedbackInput: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 15,
+    minHeight: 44,
+    textAlignVertical: 'top',
+  },
   // El margen deja sitio debajo del peso para la diferencia con la última vez (+5 kg).
   setRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: 6 },
   check: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },

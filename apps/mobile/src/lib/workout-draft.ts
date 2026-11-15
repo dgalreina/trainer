@@ -27,7 +27,14 @@ export interface DraftEntry {
   restSeconds?: number;
   /** Nota de la rutina para este ejercicio. */
   notes?: string;
+  /** Lo que el usuario anota sobre cómo le ha ido el ejercicio; se guarda en la sesión. */
+  feedback?: string;
+  /** El ejercicio está terminado: la tarjeta se atenúa y se bloquea hasta «Retomar». Solo vive en el borrador. */
+  finished?: boolean;
 }
+
+/** Tope de la nota del usuario (el mismo que tiene la entrada de la sesión). */
+export const FEEDBACK_MAX_LENGTH = 500;
 
 export interface WorkoutDraft {
   trainingId: string;
@@ -138,6 +145,7 @@ export function toSessionPayload(
     .map((entry) => ({
       exerciseId: entry.exerciseId,
       technique: entry.technique,
+      notes: entry.feedback?.trim() ? entry.feedback.trim().slice(0, FEEDBACK_MAX_LENGTH) : undefined,
       sets: entry.sets.filter(useSet).flatMap((s) => {
         const reps = parseNumber(s.reps);
         // Sin repeticiones no hay serie; sin peso es peso corporal (0 kg).

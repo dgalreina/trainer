@@ -227,6 +227,11 @@ export function SessionSheet({
                     <ThemedText themeColor="textSecondary">✕</ThemedText>
                   </Pressable>
                 </View>
+                {entry.notes ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {entry.notes}
+                  </ThemedText>
+                ) : null}
                 <View style={styles.setRow}>
                   <View style={styles.num} />
                   <ThemedText type="small" themeColor="textSecondary" style={styles.columnTitle}>
