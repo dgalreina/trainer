@@ -194,6 +194,8 @@ export function WorkoutScreen() {
     patch((d) => {
       const entry = d.entries[entryIndex];
       const becomesDone = !entry.sets[setIndex].done;
+      const isLastSet =
+        setIndex === entry.sets.length - 1 || entry.sets.every((st, j) => j === setIndex || st.done);
       const entries = d.entries.map((e, i) =>
         i !== entryIndex
           ? e
@@ -207,8 +209,15 @@ export function WorkoutScreen() {
         startedAt: d.startedAt ?? (becomesDone ? at : null),
         // En una superserie no se descansa entre sus ejercicios, solo al acabar la ronda (con el descanso del
         // último). Cada ejercicio puede traer el suyo; si no, el de la rutina.
-        restEndsAt:
-          becomesDone && entryRest(entry) > 0 && entry.technique !== 'ss' ? at + entryRest(entry) * 1000 : d.restEndsAt,
+        // Si es la última serie del ejercicio (la de más abajo, o ya están todas hechas) no hay descanso: lo siguiente es
+        // otro ejercicio u otro bloque, y el contador que hubiera de la serie anterior tampoco hace falta.
+        restEndsAt: !becomesDone
+          ? d.restEndsAt
+          : isLastSet
+            ? null
+            : entryRest(entry) > 0 && entry.technique !== 'ss'
+              ? at + entryRest(entry) * 1000
+              : d.restEndsAt,
       };
     });
   }
@@ -368,22 +377,18 @@ export function WorkoutScreen() {
         </View>
       )}
       <ErrorText message={error} />
-      <Button title="Finalizar" onPress={finish} loading={saving} />
+      <Button
+        title={draft.startedAt === null ? 'Finalizar' : `Finalizar · ${formatClock((now - draft.startedAt) / 1000)}`}
+        onPress={finish}
+        loading={saving}
+      />
     </View>
   );
 
   return (
     <Screen title={title} subtitle={training.name} stacked fade onBack={goBack} footer={footer}>
-      {draft.startedAt === null ? (
-        <Button title="Comenzar" onPress={start} />
-      ) : (
-        <Card tone="primarySoft" style={styles.clockCard}>
-          <ThemedText type="small" themeColor="textSecondary">
-            En marcha
-          </ThemedText>
-          <ThemedText type="subtitle">{formatClock((now - draft.startedAt) / 1000)}</ThemedText>
-        </Card>
-      )}
+      {/* En marcha, el tiempo va en el botón «Finalizar» de abajo: aquí arriba ya no hace falta nada. */}
+      {draft.startedAt === null ? <Button title="Comenzar" onPress={start} /> : null}
 
       <ThemedText type="small" themeColor="textSecondary">
         {restSeconds > 0
@@ -573,7 +578,6 @@ function numberDelta(current: string, previous: number | undefined): number | nu
 const formatDelta = (diff: number) => `${diff > 0 ? '+' : '−'}${Math.abs(diff).toLocaleString('es-ES')}`;
 
 const styles = StyleSheet.create({
-  clockCard: { gap: Spacing.half },
   exercise: { gap: Spacing.two + 2 },
   finishedCard: { opacity: 0.55 },
   exerciseHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },

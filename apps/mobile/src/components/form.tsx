@@ -123,7 +123,8 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={foreground} />
       ) : (
-        <ThemedText type="smallBold" style={{ color: foreground }}>
+        // Cifras de ancho fijo: el tiempo de «Finalizar · 12:34» no hace bailar el texto cada segundo.
+        <ThemedText type="smallBold" style={{ color: foreground, fontVariant: ['tabular-nums'] }}>
           {title}
         </ThemedText>
       )}
