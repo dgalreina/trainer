@@ -59,19 +59,24 @@ export function useKeyboardInset(active: boolean): number {
 }
 
 /**
- * Alto (px) de lo que realmente se ve en la web: la «vista visual», que sí se encoge cuando sale el teclado (en la PWA de
- * iOS, `innerHeight` y las medidas de la página no siempre lo hacen a tiempo). En nativo devuelve null: se usa el de la ventana.
+ * Lo que realmente se ve en la web: la «vista visual», que se encoge cuando sale el teclado y se desplaza cuando iOS
+ * mueve la página para dejar a la vista el campo de texto (`offsetTop`). La página y `innerHeight` no siempre lo
+ * reflejan en la PWA de iOS. En nativo devuelve null.
  */
-export function useVisibleHeight(): number | null {
-  const [visible, setVisible] = useState<number | null>(null);
+export function useVisibleArea(): { top: number; height: number } | null {
+  const [area, setArea] = useState<{ top: number; height: number } | null>(null);
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const viewport = window.visualViewport;
     if (!viewport) return;
-    const update = () => setVisible(Math.round(viewport.height));
+    const update = () => setArea({ top: Math.round(viewport.offsetTop), height: Math.round(viewport.height) });
     update();
     viewport.addEventListener('resize', update);
-    return () => viewport.removeEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
   }, []);
-  return visible;
+  return area;
 }

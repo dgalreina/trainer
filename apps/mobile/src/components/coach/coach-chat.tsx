@@ -18,7 +18,7 @@ import {
   COACH_ICON,
   useCoachIconBottom,
   useKeyboardInset,
-  useVisibleHeight,
+  useVisibleArea,
 } from '@/components/coach/coach-layout';
 import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -98,7 +98,7 @@ export function CoachChat() {
   const insets = useSafeAreaInsets();
   const iconBottom = useCoachIconBottom();
   const keyboardInset = useKeyboardInset(open && expanded);
-  const visibleHeight = useVisibleHeight();
+  const visibleArea = useVisibleArea();
   // En la PWA de iOS el teclado encoge la ventana entera y la medición anterior da 0: en pantallas táctiles, tener el
   // cuadro de texto con el foco cuenta como teclado abierto (la ventana ya termina justo encima de él).
   const [focused, setFocused] = useState(false);
@@ -185,10 +185,15 @@ export function CoachChat() {
   const bottom = keyboard > 0 ? keyboard + COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
   const topLimit = insets.top + (Platform.OS === 'web' ? WebTabBarInset : Spacing.four);
   const maxHeight = Math.max(160, Math.min(height * BUBBLE_MAX_HEIGHT_FRACTION, height - bottom - topLimit));
-  // Escribiendo, el chat ocupa todo lo visible por encima de su ancla (el icono o el teclado), hasta debajo de la barra de
-  // arriba. Se mide sobre lo que se ve de verdad: la altura de la página no se fía en la PWA de iOS.
-  const visibleTotal = (visibleHeight ?? height) + keyboard;
-  const typingHeight = Math.max(160, visibleTotal - bottom - topLimit);
+  // Escribiendo en la web, el chat se coloca con coordenadas fijas sobre lo que se ve de verdad (la página puede estar
+  // desplazada por iOS y encogida por el teclado): de debajo de la barra de arriba hasta encima del icono (o del teclado).
+  const fixedGap = keyboard > 0 ? COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
+  const fixedBox =
+    typing && visibleArea
+      ? { position: 'fixed', top: visibleArea.top + topLimit, height: Math.max(160, visibleArea.height - topLimit - fixedGap), bottom: 'auto' }
+      : typing
+        ? { height: Math.max(160, height + keyboard - bottom - topLimit) }
+        : { maxHeight };
   const scale = appear.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   // Crece desde el icono: la esquina de abajo a la derecha es el origen.
   const appearStyle = { opacity: appear, transform: [{ scale }], transformOrigin: 'right bottom' } as object;
@@ -241,10 +246,9 @@ export function CoachChat() {
             {
               bottom,
               // Con el teclado, el chat aprovecha todo el hueco que queda hasta arriba (el espacio escasea).
-              ...(typing ? { height: typingHeight } : {}),
+              ...(fixedBox as object),
               right: COACH_EDGE,
               width: Math.min(BUBBLE_MAX_WIDTH, width - COACH_EDGE * 2),
-              ...(typing ? {} : { maxHeight }),
               backgroundColor: theme.background,
               borderColor: theme.skySoft,
             },
