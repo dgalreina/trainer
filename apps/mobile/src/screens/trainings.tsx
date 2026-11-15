@@ -10,6 +10,7 @@ import { SectionTabs, TemplatesPlaceholder } from '@/components/section-tabs';
 import { TemplateCard } from '@/components/template-card';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { confirmAction } from '@/lib/confirm';
 import { todayISO } from '@/lib/dates';
 import { useTheme } from '@/hooks/use-theme';
 import { useNewTraining } from '@/lib/new-training';
@@ -132,10 +133,19 @@ export function TrainingsScreen() {
                   <Pressable
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isActive }}
-                    accessibilityLabel={`Usar ${training.name} como entrenamiento actual`}
+                    accessibilityLabel={isActive ? `Quitar ${training.name} como entrenamiento actual` : `Usar ${training.name} como entrenamiento actual`}
                     hitSlop={8}
                     onPress={() => {
-                      if (!isActive) setActiveTraining(training.id).catch(() => {});
+                      if (!isActive) {
+                        setActiveTraining(training.id).catch(() => {});
+                        return;
+                      }
+                      // Se puede dejar sin entrenamiento actual, pero avisando de lo que pasa.
+                      void confirmAction(
+                        'Quitar el entrenamiento actual',
+                        `Si quitas «${training.name}», «Hoy» dejará de ofrecerte sus rutinas hasta que marques otro entrenamiento como actual. No se borra nada: sus entrenos y marcas se conservan.`,
+                        'Quitar',
+                      ).then((ok) => (ok ? setActiveTraining(null).catch(() => {}) : undefined));
                     }}
                     style={styles.dotHit}>
                     <View style={[styles.dot, { borderColor: theme.primaryText }, isActive && { backgroundColor: theme.primary }]} />

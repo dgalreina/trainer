@@ -59,9 +59,12 @@ function toNumber(text: string): number | undefined {
   return Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
-/** Los ejercicios de la rutina más un hueco libre al final, para seguir escribiendo. */
+/**
+ * Una rutina vacía enseña un hueco libre donde escribir el primer ejercicio. En cuanto hay alguno, el hueco desaparece y
+ * abajo sale un «+» para añadir el siguiente (así la lista no acaba siempre con una tarjeta vacía).
+ */
 function withTrailingEmpty(slots: EditorSlot[]): EditorSlot[] {
-  return slots[slots.length - 1]?.exerciseId === null ? slots : [...slots, emptySlot()];
+  return slots.length === 0 ? [emptySlot()] : slots;
 }
 
 function fromRoutine(routine: Routine): EditorSlot[] {
@@ -129,6 +132,15 @@ export function RoutineForm({
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [name, restSeconds, slots, onSave]);
+
+  // Qué hueco acaba de crear el «+»: ese lleva el cursor en el buscador.
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const addSlot = () =>
+    setSlots((prev) => {
+      const slot = emptySlot();
+      setFocusKey(slot.key);
+      return [...prev, slot];
+    });
 
   const updateSlot = (key: string, change: (slot: EditorSlot) => EditorSlot) =>
     setSlots((prev) => withTrailingEmpty(prev.map((s) => (s.key === key ? change(s) : s))));
@@ -396,12 +408,26 @@ export function RoutineForm({
               onDragMove={moveDrag}
               onDragEnd={endDrag}
               onToggleSuperset={() => toggleSuperset(slot.key)}
+              autoFocusSearch={slot.key === focusKey}
               routineRest={restSeconds}
               exerciseName={slot.exerciseId ? (byId.get(slot.exerciseId)?.name ?? 'Ejercicio eliminado') : ''}
             />
           </Animated.View>
         );
       })}
+
+      {/* Con algún ejercicio ya puesto, el siguiente se añade con «+» (el hueco libre solo sale en una rutina vacía). */}
+      {slots.length > 0 && slots[slots.length - 1].exerciseId !== null ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Añadir ejercicio"
+          onPress={addSlot}
+          style={[styles.addExercise, { backgroundColor: theme.backgroundSelected }]}>
+          {/* Dos barras en vez del carácter «+»: así queda exactamente centrado en cualquier tipografía. */}
+          <View style={[styles.plusBar, { backgroundColor: theme.primaryText }]} />
+          <View style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: theme.primaryText }]} />
+        </Pressable>
+      ) : null}
 
       <View style={styles.rest}>
         <ThemedText type="small" themeColor="textSecondary">
@@ -433,6 +459,7 @@ function SlotRow({
   onDragMove,
   onDragEnd,
   onToggleSuperset,
+  autoFocusSearch,
   routineRest,
 }: {
   slot: EditorSlot;
@@ -446,6 +473,8 @@ function SlotRow({
   onDragMove: (dy: number, fingerY: number) => void;
   onDragEnd: (dy: number) => void;
   onToggleSuperset: () => void;
+  /** El cursor entra directo en el buscador (el hueco lo acaba de crear el «+»). */
+  autoFocusSearch: boolean;
   /** Descanso de la rutina: el que se hereda si el ejercicio no tiene uno propio. */
   routineRest: number;
 }) {
@@ -536,6 +565,7 @@ function SlotRow({
               placeholder="Escribe para buscar un ejercicio…"
               placeholderTextColor={theme.textSecondary}
               autoCapitalize="none"
+              autoFocus={autoFocusSearch}
               style={[styles.search, { color: theme.text }]}
             />
           </View>
@@ -727,6 +757,9 @@ function GridButton({ label, onPress }: { label: string; onPress: () => void }) 
 const styles = StyleSheet.create({
   form: { gap: Spacing.three },
   nameInput: { borderRadius: Radius.control, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
+  addExercise: { width: 52, height: 52, borderRadius: 26, alignSelf: 'center', alignItems: 'center', justifyContent: 'center' },
+  plusBar: { position: 'absolute', width: 20, height: 3, borderRadius: 1.5 },
+  plusBarVertical: { width: 3, height: 20 },
   slot: { gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.three },
   slotHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   number: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
