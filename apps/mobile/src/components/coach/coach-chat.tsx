@@ -18,7 +18,6 @@ import {
   COACH_ICON,
   useCoachIconBottom,
   useKeyboardInset,
-  useVisibleArea,
 } from '@/components/coach/coach-layout';
 import { FadingScroll } from '@/components/fading-scroll';
 import { ThemedText } from '@/components/themed-text';
@@ -97,18 +96,7 @@ export function CoachChat() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const iconBottom = useCoachIconBottom();
-  const keyboardInset = useKeyboardInset(open && expanded);
-  const visibleArea = useVisibleArea();
-  // En la PWA de iOS el teclado encoge la ventana entera y la medición anterior da 0: en pantallas táctiles, tener el
-  // cuadro de texto con el foco cuenta como teclado abierto (la ventana ya termina justo encima de él).
-  const [focused, setFocused] = useState(false);
-  useEffect(() => {
-    if (!open || !expanded) setFocused(false);
-  }, [open, expanded]);
-  const touchScreen = Platform.OS !== 'web' || (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches);
-  const typing = keyboardInset > 0 || (focused && touchScreen);
-  // Con el teclado medido se sube hasta él; si la ventana ya se ha encogido, basta un pequeño margen.
-  const keyboard = keyboardInset;
+  const keyboard = useKeyboardInset(open && expanded);
   const [draft, setDraft] = useState('');
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -181,19 +169,9 @@ export function CoachChat() {
   }
 
   // Encima del icono; con el teclado abierto, encima del teclado.
-  // Si el teclado se mide (navegador), sube hasta él; si no, termina encima del icono, que no se tapa.
   const bottom = keyboard > 0 ? keyboard + COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
   const topLimit = insets.top + (Platform.OS === 'web' ? WebTabBarInset : Spacing.four);
   const maxHeight = Math.max(160, Math.min(height * BUBBLE_MAX_HEIGHT_FRACTION, height - bottom - topLimit));
-  // Escribiendo en la web, el chat se coloca con coordenadas fijas sobre lo que se ve de verdad (la página puede estar
-  // desplazada por iOS y encogida por el teclado): de debajo de la barra de arriba hasta encima del icono (o del teclado).
-  const fixedGap = keyboard > 0 ? COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
-  const fixedBox =
-    typing && visibleArea
-      ? { position: 'fixed', top: visibleArea.top + topLimit, height: Math.max(160, visibleArea.height - topLimit - fixedGap), bottom: 'auto' }
-      : typing
-        ? { height: Math.max(160, height + keyboard - bottom - topLimit) }
-        : { maxHeight };
   const scale = appear.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   // Crece desde el icono: la esquina de abajo a la derecha es el origen.
   const appearStyle = { opacity: appear, transform: [{ scale }], transformOrigin: 'right bottom' } as object;
@@ -245,10 +223,9 @@ export function CoachChat() {
             styles.card,
             {
               bottom,
-              // Con el teclado, el chat aprovecha todo el hueco que queda hasta arriba (el espacio escasea).
-              ...(fixedBox as object),
               right: COACH_EDGE,
               width: Math.min(BUBBLE_MAX_WIDTH, width - COACH_EDGE * 2),
+              maxHeight,
               backgroundColor: theme.background,
               borderColor: theme.skySoft,
             },
@@ -260,7 +237,7 @@ export function CoachChat() {
             fadeBottom={false}
             fadeTop={24}
             scrollRef={scroller}
-            containerStyle={[styles.messagesBox, typing ? { flexGrow: 1 } : null]}
+            containerStyle={styles.messagesBox}
             style={styles.messages}
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
@@ -294,8 +271,6 @@ export function CoachChat() {
               placeholder="Escribe tu pregunta…"
               placeholderTextColor={theme.textSecondary}
               autoComplete="off"
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
               multiline
               onKeyPress={(e) => {
                 // En la web, Enter envía y Mayús+Enter hace salto de línea.
@@ -324,7 +299,7 @@ export function CoachChat() {
             </Pressable>
           </View>
 
-          {!typing ? <Tail /> : null}
+          {keyboard === 0 ? <Tail /> : null}
         </Animated.View>
       )}
     </>

@@ -57,26 +57,3 @@ export function useKeyboardInset(active: boolean): number {
   }, [active]);
   return inset;
 }
-
-/**
- * Lo que realmente se ve en la web: la «vista visual», que se encoge cuando sale el teclado y se desplaza cuando iOS
- * mueve la página para dejar a la vista el campo de texto (`offsetTop`). La página y `innerHeight` no siempre lo
- * reflejan en la PWA de iOS. En nativo devuelve null.
- */
-export function useVisibleArea(): { top: number; height: number } | null {
-  const [area, setArea] = useState<{ top: number; height: number } | null>(null);
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    const update = () => setArea({ top: Math.round(viewport.offsetTop), height: Math.round(viewport.height) });
-    update();
-    viewport.addEventListener('resize', update);
-    viewport.addEventListener('scroll', update);
-    return () => {
-      viewport.removeEventListener('resize', update);
-      viewport.removeEventListener('scroll', update);
-    };
-  }, []);
-  return area;
-}
