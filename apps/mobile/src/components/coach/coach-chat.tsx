@@ -11,14 +11,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Rect } from 'react-native-svg';
 
-import {
-  COACH_BUBBLE_GAP,
-  COACH_EDGE,
-  COACH_ICON,
-  useCoachIconBottom,
-  useKeyboardInset,
-} from '@/components/coach/coach-layout';
+import { COACH_EDGE, COACH_ICON, useCoachIconBottom, useKeyboardInset } from '@/components/coach/coach-layout';
+import { CoachOrb } from '@/components/coach/coach-orb';
 import { ProposalCard } from '@/components/coach/proposal-card';
 import { RichText } from '@/components/coach/rich-text';
 import { FadingScroll } from '@/components/fading-scroll';
@@ -35,10 +31,13 @@ const SUGGESTIONS = [
   '¿Qué me recomiendas para crecer más?',
 ];
 
-/** Ancho máximo del chat y fracción de la pantalla que puede ocupar a lo alto (luego hace scroll por dentro). */
-const BUBBLE_MAX_WIDTH = 380;
-/** Alto máximo del bocadillo respecto a la pantalla completa. Es un tamaño fijo: no cambia al salir el teclado (cabe con él abierto). */
-const BUBBLE_MAX_HEIGHT_FRACTION = 0.4;
+/** Ancho máximo de la columna del chat a pantalla completa (en pantallas anchas queda centrada). */
+const CHAT_MAX_WIDTH = 720;
+/** Alto mínimo y máximo (unas 6 líneas) del cuadro de texto. */
+const INPUT_MIN_HEIGHT = 36;
+const INPUT_MAX_HEIGHT = 140;
+/** Tamaño de la orbe de la cabecera. */
+const HEADER_ORB = 48;
 /** Ancho máximo del saludo pequeño. */
 const GREETING_MAX_WIDTH = 300;
 /** Marca (solo web) para reconocer que un toque cae dentro del bocadillo o del icono y no cuenta como «fuera». */
@@ -48,8 +47,26 @@ const OUTSIDE_TAP_SLOP = 10;
 const OUTSIDE_TAP_MS = 600;
 /** Hueco entre el saludo pequeño y el icono (en la misma línea). */
 const COACH_GREETING_GAP = 12;
-/** Tamaño de la colita que apunta al icono. */
+/** Tamaño de la colita del saludo que apunta al icono. */
 const TAIL = 14;
+
+/** La flecha de enviar: trazo grueso y redondeado, grande como la de Claude. */
+function ArrowUpIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 19V5M5.5 11.5L12 5l6.5 6.5" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** El cuadrado de «parar» mientras el entrenador responde. */
+function StopIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Rect x={6.5} y={6.5} width={11} height={11} rx={2.5} fill={color} />
+    </Svg>
+  );
+}
 
 function Bubble({
   message,
@@ -92,39 +109,25 @@ function Bubble({
   );
 }
 
-/** La colita que sale por debajo del bocadillo y apunta al centro del icono. */
-function Tail() {
-  const theme = useTheme();
-  return (
-    <View
-      pointerEvents="none"
-      style={[
-        styles.tail,
-        { right: COACH_ICON / 2 - TAIL / 2, backgroundColor: theme.background, borderColor: theme.skySoft },
-      ]}
-    />
-  );
-}
-
 /**
- * El bocadillo del entrenador. Primero sale pequeño, pegado al icono y con su colita apuntándole, solo con el saludo
- * («Hola Diego, ¿en qué puedo ayudarte?») y sin más; tocar el bocadillo lo abre entero:
- * el saludo, unas preguntas de ejemplo y el cuadro de texto. Al escribir, crece hacia arriba y se convierte en la
- * conversación, hasta la mitad de la pantalla; a partir de ahí hace scroll por dentro. Los mensajes del entrenador van a
- * la izquierda y los tuyos a la derecha, como en WhatsApp. Todo lo de la IA es azulado y verdoso, no salmón. Tocar fuera,
- * Escape o el icono lo cierra; si sale el teclado, sube para quedar por encima de él.
+ * El chat del entrenador. Cuando habla él primero sale un saludo pequeño junto al icono (abajo a la derecha, con su
+ * colita); tocarlo —o pulsar el icono— abre el chat a pantalla completa, como el de Claude: arriba la orbe en el centro
+ * y una ✕ para cerrar, en medio la conversación (los mensajes del entrenador a la izquierda y los tuyos a la derecha) y
+ * abajo el cuadro de texto, que crece con lo que escribes, con su botón de enviar. En pantallas anchas la columna se
+ * centra. Todo lo de la IA es azulado y verdoso, no salmón. Escape o la ✕ lo cierran; con el teclado, sube con él.
  */
 export function CoachChat() {
-  const { open, setOpen, expanded, setExpanded, messages, greeting, busy, send, stop } = useCoach();
+  const { open, setOpen, expanded, setExpanded, messages, greeting, busy, excited, send, stop } = useCoach();
   const theme = useTheme();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const iconBottom = useCoachIconBottom();
   const keyboard = useKeyboardInset(open && expanded);
   const [draft, setDraft] = useState('');
+  // Alto del texto escrito: el cuadro crece con él hasta INPUT_MAX_HEIGHT y luego hace scroll por dentro.
+  const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT);
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
-  const fullHeight = useRef(height);
 
   // Aparece desde el icono: crece y se aclara (y se queda montado mientras se va, para poder animar la salida).
   const [mounted, setMounted] = useState(open);
@@ -140,13 +143,6 @@ export function CoachChat() {
       if (finished && !open) setMounted(false);
     });
   }, [open, appear]);
-
-  // Con el chat grande abierto, el fondo se oscurece un poco para que el foco esté en el chat y el icono. Es solo visual
-  // (no capta toques: se puede seguir haciendo scroll por detrás). Con el saludo pequeño no se oscurece.
-  const dim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(dim, { toValue: open && expanded ? 1 : 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [open, expanded, dim]);
 
   // Escape lo cierra (web).
   useEffect(() => {
@@ -200,22 +196,14 @@ export function CoachChat() {
     setDraft('');
   }
 
-  // Encima del icono; con el teclado abierto, encima del teclado.
-  const bottom = keyboard > 0 ? keyboard + COACH_BUBBLE_GAP : iconBottom + COACH_ICON + COACH_BUBBLE_GAP;
-  const topLimit = insets.top + Spacing.two;
-  // Constante: se calcula sobre la altura completa de la pantalla (la mayor vista), no sobre la que deja el teclado.
-  fullHeight.current = Math.max(fullHeight.current, height);
-  const maxHeight = Math.max(160, Math.min(fullHeight.current * BUBBLE_MAX_HEIGHT_FRACTION, height - bottom - topLimit));
   const scale = appear.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
-  // Crece desde el icono: la esquina de abajo a la derecha es el origen.
+  // El saludo pequeño crece desde el icono: la esquina de abajo a la derecha es el origen.
   const appearStyle = { opacity: appear, transform: [{ scale }], transformOrigin: 'right bottom' } as object;
 
   return (
     <>
-      <Animated.View pointerEvents="none" style={[styles.dim, { opacity: dim }]} />
-
       {/* En nativo, un fondo táctil sin color: tocar fuera cierra el bocadillo. (En la web se detecta sin tapar la pantalla.) */}
-      {Platform.OS !== 'web' ? (
+      {Platform.OS !== 'web' && !expanded ? (
         <Pressable accessibilityLabel="Cerrar el chat" style={styles.backdrop} onPress={() => setOpen(false)} />
       ) : null}
 
@@ -251,90 +239,102 @@ export function CoachChat() {
           </Pressable>
         </Animated.View>
       ) : (
+        // Pantalla completa. Con el teclado abierto se queda encima de él.
         <Animated.View
           {...COACH_MARK}
           style={[
-            styles.card,
+            styles.full,
             {
-              bottom,
-              right: COACH_EDGE,
-              width: Math.min(BUBBLE_MAX_WIDTH, width - COACH_EDGE * 2),
-              maxHeight,
               backgroundColor: theme.background,
-              borderColor: theme.skySoft,
+              paddingTop: insets.top,
+              bottom: keyboard,
+              paddingBottom: keyboard > 0 ? Spacing.two : insets.bottom,
+              opacity: appear,
             },
-            appearStyle,
           ]}>
-          {/* Un ligero desvanecimiento arriba cuando la conversación se ha desplazado. */}
-          <FadingScroll
-            mask
-            fadeBottom={false}
-            fadeTop={24}
-            scrollRef={scroller}
-            containerStyle={styles.messagesBox}
-            style={styles.messages}
-            contentContainerStyle={styles.messagesContent}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}>
-            <Bubble message={{ role: 'coach', text: greeting }} />
-            {messages.length === 0 ? (
-              <View style={styles.suggestions}>
-                {SUGGESTIONS.map((text) => (
-                  <Pressable
-                    key={text}
-                    accessibilityRole="button"
-                    onPress={() => send(text)}
-                    style={[styles.suggestion, { borderColor: theme.sky, backgroundColor: theme.background }]}>
-                    <ThemedText type="small" style={{ color: theme.aiText }}>
-                      {text}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-            {messages.map((m) => (
-              <Bubble key={m.id} message={m} onRequestChanges={requestChanges} />
-            ))}
-          </FadingScroll>
+          <View style={styles.column}>
+            <View style={styles.header}>
+              <CoachOrb size={HEADER_ORB} excited={excited || busy} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar el chat"
+                onPress={() => setOpen(false)}
+                hitSlop={10}
+                style={styles.close}>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                  <Path d="M5 5l14 14M19 5L5 19" stroke={theme.text} strokeOpacity={0.62} strokeWidth={2.2} strokeLinecap="round" />
+                </Svg>
+              </Pressable>
+            </View>
 
-          <View style={[styles.inputRow, { borderTopColor: theme.skySoft }]}>
-            <TextInput
-              ref={inputRef}
-              accessibilityLabel="Escribe a tu entrenador"
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Escribe tu pregunta…"
-              placeholderTextColor={theme.textSecondary}
-              autoComplete="off"
-              multiline
-              onKeyPress={(e) => {
-                // En la web, Enter envía y Mayús+Enter hace salto de línea.
-                const native = e.nativeEvent as unknown as { key: string; shiftKey?: boolean };
-                if (Platform.OS === 'web' && native.key === 'Enter' && !native.shiftKey) {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              style={[
-                styles.input,
-                { backgroundColor: theme.skySoft, color: theme.text },
-                // El aro de enfoque del navegador, azul y no salmón.
-                { outlineColor: theme.sky } as object,
-              ]}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={busy ? 'Parar' : 'Enviar'}
-              disabled={!busy && !draft.trim()}
-              onPress={busy ? stop : submit}
-              style={[styles.send, { backgroundColor: theme.teal, opacity: !busy && !draft.trim() ? 0.4 : 1 }]}>
-              <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
-                {busy ? '■' : '↑'}
-              </ThemedText>
-            </Pressable>
+            {/* Un ligero desvanecimiento arriba cuando la conversación se ha desplazado. */}
+            <FadingScroll
+              mask
+              fadeBottom={false}
+              fadeTop={24}
+              scrollRef={scroller}
+              containerStyle={styles.messagesBox}
+              style={styles.messages}
+              contentContainerStyle={styles.messagesContent}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}>
+              <Bubble message={{ role: 'coach', text: greeting }} />
+              {messages.length === 0 ? (
+                <View style={styles.suggestions}>
+                  {SUGGESTIONS.map((text) => (
+                    <Pressable
+                      key={text}
+                      accessibilityRole="button"
+                      onPress={() => send(text)}
+                      style={[styles.suggestion, { borderColor: theme.sky, backgroundColor: theme.background }]}>
+                      <ThemedText type="small" style={{ color: theme.aiText }}>
+                        {text}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+              {messages.map((m) => (
+                <Bubble key={m.id} message={m} onRequestChanges={requestChanges} />
+              ))}
+            </FadingScroll>
+
+            {/* El cuadro de texto, pegado abajo: crece con lo que escribes y lleva dentro el botón de enviar. */}
+            <View style={[styles.inputBox, { backgroundColor: theme.skySoft }]}>
+              <TextInput
+                ref={inputRef}
+                accessibilityLabel="Escribe a tu entrenador"
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Escribe tu pregunta…"
+                placeholderTextColor={theme.textSecondary}
+                autoComplete="off"
+                multiline
+                onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
+                onKeyPress={(e) => {
+                  // En la web, Enter envía y Mayús+Enter hace salto de línea.
+                  const native = e.nativeEvent as unknown as { key: string; shiftKey?: boolean };
+                  if (Platform.OS === 'web' && native.key === 'Enter' && !native.shiftKey) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
+                style={[
+                  styles.input,
+                  { color: theme.text, height: Math.min(INPUT_MAX_HEIGHT, Math.max(INPUT_MIN_HEIGHT, inputHeight)) },
+                  { outlineStyle: 'none' } as object,
+                ]}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={busy ? 'Parar' : 'Enviar'}
+                disabled={!busy && !draft.trim()}
+                onPress={busy ? stop : submit}
+                style={[styles.send, { backgroundColor: theme.teal, opacity: !busy && !draft.trim() ? 0.4 : 1 }]}>
+                {busy ? <StopIcon color={theme.onPrimary} /> : <ArrowUpIcon color={theme.onPrimary} />}
+              </Pressable>
+            </View>
           </View>
-
-          {keyboard === 0 ? <Tail /> : null}
         </Animated.View>
       )}
     </>
@@ -343,8 +343,11 @@ export function CoachChat() {
 
 const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 48 },
-  // Por debajo del bocadillo (49) y del icono (50), por encima de todo lo demás.
-  dim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 47, backgroundColor: 'rgba(0, 0, 0, 0.28)' },
+  full: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 49 },
+  // La columna del chat: ocupa todo el ancho y, en pantallas anchas, se centra.
+  column: { flex: 1, width: '100%', maxWidth: CHAT_MAX_WIDTH, alignSelf: 'center' },
+  header: { height: HEADER_ORB + Spacing.three, alignItems: 'center', justifyContent: 'center' },
+  close: { position: 'absolute', right: Spacing.three, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   card: {
     position: 'absolute',
     zIndex: 49,
@@ -374,8 +377,8 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
   },
   // El contenedor se ajusta al contenido y solo encoge si no cabe (el bocadillo tiene un alto máximo).
-  messagesBox: { flex: 0, flexGrow: 0, flexShrink: 1, flexBasis: 'auto' },
-  messages: { flexGrow: 0, flexShrink: 1 },
+  messagesBox: { flex: 1 },
+  messages: { flex: 1 },
   messagesContent: { padding: Spacing.three, gap: Spacing.two },
   row: { flexDirection: 'row' },
   rowMine: { justifyContent: 'flex-end' },
@@ -383,30 +386,17 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '88%', borderRadius: Radius.card, paddingVertical: Spacing.two + 2, paddingHorizontal: Spacing.three },
   suggestions: { gap: Spacing.two, alignItems: 'flex-start' },
   suggestion: { borderWidth: 1, borderRadius: Radius.pill, paddingVertical: Spacing.two, paddingHorizontal: Spacing.three },
-  inputRow: {
+  inputBox: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.two,
-    padding: Spacing.two + 2,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderRadius: 26,
   },
-  input: {
-    flex: 1,
-    maxHeight: 110,
-    minHeight: 44,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two + 2,
-    fontSize: 16,
-  },
+  input: { flex: 1, paddingVertical: 0, fontSize: 16, lineHeight: 22 },
   send: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  tail: {
-    position: 'absolute',
-    bottom: -TAIL / 2,
-    width: TAIL,
-    height: TAIL,
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
-    transform: [{ rotate: '45deg' }],
-  },
 });

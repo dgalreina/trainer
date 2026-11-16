@@ -13,7 +13,7 @@ import { useCoach } from '@/lib/coach';
  * Pulsarlo con el bocadillo abierto lo cierra. Siempre está en el mismo sitio, en todas las pantallas.
  */
 export function CoachButton() {
-  const { open, setOpen, excited } = useCoach();
+  const { open, setOpen, expanded, excited } = useCoach();
   const bottom = useCoachIconBottom();
   const reduced = useReducedMotion();
   const breath = useRef(new Animated.Value(0)).current;
@@ -35,6 +35,9 @@ export function CoachButton() {
   }, [open, reduced, breath]);
 
   const scale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
+
+  // Con el chat a pantalla completa la orbe vive en su cabecera: el icono flotante se va.
+  if (open && expanded) return null;
 
   return (
     <Animated.View pointerEvents="box-none" {...COACH_MARK} style={[styles.wrap, { bottom, right: COACH_EDGE, transform: [{ scale }] }]}>
