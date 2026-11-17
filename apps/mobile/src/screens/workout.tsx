@@ -287,6 +287,10 @@ export function WorkoutScreen() {
     const result = toSessionPayload(draft, Date.now(), true);
     if (!result) return setError('No hay ninguna serie con repeticiones que guardar.');
 
+    // Un toque sin querer no debe cerrar el entreno: se pide confirmación antes de guardarlo.
+    const ok = await confirmAction('Finalizar entreno', '¿Has terminado? Se guardará en tu calendario.', 'Finalizar', false);
+    if (!ok) return;
+
     setSaving(true);
     try {
       await api.post('/sessions', result.payload);

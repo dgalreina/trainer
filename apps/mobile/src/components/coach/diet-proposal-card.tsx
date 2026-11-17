@@ -190,5 +190,5 @@ const styles = StyleSheet.create({
   foodRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.three },
   foodName: { flex: 1 },
   actions: { gap: Spacing.two },
-  row: { flexDirection: 'row', gap: Spacing.two },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

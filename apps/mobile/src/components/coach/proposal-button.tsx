@@ -27,7 +27,7 @@ export function ActionButton({
         primary ? { backgroundColor: theme.teal } : { borderColor: theme.sky, borderWidth: 1 },
         disabled && { opacity: 0.5 },
       ]}>
-      <ThemedText type="smallBold" style={{ color: primary ? theme.onPrimary : theme.aiText }}>
+      <ThemedText type="smallBold" style={{ color: primary ? theme.onPrimary : theme.aiText, textAlign: 'center' }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -37,6 +37,7 @@ export function ActionButton({
 const styles = StyleSheet.create({
   button: {
     flexGrow: 1,
+    flexShrink: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,

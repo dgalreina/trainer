@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   exerciseRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.three },
   exerciseName: { flex: 1 },
   actions: { gap: Spacing.two },
-  row: { flexDirection: 'row', gap: Spacing.two },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });
 
 /** La tarjeta de lo que propone el entrenador en el chat: un entrenamiento o una dieta. */

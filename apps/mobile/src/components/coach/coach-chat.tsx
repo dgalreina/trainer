@@ -254,24 +254,22 @@ export function CoachChat() {
           ]}>
           <View style={styles.column}>
             <View style={styles.header}>
-              <CoachOrb size={HEADER_ORB} excited={excited || busy} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar el chat"
-                onPress={() => setOpen(false)}
-                hitSlop={10}
-                style={styles.close}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                  <Path d="M5 5l14 14M19 5L5 19" stroke={theme.text} strokeOpacity={0.62} strokeWidth={2.2} strokeLinecap="round" />
-                </Svg>
+              {/* La orbe es el botón de cerrar: lleva una X dentro para que se entienda. */}
+              <Pressable accessibilityRole="button" accessibilityLabel="Cerrar el chat" onPress={() => setOpen(false)} hitSlop={8}>
+                <CoachOrb size={HEADER_ORB} excited={excited || busy} />
+                <View pointerEvents="none" style={styles.orbX}>
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                    <Path d="M6 6l12 12M18 6L6 18" stroke={theme.aiText} strokeOpacity={0.7} strokeWidth={2.2} strokeLinecap="round" />
+                  </Svg>
+                </View>
               </Pressable>
             </View>
 
-            {/* Un ligero desvanecimiento arriba cuando la conversación se ha desplazado. */}
+            {/* Sin difuminado arriba: la conversación se ve hasta el borde de la cabecera. */}
             <FadingScroll
               mask
               fadeBottom={false}
-              fadeTop={24}
+              fadeTop={0}
               scrollRef={scroller}
               containerStyle={styles.messagesBox}
               style={styles.messages}
@@ -346,8 +344,8 @@ const styles = StyleSheet.create({
   full: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 49 },
   // La columna del chat: ocupa todo el ancho y, en pantallas anchas, se centra.
   column: { flex: 1, width: '100%', maxWidth: CHAT_MAX_WIDTH, alignSelf: 'center' },
-  header: { height: HEADER_ORB + Spacing.three, alignItems: 'center', justifyContent: 'center' },
-  close: { position: 'absolute', right: Spacing.three, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  header: { height: HEADER_ORB + Spacing.three, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: Spacing.three },
+  orbX: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   card: {
     position: 'absolute',
     zIndex: 49,
@@ -391,7 +389,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.two,
     marginHorizontal: Spacing.three,
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.four,
     paddingLeft: Spacing.three,
     paddingRight: Spacing.two,
     paddingVertical: Spacing.two,

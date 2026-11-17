@@ -87,7 +87,7 @@ export function FadingScroll({
         onContentSizeChange={onContentSizeChange}>
         {children}
       </ScrollView>
-      {!masked && <Fade edge="top" visible={top} color={theme.background} />}
+      {!masked && fadeTop > 0 && <Fade edge="top" visible={top} color={theme.background} />}
       {!masked && fadeBottom && <Fade edge="bottom" visible={bottom} color={theme.background} />}
     </View>
   );
