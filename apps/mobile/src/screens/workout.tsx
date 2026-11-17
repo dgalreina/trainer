@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, TextInput, Vibration, View } 
 import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
+import { ExercisePicker } from '@/components/exercise-picker';
 import { Button, Chip, ErrorText, LinkButton, NumberInput } from '@/components/form';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -85,7 +86,7 @@ export function WorkoutScreen() {
   const startAt = Number(at) > 0 ? Number(at) : null;
   const router = useRouter();
   const theme = useTheme();
-  const { trainings, loading } = useTrainings();
+  const { trainings, loading, updateRoutine } = useTrainings();
   const { byId } = useExercises();
 
   const training = trainings.find((t) => t.id === id);
@@ -104,6 +105,8 @@ export function WorkoutScreen() {
   const [finished, setFinished] = useState<WorkoutSummary | null>(null);
   // Ejercicios con el campo de nota abierto (por posición).
   const [noteOpen, setNoteOpen] = useState<Set<number>>(new Set());
+  // Selector para añadir un ejercicio entero que no estaba en la rutina.
+  const [picking, setPicking] = useState(false);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -244,6 +247,18 @@ export function WorkoutScreen() {
     }));
   }
 
+  /** Añade al final un ejercicio de hoy (solo en este entreno: la rutina no cambia), con las series de la última vez o tres vacías. */
+  function addExercise(exerciseId: string) {
+    setPicking(false);
+    const previous = lastByExercise.get(exerciseId) ?? [];
+    const sets = (previous.length > 0 ? previous : [{}, {}, {}]).map((s: Partial<PerformedSet>) => ({
+      reps: s.reps === undefined ? '' : String(s.reps),
+      weightKg: s.weightKg === undefined ? '' : String(s.weightKg),
+      done: false,
+    }));
+    patch((d) => ({ ...d, entries: [...d.entries, { exerciseId, sets, added: true }] }));
+  }
+
   function addSet(entryIndex: number) {
     patch((d) => ({
       ...d,
@@ -298,10 +313,39 @@ export function WorkoutScreen() {
       // El calendario se recarga: el entreno pasa de «en curso» a registrado.
       notifySessionsChanged();
       setFinished(result.summary);
+      await offerAddedExercises(result.payload.entries);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar el entreno');
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** Los ejercicios añadidos a mano que se han guardado: ofrece dejarlos en la rutina para los próximos entrenos. */
+  async function offerAddedExercises(saved: { exerciseId: string; sets: { reps: number }[] }[]) {
+    if (!draft || !routine) return;
+    const inRoutine = new Set(routine.slots.map((s) => s.exerciseId));
+    const extras = draft.entries
+      .filter((e) => e.added && !e.skipped && !inRoutine.has(e.exerciseId))
+      .flatMap((e) => {
+        const entry = saved.find((s) => s.exerciseId === e.exerciseId);
+        return entry ? [entry] : [];
+      });
+    if (extras.length === 0) return;
+    const names = extras.map((e) => byId.get(e.exerciseId)?.name ?? 'Ejercicio').join(', ');
+    const ok = await confirmAction(
+      'Añadir a la rutina',
+      `Hoy has añadido ${names}. ¿Quieres dejarlo en la rutina para los próximos entrenos?`,
+      'Añadir a la rutina',
+      false,
+    );
+    if (!ok) return;
+    try {
+      await updateRoutine(id, rid, {
+        slots: [...routine.slots, ...extras.map((e) => ({ exerciseId: e.exerciseId, sets: e.sets.map((s) => ({ reps: s.reps })) }))],
+      });
+    } catch {
+      // La sesión ya está guardada; si esto falla, se puede añadir desde Entrenamientos.
     }
   }
 
@@ -613,7 +657,22 @@ export function WorkoutScreen() {
         </View>
       ))}
 
+      {/* «+» debajo del último ejercicio: añade uno entero a este entreno. */}
+      <View style={styles.addExercise}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Añadir ejercicio"
+          onPress={() => setPicking(true)}
+          hitSlop={8}
+          style={[styles.roundButton, styles.addExerciseButton, { backgroundColor: theme.backgroundSelected }]}>
+          <View style={[styles.plusBar, { backgroundColor: theme.primaryText }]} />
+          <View style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: theme.primaryText }]} />
+        </Pressable>
+      </View>
+
       <LinkButton title="Descartar entreno" onPress={discard} />
+
+      <ExercisePicker visible={picking} onSelect={(exercise) => addExercise(exercise.id)} onClose={() => setPicking(false)} />
     </Screen>
   );
 }
@@ -638,6 +697,8 @@ const styles = StyleSheet.create({
   setsBlock: { gap: Spacing.two + 2 },
   exerciseActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
   roundButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  addExercise: { alignItems: 'center' },
+  addExerciseButton: { width: 48, height: 48, borderRadius: 24 },
   plusBar: { position: 'absolute', width: 18, height: 3, borderRadius: 1.5 },
   plusBarVertical: { width: 3, height: 18 },
   feedbackText: { flex: 1 },

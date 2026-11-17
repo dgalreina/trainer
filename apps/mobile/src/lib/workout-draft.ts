@@ -31,6 +31,8 @@ export interface DraftEntry {
   feedback?: string;
   /** No se ha hecho hoy: la tarjeta se atenúa y el ejercicio no se guarda en la sesión. Solo vive en el borrador. */
   skipped?: boolean;
+  /** Añadido a mano durante el entreno (no estaba en la rutina). Solo vive en el borrador. */
+  added?: boolean;
   /** El ejercicio está terminado: la tarjeta se atenúa y se bloquea hasta «Retomar». Solo vive en el borrador. */
   finished?: boolean;
 }
@@ -72,7 +74,7 @@ export function lastPerformed(sessions: WorkoutSession[]): Map<string, Performed
   return last;
 }
 
-/** Entreno nuevo a partir de la rutina: lo planeado manda; si no hay dato, lo de la última vez. */
+/** Entreno nuevo a partir de la rutina: el número de series es el planeado; los valores, los de la última vez y, sin historial, los planeados. */
 export function buildDraft(
   trainingId: string,
   routine: Routine,
@@ -94,8 +96,9 @@ export function buildDraft(
         restSeconds: slot.restSeconds,
         notes: slot.notes,
         sets: (planned.length > 0 ? planned : [{}]).map((set, i) => ({
-          reps: toText(set.reps ?? previous[i]?.reps),
-          weightKg: toText(set.weightKg ?? previous[i]?.weightKg),
+          // Lo de la última vez manda (así no sale marcada ninguna diferencia nada más abrir); lo planeado, solo si no hay historial.
+          reps: toText(previous[i]?.reps ?? set.reps),
+          weightKg: toText(previous[i]?.weightKg ?? set.weightKg),
           done: false,
         })),
       };
