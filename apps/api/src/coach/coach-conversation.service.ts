@@ -55,6 +55,12 @@ export class CoachConversationService {
     await this.prune(userId);
   }
 
+  /** Guarda un mensaje que el entrenador dice por su cuenta (por ejemplo, tras analizar un entreno). */
+  async appendCoachMessage(userId: string, content: string): Promise<void> {
+    await this.model.create({ userId, role: "assistant", content, createdAt: new Date() });
+    await this.prune(userId);
+  }
+
   /** Borra toda la conversación del usuario. */
   async clear(userId: string): Promise<void> {
     await this.model.deleteMany({ userId });

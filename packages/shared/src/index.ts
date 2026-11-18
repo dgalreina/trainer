@@ -16,3 +16,4 @@ export * from "./coach";
 export * from "./admin";
 export * from "./exercise-search";
 export * from "./coach-proposal";
+export * from "./coach-review";

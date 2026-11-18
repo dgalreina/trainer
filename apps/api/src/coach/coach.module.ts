@@ -19,6 +19,8 @@ import { CoachJobDoc, CoachJobSchema } from "./coach-job.schema.js";
 import { CoachJobsService } from "./coach-jobs.service.js";
 import { CoachProposalDoc, CoachProposalSchema } from "./proposals/coach-proposal.schema.js";
 import { CoachProposalsService } from "./proposals/coach-proposals.service.js";
+import { CoachReviewDoc, CoachReviewSchema } from "./review/coach-review.schema.js";
+import { CoachReviewService } from "./review/coach-review.service.js";
 import { DietTranslator } from "./proposals/diet-translator.js";
 import { NutritionTargetsService } from "./nutrition-targets.service.js";
 import { TrainingTranslator } from "./proposals/training-translator.js";
@@ -34,6 +36,7 @@ import { CoachService } from "./coach.service.js";
       { name: CoachJobDoc.name, schema: CoachJobSchema },
       { name: CoachProposalDoc.name, schema: CoachProposalSchema },
       { name: AppSuggestionDoc.name, schema: AppSuggestionSchema },
+      { name: CoachReviewDoc.name, schema: CoachReviewSchema },
     ]),
     DietsModule,
     ExercisesModule,
@@ -52,6 +55,7 @@ import { CoachService } from "./coach.service.js";
     CoachConversationService,
     CoachJobsService,
     CoachProposalsService,
+    CoachReviewService,
     CoachToolsService,
     CoachUsageService,
     DietTranslator,

@@ -9,7 +9,15 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { CoachJob, CoachJobStarted, CoachStoredMessage, CoachProposal, CoachUsage } from '@trainer/shared';
+import type {
+  CoachJob,
+  CoachJobStarted,
+  CoachProposal,
+  CoachReviewJob,
+  CoachReviewStarted,
+  CoachStoredMessage,
+  CoachUsage,
+} from '@trainer/shared';
 
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -33,6 +41,9 @@ const POLL_TIMEOUT_MS = 4 * 60 * 1000;
 /** Cuántos fallos de red seguidos se aguantan al preguntar por la respuesta. */
 const POLL_MAX_FAILURES = 5;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** El análisis de un entreno: cada cuánto se pregunta y cuánto se espera como máximo (ms). */
+const REVIEW_POLL_MS = 2000;
+const REVIEW_TIMEOUT_MS = 3 * 60 * 1000;
 
 
 interface CoachValue {
@@ -64,6 +75,13 @@ interface CoachValue {
   clearConversation: () => Promise<void>;
   /** Lo que ha gastado de IA este mes (null hasta que se pide). */
   usage: CoachUsage | null;
+  /** Lo que dice el entrenador en el saludo pequeño cuando habla primero (null = el saludo de siempre). */
+  nudge: string | null;
+  /**
+   * El usuario acaba de guardar un entreno: el entrenador lo analiza en segundo plano y, al acabar, habla él primero
+   * (saludo pequeño junto al icono). Sin IA en el plan o sin cuota no pasa nada, ni se muestra ningún error.
+   */
+  reviewSession: (sessionId: string) => void;
   refreshUsage: () => Promise<void>;
 }
 
@@ -86,6 +104,8 @@ export function CoachProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<CoachUsage | null>(null);
+  const [nudge, setNudge] = useState<string | null>(null);
+  const openRef = useRef(false);
   const abort = useRef<AbortController | null>(null);
   const [poked, setPoked] = useState(false);
   const pokeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,6 +121,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     abort.current = null;
     setMessages([]);
     setUsage(null);
+    setNudge(null);
     setOpenState(false);
     setExpanded(false);
     setBusy(false);
@@ -164,6 +185,9 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       }
       // Abierto por el usuario: el chat entero. El saludo pequeño solo cuando habla primero el entrenador.
       setExpanded(value && !options?.greeting);
+      // El comentario del entrenador solo vive mientras está su saludo a la vista.
+      if (!value || !options?.greeting) setNudge(null);
+      openRef.current = value;
       setOpenState(value);
     },
     [],
@@ -231,6 +255,42 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     [refreshUsage],
   );
 
+  const reviewSession = useCallback(
+    (sessionId: string) => {
+      void (async () => {
+        try {
+          const { reviewId } = await api.post<CoachReviewStarted>('/coach/reviews', { sessionId });
+          const startedAt = Date.now();
+          let failures = 0;
+          while (Date.now() - startedAt < REVIEW_TIMEOUT_MS) {
+            await sleep(REVIEW_POLL_MS);
+            try {
+              const job = await api.get<CoachReviewJob>(`/coach/reviews/${reviewId}`);
+              failures = 0;
+              if (job.status === 'error') return;
+              if (job.status === 'done') {
+                // El mensaje ya está en la conversación del servidor: aquí se añade para verlo sin recargar.
+                if (job.message) setMessages((prev) => [...prev, { id: newId(), role: 'coach', text: job.message ?? '' }]);
+                // Habla él primero, pero sin quitarle el chat de las manos a quien ya está hablando con él.
+                if (!openRef.current) {
+                  setNudge(job.headline ?? null);
+                  setOpen(true, { greeting: true });
+                }
+                void refreshUsage();
+                return;
+              }
+            } catch {
+              if (++failures >= POLL_MAX_FAILURES) return;
+            }
+          }
+        } catch {
+          // Plan sin IA, sin cuota o sin conexión: el entreno ya está guardado y no hay nada que contar.
+        }
+      })();
+    },
+    [setOpen, refreshUsage],
+  );
+
   const updateProposal = useCallback((messageId: string, proposal: CoachProposal) => {
     setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, proposal } : m)));
   }, []);
@@ -257,9 +317,11 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       stop,
       clearConversation,
       usage,
+      nudge,
+      reviewSession,
       refreshUsage,
     }),
-    [open, setOpen, expanded, messages, greeting, busy, poked, send, updateProposal, stop, clearConversation, usage, refreshUsage],
+    [open, setOpen, expanded, messages, greeting, busy, poked, send, updateProposal, stop, clearConversation, usage, nudge, reviewSession, refreshUsage],
   );
   return <CoachContext.Provider value={value}>{children}</CoachContext.Provider>;
 }

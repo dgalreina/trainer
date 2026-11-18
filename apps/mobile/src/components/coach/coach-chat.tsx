@@ -117,7 +117,7 @@ function Bubble({
  * centra. Todo lo de la IA es azulado y verdoso, no salmón. Escape o la ✕ lo cierran; con el teclado, sube con él.
  */
 export function CoachChat() {
-  const { open, setOpen, expanded, setExpanded, messages, greeting, busy, excited, send, stop } = useCoach();
+  const { open, setOpen, expanded, setExpanded, messages, greeting, nudge, busy, excited, send, stop } = useCoach();
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -228,8 +228,8 @@ export function CoachChat() {
               styles.greeting,
               { maxWidth: width - COACH_EDGE * 2 - COACH_ICON - COACH_GREETING_GAP, backgroundColor: theme.background, borderColor: theme.skySoft },
             ]}>
-            <ThemedText numberOfLines={2} style={styles.greetingText}>
-              {greeting}
+            <ThemedText numberOfLines={nudge ? 3 : 2} style={styles.greetingText}>
+              {nudge ?? greeting}
             </ThemedText>
             {/* La colita, a la derecha y a media altura, apuntando al icono. */}
             <View

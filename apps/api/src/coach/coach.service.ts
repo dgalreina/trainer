@@ -303,7 +303,7 @@ export class CoachService {
   }
 
   // Se comprueba ANTES de llamar: el último mensaje puede pasarse un poco del tope (no se sabe lo que costará hasta que responde).
-  private async assertQuota(user: AuthUser): Promise<void> {
+  async assertQuota(user: AuthUser): Promise<void> {
     const usage = await this.monthUsage(user);
     if (usage.capTokens === 0) {
       throw new HttpException(

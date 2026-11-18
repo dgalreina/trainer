@@ -12,6 +12,8 @@ import { ThemedText } from '@/components/themed-text';
 import { COACH_COLUMN } from '@/components/coach/coach-layout';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ReviewCard } from '@/components/coach/review-card';
+import { useCoach } from '@/lib/coach';
 import { SupersetMark } from '@/components/superset-mark';
 import { chainBlocks, chainLabels } from '@/lib/superset';
 import { api } from '@/lib/api';
@@ -87,6 +89,7 @@ export function WorkoutScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { trainings, loading, updateRoutine } = useTrainings();
+  const { reviewSession, usage } = useCoach();
   const { byId } = useExercises();
 
   const training = trainings.find((t) => t.id === id);
@@ -308,11 +311,13 @@ export function WorkoutScreen() {
 
     setSaving(true);
     try {
-      await api.post('/sessions', result.payload);
+      const saved = await api.post<WorkoutSession>('/sessions', result.payload);
       await deleteItem(key);
       // El calendario se recarga: el entreno pasa de «en curso» a registrado.
       notifySessionsChanged();
       setFinished(result.summary);
+      // El entrenador analiza el entreno en segundo plano y, al acabar, habla él primero (si el plan incluye IA).
+      reviewSession(saved.id);
       await offerAddedExercises(result.payload.entries);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se ha podido guardar el entreno');
@@ -383,9 +388,12 @@ export function WorkoutScreen() {
             movidos
             {finished.durationSeconds !== null ? ` · ${formatClock(finished.durationSeconds)}` : ''}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Más adelante, tu entrenador comentará aquí cómo ha ido.
-          </ThemedText>
+          {/* Solo si el plan incluye IA: es quien analiza el entreno y habla después, junto al icono. */}
+          {usage && usage.capTokens > 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Tu entrenador está mirando cómo ha ido: te dirá algo en unos segundos.
+            </ThemedText>
+          ) : null}
         </Card>
         <Button title="Volver a Hoy" onPress={() => router.navigate('/')} />
       </Screen>
@@ -456,6 +464,9 @@ export function WorkoutScreen() {
   return (
     <Screen title={title} subtitle={training.name} stacked fade onBack={goBack} footer={footer}>
       {/* En marcha, el tiempo va en el botón «Finalizar» de abajo: aquí arriba ya no hace falta nada. */}
+      {/* Las mejoras que el entrenador dejó la última vez que hiciste esta rutina: las cumples o no. */}
+      <ReviewCard routineId={rid} />
+
       {draft.startedAt === null ? <Button title="Comenzar" onPress={start} /> : null}
 
       <ThemedText type="small" themeColor="textSecondary">
