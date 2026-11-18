@@ -602,5 +602,9 @@
   {
     "name": "Press inclinado en máquina",
     "category": "pecho"
+  },
+  {
+    "name": "Curl araña",
+    "category": "biceps"
   }
 ]

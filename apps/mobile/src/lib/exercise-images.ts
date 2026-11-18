@@ -598,6 +598,11 @@ const FRAMES: Record<string, ExerciseFrames> = {
     require('../../assets/exercises/curl-bayesian-en-polea_0.webp'),
     require('../../assets/exercises/curl-bayesian-en-polea_1.webp'),
   ],
+  // Curl con el pecho apoyado en un banco inclinado y los brazos colgando (barra Z).
+  'curl arana': [
+    require('../../assets/exercises/curl-arana_0.webp'),
+    require('../../assets/exercises/curl-arana_1.webp'),
+  ],
   'pullover en polea alta (brazos rectos)': [
     require('../../assets/exercises/pullover-en-polea-alta-brazos-rectos_0.webp'),
     require('../../assets/exercises/pullover-en-polea-alta-brazos-rectos_1.webp'),
