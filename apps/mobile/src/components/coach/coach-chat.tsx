@@ -129,6 +129,12 @@ export function CoachChat() {
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
+  // La conversación ya está colocada en el último mensaje (hasta entonces se mantiene invisible, sin recorrido visible).
+  const [positioned, setPositioned] = useState(false);
+  useEffect(() => {
+    if (!open || !expanded) setPositioned(false);
+  }, [open, expanded]);
+
   // Aparece desde el icono: crece y se aclara (y se queda montado mientras se va, para poder animar la salida).
   const [mounted, setMounted] = useState(open);
   const appear = useRef(new Animated.Value(open ? 1 : 0)).current;
@@ -246,14 +252,14 @@ export function CoachChat() {
             styles.full,
             {
               backgroundColor: theme.background,
-              paddingTop: insets.top,
               bottom: keyboard,
               paddingBottom: keyboard > 0 ? Spacing.two : insets.bottom,
               opacity: appear,
             },
           ]}>
           <View style={styles.column}>
-            <View style={styles.header}>
+            {/* La cabecera flota sobre la conversación: los mensajes se ven hasta el borde de arriba de la pantalla. */}
+            <View pointerEvents="box-none" style={[styles.header, { top: insets.top }]}>
               {/* La orbe es el botón de cerrar: lleva una X dentro para que se entienda. */}
               <Pressable accessibilityRole="button" accessibilityLabel="Cerrar el chat" onPress={() => setOpen(false)} hitSlop={8}>
                 <CoachOrb size={HEADER_ORB} excited={excited || busy} />
@@ -265,17 +271,20 @@ export function CoachChat() {
               </Pressable>
             </View>
 
-            {/* Sin difuminado arriba: la conversación se ve hasta el borde de la cabecera. */}
+            {/* Sin difuminado ni corte arriba. Al abrir, la conversación sale ya en el último mensaje (sin recorrerla); después, los nuevos bajan con animación. */}
             <FadingScroll
               mask
               fadeBottom={false}
               fadeTop={0}
               scrollRef={scroller}
-              containerStyle={styles.messagesBox}
+              containerStyle={[styles.messagesBox, { opacity: positioned ? 1 : 0 }]}
               style={styles.messages}
-              contentContainerStyle={styles.messagesContent}
+              contentContainerStyle={[styles.messagesContent, { paddingTop: insets.top + HEADER_ORB + Spacing.three * 2 }]}
               keyboardShouldPersistTaps="handled"
-              onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}>
+              onContentSizeChange={() => {
+                scroller.current?.scrollToEnd({ animated: positioned });
+                if (!positioned) requestAnimationFrame(() => setPositioned(true));
+              }}>
               <Bubble message={{ role: 'coach', text: greeting }} />
               {messages.length === 0 ? (
                 <View style={styles.suggestions}>
@@ -344,7 +353,7 @@ const styles = StyleSheet.create({
   full: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 49 },
   // La columna del chat: ocupa todo el ancho y, en pantallas anchas, se centra.
   column: { flex: 1, width: '100%', maxWidth: CHAT_MAX_WIDTH, alignSelf: 'center' },
-  header: { height: HEADER_ORB + Spacing.three, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: Spacing.three },
+  header: { position: 'absolute', left: 0, right: 0, zIndex: 2, height: HEADER_ORB + Spacing.three, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: Spacing.three },
   orbX: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   card: {
     position: 'absolute',

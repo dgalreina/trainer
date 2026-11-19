@@ -7,7 +7,6 @@ import Svg, { Path } from 'react-native-svg';
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
 import { LiveDot } from '@/components/live-dot';
-import { ResetButton } from '@/components/reset-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { TrainingBadge } from '@/components/training-badge';
@@ -75,6 +74,8 @@ export function TodayScreen() {
   const sessionsVersion = useSessionsVersion();
   const [done, setDone] = useState<Set<string>>(new Set());
   const resetAt = settings.routinesResetAt;
+  // Todas las rutinas hechas: se avisa, pero los tics no se quitan solos.
+  const allDone = !!activeTraining && activeTraining.routines.length > 0 && done.size === activeTraining.routines.length;
   useFocusEffect(
     useCallback(() => {
       if (!activeTraining || activeTraining.routines.length === 0) {
@@ -196,22 +197,27 @@ export function TodayScreen() {
                   </Card>
                 );
               })}
-              {/* Abajo a la izquierda y solo si hay algo marcado que descartar. */}
-              {done.size > 0 ? (
-                <View style={styles.resetRow}>
-                  <ResetButton
-                    label="Descartar todo"
-                    onPress={async () => {
-                      const ok = await confirmAction(
-                        'Descartar todo',
-                        'Se desmarcarán todas las rutinas hechas y empezarás un ciclo nuevo.',
-                        'Descartar',
-                      );
-                      if (ok) resetRoutines().then(() => setDone(new Set()), () => {});
-                    }}
-                  />
-                </View>
-              ) : null}
+              {/* Los tics solo se quitan aquí, cuando el usuario decide. Sin tics no procede: el botón sale apagado. */}
+              <View style={styles.newWeek}>
+                {allDone ? (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.newWeekText}>
+                    Ya has hecho todas las rutinas. ¿Quieres empezar una nueva semana?
+                  </ThemedText>
+                ) : null}
+                <Button
+                  title="Nueva semana"
+                  variant={allDone ? 'primary' : 'secondary'}
+                  disabled={done.size === 0}
+                  onPress={async () => {
+                    const ok = await confirmAction(
+                      'Nueva semana',
+                      'Se quitarán los tics de todas las rutinas y empezarás una semana nueva. No se borra ningún entreno.',
+                      'Empezar',
+                    );
+                    if (ok) resetRoutines().then(() => setDone(new Set()), () => {});
+                  }}
+                />
+              </View>
             </>
           )}
         </>
@@ -227,6 +233,7 @@ const styles = StyleSheet.create({
   tag: { position: 'absolute', top: Spacing.four, right: Spacing.three },
   // Una rutina ya hecha en este ciclo se ve más tenue; se puede volver a elegir.
   done: { opacity: 0.55 },
-  resetRow: { alignItems: 'flex-start' },
+  newWeek: { gap: Spacing.two, marginTop: Spacing.two },
+  newWeekText: { textAlign: 'center' },
   routineName: { fontSize: 26, lineHeight: 32 },
 });

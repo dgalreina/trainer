@@ -75,7 +75,7 @@ export function SessionSheet({
         setEntries(
           loaded.entries.map((e) => ({
             ...e,
-            sets: e.sets.map((s) => ({ reps: String(s.reps), weightKg: toText(s.weightKg), rpe: s.rpe })),
+            sets: e.sets.map((s) => ({ reps: s.reps ? String(s.reps) : '', weightKg: toText(s.weightKg), rpe: s.rpe })),
           })),
         );
       })
@@ -123,7 +123,7 @@ export function SessionSheet({
     for (const entry of entries) {
       const sets: PerformedSet[] = [];
       for (const s of entry.sets) {
-        const reps = parseNumber(s.reps);
+        const reps = s.reps.trim() === '' ? 0 : parseNumber(s.reps);
         const weightKg = s.weightKg.trim() === '' ? 0 : parseNumber(s.weightKg);
         if (reps === null || !Number.isInteger(reps) || reps > 1000 || weightKg === null || weightKg > 1000) {
           return setError(

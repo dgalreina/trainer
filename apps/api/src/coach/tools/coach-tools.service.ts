@@ -37,7 +37,7 @@ const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS);
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const kg = (n: number) => (Number.isInteger(n) ? String(n) : String(round1(n)));
 /** «8×60» (repeticiones × kg). */
-const setText = (s: { reps: number; weightKg: number }) => `${s.reps}×${kg(s.weightKg)}`;
+const setText = (s: { reps: number; weightKg: number }) => `${s.reps > 0 ? s.reps : "?"}×${kg(s.weightKg)}`;
 /** Una serie planeada: puede no tener repeticiones o peso previstos («8×—», «—×60»). */
 const plannedSetText = (s: { reps?: number; weightKg?: number }) =>
   `${s.reps ?? "—"}×${s.weightKg === undefined ? "—" : kg(s.weightKg)}`;

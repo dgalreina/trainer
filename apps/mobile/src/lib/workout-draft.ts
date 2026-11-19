@@ -97,7 +97,8 @@ export function buildDraft(
         notes: slot.notes,
         sets: (planned.length > 0 ? planned : [{}]).map((set, i) => ({
           // Lo de la última vez manda (así no sale marcada ninguna diferencia nada más abrir); lo planeado, solo si no hay historial.
-          reps: toText(previous[i]?.reps ?? set.reps),
+          // 0 repeticiones = «no anotadas»: se trata como si no hubiera dato.
+          reps: toText(previous[i]?.reps || set.reps),
           weightKg: toText(previous[i]?.weightKg ?? set.weightKg),
           done: false,
         })),
@@ -155,8 +156,11 @@ export function toSessionPayload(
       notes: entry.feedback?.trim() ? entry.feedback.trim().slice(0, FEEDBACK_MAX_LENGTH) : undefined,
       sets: entry.sets.filter(useSet).flatMap((s) => {
         const reps = parseNumber(s.reps);
-        // Sin repeticiones no hay serie; sin peso es peso corporal (0 kg).
-        return reps === undefined ? [] : [{ reps: Math.round(reps), weightKg: parseNumber(s.weightKg) ?? 0 }];
+        const weight = parseNumber(s.weightKg);
+        // Las repeticiones son opcionales: sin ellas se guarda 0 («no anotadas»). Una serie sin nada escrito y sin marcar no cuenta.
+        if (reps === undefined && weight === undefined && !s.done) return [];
+        // Sin peso es peso corporal (0 kg).
+        return [{ reps: Math.round(reps ?? 0), weightKg: weight ?? 0 }];
       }),
     }))
     .filter((entry) => entry.sets.length > 0);

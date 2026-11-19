@@ -135,9 +135,9 @@ export function dietIdOn(schedule: DietScheduleEntry[], day: string): string | n
 
 /**
  * Qué rutinas de un entrenamiento están hechas en el ciclo en curso. Se recorren los entrenos terminados por orden de
- * fecha (los anteriores a `resetAt` no cuentan): cada uno marca su rutina, y cuando están hechas todas se desmarcan
- * todas y empieza otro ciclo. Repetir una rutina ya marcada no cambia nada. Con una sola rutina nunca queda marcada.
- * Un entreno cuenta si TERMINÓ después de `resetAt` (empezó antes de pulsar «Desmarcar todos» y se finalizó después: cuenta).
+ * fecha (los anteriores a `resetAt` no cuentan): cada uno marca su rutina. Los tics NO se quitan solos al completar
+ * todas: solo los limpia el usuario con «Nueva semana» (`resetAt`). Repetir una rutina ya marcada no cambia nada.
+ * Un entreno cuenta si TERMINÓ después de `resetAt` (empezó antes de pulsar «Nueva semana» y se finalizó después: cuenta).
  * Limitación conocida: se recalcula con las rutinas de ahora, así que añadir o borrar una rutina a mitad de historial puede
  * cambiar lo marcado.
  */
@@ -159,7 +159,6 @@ export function doneRoutineIds(
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
   for (const session of ordered) {
     done.add(session.routineId as string);
-    if (done.size === wanted.size) done.clear();
   }
   return done;
 }

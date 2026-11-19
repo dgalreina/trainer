@@ -63,7 +63,7 @@ const kg = (n: number) => String(n).replace(".", ",");
 function formatSession(session: WorkoutSession, names: Map<string, string>): string {
   const lines = session.entries.map((e) => {
     const technique = e.technique ? ` [${TECHNIQUE_LABELS[e.technique] ?? e.technique}]` : "";
-    const sets = e.sets.map((s) => `${kg(s.weightKg)} kg × ${s.reps}`).join(", ");
+    const sets = e.sets.map((s) => (s.reps > 0 ? `${kg(s.weightKg)} kg × ${s.reps}` : `${kg(s.weightKg)} kg × (repeticiones sin anotar)`)).join(", ");
     const note = e.notes ? ` (nota del usuario: «${e.notes}»)` : "";
     return `- ${names.get(e.exerciseId) ?? "Ejercicio"}${technique}: ${sets}${note}`;
   });

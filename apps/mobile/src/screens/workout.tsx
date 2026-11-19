@@ -255,7 +255,7 @@ export function WorkoutScreen() {
     setPicking(false);
     const previous = lastByExercise.get(exerciseId) ?? [];
     const sets = (previous.length > 0 ? previous : [{}, {}, {}]).map((s: Partial<PerformedSet>) => ({
-      reps: s.reps === undefined ? '' : String(s.reps),
+      reps: !s.reps ? '' : String(s.reps),
       weightKg: s.weightKg === undefined ? '' : String(s.weightKg),
       done: false,
     }));
@@ -303,7 +303,9 @@ export function WorkoutScreen() {
     setError(null);
     // Marcar las series es opcional: si no se marca ninguna, se acaba igual y cuentan todas (con las repeticiones que tengan).
     const result = toSessionPayload(draft, Date.now(), true);
-    if (!result) return setError('No hay ninguna serie con repeticiones que guardar.');
+    if (!result) {
+      return setError('No hay nada que guardar: escribe el peso o las repeticiones de lo que has hecho, o marca alguna serie.');
+    }
 
     // Un toque sin querer no debe cerrar el entreno: se pide confirmación antes de guardarlo.
     const ok = await confirmAction('Finalizar entreno', '¿Has terminado? Se guardará en tu calendario.', 'Finalizar', false);
@@ -536,7 +538,7 @@ export function WorkoutScreen() {
 
             {entry.sets.map((set, setIndex) => {
               const delta = numberDelta(set.weightKg, last?.[setIndex]?.weightKg);
-              const repsDelta = numberDelta(set.reps, last?.[setIndex]?.reps);
+              const repsDelta = numberDelta(set.reps, last?.[setIndex]?.reps || undefined);
               return (
               <View key={setIndex} style={styles.setRow}>
                 <Pressable

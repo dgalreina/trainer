@@ -11,6 +11,7 @@ Qué escribir:
 
 Reglas:
 - Usa SOLO los números que ves aquí. No inventes marcas, fechas ni comparaciones. Si es la primera vez que hace esta rutina, no compares con nada.
+- «Repeticiones sin anotar» significa que el usuario no las apuntó: no las supongas ni hables de ellas como si fueran pocas o muchas; si faltan en casi todo el entreno, valora solo lo que sí ves (pesos, constancia) y no propongas mejoras de repeticiones.
 - Una serie de peso 0 es peso corporal. Las series sin marcar no se guardan, así que lo que ves es lo que hizo.
 - Habla de rendimiento y progresión, nunca de cómo se ve su cuerpo. Sin consejo médico: si él anotó un dolor o una molestia, dile que lo vigile y que lo vea un profesional si continúa.
 - No propongas cambiar de entrenamiento entero ni dietas: solo detalles de esta rutina.`;
