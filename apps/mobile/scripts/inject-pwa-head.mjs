@@ -17,10 +17,8 @@ const tags = [
   `<meta name="apple-mobile-web-app-capable" content="yes"/>`,
   `<meta name="mobile-web-app-capable" content="yes"/>`,
   `<meta name="apple-mobile-web-app-title" content="Élite"/>`,
-  // "black-translucent" + viewport-fit=cover (más abajo): la web ocupa TODA la pantalla, también tras la hora y la batería,
-  // y los márgenes de seguridad (env(safe-area-inset-*)) dicen cuánto dejar libre. Probado el 2026-11-19; si el texto de la
-  // barra de estado no se lee o algo se descoloca, volver a "default" y quitar viewport-fit.
-  `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>`,
+  // "default": iOS adapta el texto de la barra de estado al modo claro u oscuro.
+  `<meta name="apple-mobile-web-app-status-bar-style" content="default"/>`,
   `<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>`,
   `<meta name="theme-color" content="#150F12" media="(prefers-color-scheme: dark)"/>`,
 ].join("");
@@ -38,11 +36,7 @@ for (const file of htmlFiles("dist")) {
   const html = readFileSync(file, "utf8");
   if (html.includes('rel="manifest"')) continue;
   if (!html.includes("</head>")) throw new Error(`${file} no tiene </head>`);
-  const fullScreen = html.replace(
-    /<meta name="viewport" content="([^"]*)"\/>/,
-    (_, content) => `<meta name="viewport" content="${content}, viewport-fit=cover"/>`,
-  );
-  writeFileSync(file, fullScreen.replace("</head>", `${tags}</head>`));
+  writeFileSync(file, html.replace("</head>", `${tags}</head>`));
   count++;
 }
 console.log(`PWA: etiquetas añadidas a ${count} HTML`);
