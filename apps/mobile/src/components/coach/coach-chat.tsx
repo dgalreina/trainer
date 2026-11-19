@@ -384,7 +384,8 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
   },
   // El contenedor se ajusta al contenido y solo encoge si no cabe (el bocadillo tiene un alto máximo).
-  messagesBox: { flex: 1 },
+  // Un margen arriba: la conversación no toca el borde de la pantalla (la parte de arriba de lo que se desplaza se corta ahí).
+  messagesBox: { flex: 1, marginTop: Spacing.three },
   messages: { flex: 1 },
   messagesContent: { padding: Spacing.three, gap: Spacing.two },
   row: { flexDirection: 'row' },
