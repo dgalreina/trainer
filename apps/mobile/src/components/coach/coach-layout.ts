@@ -25,30 +25,6 @@ export function useCoachIconBottom(): number {
 }
 
 /**
- * Cuánto ha desplazado iOS la página hacia arriba al abrir el teclado (px; 0 si no). Un chat que ocupa toda la pantalla
- * debe empezar justo ahí, en el borde de arriba de lo que se ve, o su parte de arriba queda por detrás de la hora y la
- * batería. Solo en la web.
- */
-export function useViewportTop(active: boolean): number {
-  const [top, setTop] = useState(0);
-  useEffect(() => {
-    if (!active || Platform.OS !== 'web') return;
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    const update = () => setTop(Math.max(0, Math.round(viewport.offsetTop)));
-    update();
-    viewport.addEventListener('resize', update);
-    viewport.addEventListener('scroll', update);
-    return () => {
-      viewport.removeEventListener('resize', update);
-      viewport.removeEventListener('scroll', update);
-      setTop(0);
-    };
-  }, [active]);
-  return top;
-}
-
-/**
  * Lo que tapa el teclado por abajo (px; 0 si no hay). En la web de iOS el teclado no reduce la página, solo la «vista
  * visual», así que se mide la diferencia; en nativo, con los eventos del teclado.
  */

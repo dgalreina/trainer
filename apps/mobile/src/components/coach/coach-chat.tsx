@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { COACH_EDGE, COACH_ICON, useCoachIconBottom, useKeyboardInset, useViewportTop } from '@/components/coach/coach-layout';
+import { COACH_EDGE, COACH_ICON, useCoachIconBottom, useKeyboardInset } from '@/components/coach/coach-layout';
 import { CoachOrb } from '@/components/coach/coach-orb';
 import { ProposalCard } from '@/components/coach/proposal-card';
 import { RichText } from '@/components/coach/rich-text';
@@ -123,7 +123,6 @@ export function CoachChat() {
   const insets = useSafeAreaInsets();
   const iconBottom = useCoachIconBottom();
   const keyboard = useKeyboardInset(open && expanded);
-  const viewportTop = useViewportTop(open && expanded);
   const [draft, setDraft] = useState('');
   // Alto del texto escrito: el cuadro crece con él hasta INPUT_MAX_HEIGHT y luego hace scroll por dentro.
   const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT);
@@ -253,7 +252,6 @@ export function CoachChat() {
             styles.full,
             {
               backgroundColor: theme.background,
-              top: viewportTop,
               bottom: keyboard,
               paddingBottom: keyboard > 0 ? Spacing.two : insets.bottom,
               opacity: appear,
