@@ -10,8 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useSafeTop } from '@/lib/safe-area';
-
 import { BACK_BUTTON_SIZE, BackButton } from '@/components/back-button';
 import { FadingScroll } from '@/components/fading-scroll';
 import { ScrollControlContext, type ScrollControl } from '@/components/scroll-control';
@@ -131,8 +129,6 @@ export function Screen({
   ) : null;
 
   const theme = useTheme();
-  // En la PWA la web ocupa toda la pantalla: se deja libre lo de la hora y la batería (las ondas del fondo sí llegan arriba).
-  const safeTop = useSafeTop();
 
   // Control del scroll para quien lo necesite desde dentro (el arrastre de la rutina desplaza la página al llegar al borde).
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -177,7 +173,7 @@ export function Screen({
   const fixedStyle = [styles.content, styles.fixedTop, stacked ? styles.stackedTop : null];
 
   const body = (
-    <SafeAreaView style={[styles.safe, { paddingTop: safeTop }]}>
+    <SafeAreaView style={styles.safe}>
       {hasFixed && !fullBleed ? (
         <View style={fixedStyle}>
           {header}
