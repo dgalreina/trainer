@@ -22,6 +22,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCoach, type CoachMessage } from '@/lib/coach';
+import { useSafeTop } from '@/lib/safe-area';
 
 /** Preguntas para empezar, las que hará el usuario casi siempre. */
 const SUGGESTIONS = [
@@ -121,6 +122,9 @@ export function CoachChat() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // En la web (PWA a pantalla completa) el margen de arriba sale del CSS; en nativo, de los insets.
+  const webSafeTop = useSafeTop();
+  const safeTop = Platform.OS === 'web' ? webSafeTop : insets.top;
   const iconBottom = useCoachIconBottom();
   const keyboard = useKeyboardInset(open && expanded);
   const [draft, setDraft] = useState('');
@@ -259,7 +263,7 @@ export function CoachChat() {
           ]}>
           <View style={styles.column}>
             {/* La cabecera flota sobre la conversación: los mensajes se ven hasta el borde de arriba de la pantalla. */}
-            <View pointerEvents="box-none" style={[styles.header, { top: insets.top }]}>
+            <View pointerEvents="box-none" style={[styles.header, { top: safeTop }]}>
               {/* La orbe es el botón de cerrar: lleva una X dentro para que se entienda. */}
               <Pressable accessibilityRole="button" accessibilityLabel="Cerrar el chat" onPress={() => setOpen(false)} hitSlop={8}>
                 <CoachOrb size={HEADER_ORB} excited={excited || busy} />
@@ -279,7 +283,7 @@ export function CoachChat() {
               scrollRef={scroller}
               containerStyle={[styles.messagesBox, { opacity: positioned ? 1 : 0 }]}
               style={styles.messages}
-              contentContainerStyle={[styles.messagesContent, { paddingTop: insets.top + HEADER_ORB + Spacing.three * 2 }]}
+              contentContainerStyle={[styles.messagesContent, { paddingTop: safeTop + HEADER_ORB + Spacing.three * 2 }]}
               keyboardShouldPersistTaps="handled"
               onContentSizeChange={() => {
                 scroller.current?.scrollToEnd({ animated: positioned });

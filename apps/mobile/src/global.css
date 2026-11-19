@@ -33,6 +33,15 @@ textarea,
   -webkit-touch-callout: default;
 }
 
+/* La raíz es la pantalla entera (en la PWA de iOS con barra translúcida quedaba una franja blanca abajo). */
+#root {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
 html,
 body {
   background-color: #ffffff;

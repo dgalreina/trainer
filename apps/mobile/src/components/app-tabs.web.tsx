@@ -5,6 +5,7 @@ import { TabsPager } from '@/components/tabs-pager';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSafeTop } from '@/lib/safe-area';
 import { TABS, tabIndexFromPath } from '@/lib/tabs';
 
 // Por debajo de este ancho las cinco pestañas ocupan todo el espacio: sin nombre de marca.
@@ -32,9 +33,10 @@ function TabBar() {
   const { width } = useWindowDimensions();
   const active = tabIndexFromPath(pathname);
   const compact = width < COMPACT_MAX_WIDTH;
+  const safeTop = useSafeTop();
 
   return (
-    <View style={[styles.tabListContainer, compact && styles.tabListCompact]} pointerEvents="box-none">
+    <View style={[styles.tabListContainer, compact && styles.tabListCompact, { top: safeTop }]} pointerEvents="box-none">
       <ThemedView type="backgroundElement" style={[styles.innerContainer, compact && styles.innerCompact]}>
         {width >= BRAND_MIN_WIDTH && (
           <ThemedText type="smallBold" style={styles.brandText}>
