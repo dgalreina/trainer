@@ -17,3 +17,4 @@ export * from "./admin";
 export * from "./exercise-search";
 export * from "./coach-proposal";
 export * from "./coach-review";
+export * from "./session-stats";

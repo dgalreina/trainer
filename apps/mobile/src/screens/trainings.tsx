@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
 import { Screen } from '@/components/screen';
+import { SessionHistory } from '@/components/session-history';
 import { SectionTabs, TemplatesPlaceholder } from '@/components/section-tabs';
 import { TemplateCard } from '@/components/template-card';
 import { ThemedText } from '@/components/themed-text';
@@ -32,7 +33,7 @@ export function TrainingsScreen() {
   const today = todayISO();
   const newTraining = useNewTraining();
   const [createError, setCreateError] = useState<string | null>(null);
-  const [section, setSection] = useState<'mis' | 'plantillas'>('mis');
+  const [section, setSection] = useState<'mis' | 'plantillas' | 'historial'>('mis');
   const [usingId, setUsingId] = useState<string | null>(null);
   // Cerrojo síncrono: dos pulsaciones seguidas (aunque sea en otra tarjeta) no crean dos entrenamientos.
   const using = useRef(false);
@@ -64,12 +65,15 @@ export function TrainingsScreen() {
           options={[
             { key: 'mis', label: 'Mis entrenos' },
             { key: 'plantillas', label: 'Plantillas' },
+            { key: 'historial', label: 'Historial' },
           ]}
           value={section}
           onChange={setSection}
         />
       }>
-      {section === 'plantillas' ? (
+      {section === 'historial' ? (
+        <SessionHistory />
+      ) : section === 'plantillas' ? (
         templates.length === 0 ? (
           <>
             <TemplatesPlaceholder
