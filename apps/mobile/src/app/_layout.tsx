@@ -16,6 +16,7 @@ import { ExercisesProvider } from '@/lib/exercises';
 import { FoodsProvider } from '@/lib/foods';
 import { MeProvider } from '@/lib/me';
 import { SettingsProvider } from '@/lib/settings';
+import { useFullScreenHeight } from '@/lib/safe-area';
 import { ThemePreferenceProvider, useThemePreference } from '@/lib/theme-preference';
 import { TrainingsProvider } from '@/lib/trainings';
 
@@ -128,6 +129,7 @@ function ThemedApp() {
 }
 
 export default function RootLayout() {
+  useFullScreenHeight();
   return (
     <ThemePreferenceProvider>
       <ThemedApp />

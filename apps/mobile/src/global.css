@@ -38,8 +38,11 @@ textarea,
   position: fixed;
   top: 0;
   right: 0;
-  bottom: 0;
   left: 0;
+  /* En la PWA de iOS con barra translúcida el 100 % de la página puede salir más corto que la pantalla (justo el hueco de la
+     hora): se toma lo mayor entre el alto de la página y el de la pantalla entera. */
+  height: 100%;
+  height: max(100%, 100vh, 100lvh);
 }
 
 html,
