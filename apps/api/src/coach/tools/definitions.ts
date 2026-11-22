@@ -161,8 +161,10 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "getNutritionSummary",
     description:
-      "Lo que ha comido el usuario en los últimos días según lo que ha registrado: por día, calorías y macros totales y " +
-      "cuántas comidas; y la media de los días con registro. Úsala para hablar de cómo está comiendo.",
+      "Lo que ha comido el usuario en los últimos días, igual que lo ve en su calendario: por día, las comidas con su hora, " +
+      "calorías y macros (las de la dieta cuentan como hechas salvo que las haya quitado o cambiado ese día; lo que ha añadido " +
+      "o editado manda), lo que aún le queda por comer hoy, y la media de los días completos. Úsala siempre que pregunte " +
+      "qué ha comido, cómo va el día o cómo está comiendo.",
     input_schema: {
       type: "object",
       properties: { days: { type: "integer", minimum: 1, maximum: 28, description: "Cuántos días hacia atrás (por defecto 7)" } },

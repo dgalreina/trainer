@@ -19,3 +19,4 @@ export * from "./coach-proposal";
 export * from "./coach-review";
 export * from "./session-stats";
 export * from "./exercise-progress";
+export * from "./day-meals";

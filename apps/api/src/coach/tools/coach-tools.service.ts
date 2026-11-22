@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import {
   dayLabel,
+  dayMeals,
+  dietIdOn,
   dietMacros,
   mondayOfIso,
   searchExercises,
@@ -32,6 +34,37 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_PROGRESS_ROWS = 60;
+
+/** La app es para España por ahora: los días y las horas de las comidas se cuentan en hora de Madrid, no en la del servidor (UTC). */
+const TIME_ZONE = "Europe/Madrid";
+const localFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+/** Día "AAAA-MM-DD" y hora "HH:MM" locales de un instante. */
+function localParts(date: Date): { day: string; time: string } {
+  const p = Object.fromEntries(localFormat.formatToParts(date).map((x) => [x.type, x.value]));
+  return { day: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+}
+
+/** Un día de comidas tal y como se le cuenta a Claude. */
+interface DaySummary {
+  date: string;
+  today?: true;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  meals: string[];
+  pendingToday?: string[];
+  kcalIfAllPending?: number;
+  removedFromDiet?: string[];
+}
 
 const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS);
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -207,26 +240,69 @@ export class CoachToolsService {
     };
   }
 
+  /**
+   * Lo comido los últimos días tal y como lo cuenta el calendario de la app: las comidas de la dieta cuentan salvo que ese
+   * día se hayan quitado o cambiado, y lo que el usuario registró o editó manda sobre la dieta. Los días son de hora local.
+   */
   private async nutritionSummary(userId: string, { days }: { days: number }) {
-    const logs = (await this.mealLogs.list(userId, daysAgo(days), new Date(Date.now() + DAY_MS))).filter((l) => !l.skipped);
-    if (logs.length === 0) return { message: `No hay comidas registradas en los últimos ${days} días.` };
-    const byDay = new Map<string, typeof logs>();
-    for (const log of logs) {
-      const day = log.date.slice(0, 10);
-      byDay.set(day, [...(byDay.get(day) ?? []), log]);
-    }
-    const perDay = [...byDay.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, list]) => {
-        const total = sumMacros(list.flatMap((l) => l.items.map((i) => ({ kcal: i.kcal, protein: i.protein, carbs: i.carbs, fat: i.fat }))));
-        return { date, meals: list.length, kcal: total.kcal, proteinG: total.protein, carbsG: total.carbs, fatG: total.fat };
+    const now = localParts(new Date());
+    const [settings, catalogList, logs] = await Promise.all([
+      this.settings.get(userId),
+      this.foods.list(userId),
+      // Un día de margen por los husos: luego se reparte por día local.
+      this.mealLogs.list(userId, daysAgo(days + 1), new Date(Date.now() + DAY_MS)),
+    ]);
+    const catalog = new Map(catalogList.map((f) => [f.id, f]));
+    const dietCache = new Map<string, Awaited<ReturnType<DietsService["get"]>> | null>();
+    const dietOf = async (day: string) => {
+      const id = dietIdOn(settings.dietSchedule, day);
+      if (!id) return null;
+      if (!dietCache.has(id)) dietCache.set(id, await this.diets.get(userId, id).catch(() => null));
+      return dietCache.get(id) ?? null;
+    };
+
+    const perDay: DaySummary[] = [];
+    for (let back = days - 1; back >= 0; back--) {
+      const day = localParts(new Date(Date.now() - back * DAY_MS)).day;
+      const dayLogs = logs.filter((l) => localParts(new Date(l.date)).day === day);
+      const { meals, removed } = dayMeals({
+        diet: await dietOf(day),
+        logs: dayLogs,
+        foods: catalog,
+        timeOf: (l) => localParts(new Date(l.date)).time,
       });
-    const n = perDay.length;
-    const avg = (pick: (d: (typeof perDay)[number]) => number) => Math.round(perDay.reduce((a, d) => a + pick(d), 0) / n);
+      if (meals.length === 0 && removed.length === 0) continue;
+      const isToday = day === now.day;
+      // Hoy, lo que aún no ha llegado a su hora es «pendiente»: el calendario ya lo suma al día, pero no se lo ha comido todavía.
+      const eaten = isToday ? meals.filter((m) => m.time <= now.time) : meals;
+      const pending = isToday ? meals.filter((m) => m.time > now.time) : [];
+      const total = sumMacros(eaten.map((m) => m.macros));
+      const line = (m: (typeof meals)[number]) =>
+        `${m.time} ${m.name} ${m.macros.kcal} kcal${m.origin === "dieta" ? " (de la dieta)" : m.origin === "cambiada" ? " (cambiada ese día)" : " (añadida por él)"}`;
+      perDay.push({
+        date: day,
+        ...(isToday ? { today: true } : {}),
+        kcal: total.kcal,
+        proteinG: total.protein,
+        carbsG: total.carbs,
+        fatG: total.fat,
+        meals: eaten.map(line),
+        ...(pending.length > 0 ? { pendingToday: pending.map(line), kcalIfAllPending: sumMacros(meals.map((m) => m.macros)).kcal } : {}),
+        ...(removed.length > 0 ? { removedFromDiet: removed } : {}),
+      });
+    }
+    if (perDay.length === 0) return { message: `No hay comidas (ni de la dieta ni registradas) en los últimos ${days} días.` };
+    // La media solo cuenta días completos (hoy aún no ha acabado).
+    const full = perDay.filter((d) => !d.today);
+    const avg = (pick: (d: (typeof perDay)[number]) => number) =>
+      full.length === 0 ? null : Math.round(full.reduce((a, d) => a + pick(d), 0) / full.length);
     return {
-      note: "Solo cuentan los días con comidas registradas; un día sin registro no significa que no comiera.",
-      daysWithRecords: n,
-      average: { kcal: avg((d) => d.kcal), proteinG: avg((d) => d.proteinG), carbsG: avg((d) => d.carbsG), fatG: avg((d) => d.fatG) },
+      note:
+        "Es lo mismo que ve el usuario en su calendario: las comidas de la dieta cuentan como comidas hechas salvo que las haya " +
+        "quitado o cambiado ese día; lo que ha añadido o editado manda. Un día sin comidas ni dieta no aparece, y no significa que no comiera.",
+      today: `${now.day} ${now.time}`,
+      daysCounted: full.length,
+      averageFullDays: full.length === 0 ? null : { kcal: avg((d) => d.kcal), proteinG: avg((d) => d.proteinG), carbsG: avg((d) => d.carbsG), fatG: avg((d) => d.fatG) },
       perDay,
     };
   }
