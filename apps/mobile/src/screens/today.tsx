@@ -1,8 +1,7 @@
-import { dayLabel, doneRoutineIds, routineTitle, type WorkoutSession } from '@trainer/shared';
+import { dayLabel, doneRoutineIds, type Routine, type WorkoutSession } from '@trainer/shared';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import { Card } from '@/components/card';
 import { Button, ErrorText } from '@/components/form';
@@ -23,16 +22,6 @@ import { useSettings } from '@/lib/settings';
 import { getItem } from '@/lib/storage';
 import { useTrainings } from '@/lib/trainings';
 import { draftKey, parseDraft } from '@/lib/workout-draft';
-
-/** El tick gris de una rutina ya hecha en este ciclo. */
-function DoneTick() {
-  const theme = useTheme();
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M4 12.5l5 5L20 6.5" />
-    </Svg>
-  );
-}
 
 export function TodayScreen() {
   const router = useRouter();
@@ -165,38 +154,63 @@ export function TodayScreen() {
             </Card>
           ) : (
             <>
-              {activeTraining.routines.map((routine, index) => {
-                const summary = routineSummary(routine, byId);
-                const started = inProgress.has(routine.id);
-                const isDone = !started && done.has(routine.id);
+              {/* Arriba, las rutinas libres (sin «Día N»: no hay un orden fijo); abajo, las ya hechas esta semana, más tenues, y
+                  numeradas «Día 1, 2, 3…» en el orden en que se entrenaron (sale de los entrenos guardados, como el calendario). */}
+              {(() => {
+                const byRoutineId = new Map(activeTraining.routines.map((r) => [r.id, r]));
+                // En curso primero; el resto, en el orden del entrenamiento.
+                const free = [
+                  ...activeTraining.routines.filter((r) => inProgress.has(r.id)),
+                  ...activeTraining.routines.filter((r) => !inProgress.has(r.id) && !done.has(r.id)),
+                ];
+                // `done` conserva el orden en que se hizo cada una por primera vez.
+                const doneList = [...done].flatMap((id) => (byRoutineId.has(id) && !inProgress.has(id) ? [byRoutineId.get(id)!] : []));
+                const card = (routine: Routine, dayNumber: number | null) => {
+                  const summary = routineSummary(routine, byId);
+                  const started = inProgress.has(routine.id);
+                  // Sin nombre, se muestran los primeros ejercicios: no hay «Día N» al que agarrarse.
+                  const title = routine.name || summary.preview || 'Rutina sin ejercicios';
+                  return (
+                    <Card
+                      key={routine.id}
+                      onPress={() => openWorkout(activeTraining.id, routine.id)}
+                      style={[styles.routine, dayNumber !== null && styles.done]}>
+                      {dayNumber !== null ? (
+                        <ThemedText type="small" themeColor="primaryText">
+                          {dayLabel(dayNumber)}
+                        </ThemedText>
+                      ) : null}
+                      <ThemedText type="subtitle" style={routine.name ? styles.routineName : styles.routineNameLong} numberOfLines={2}>
+                        {title}
+                      </ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {summary.counts}
+                      </ThemedText>
+                      {started ? (
+                        <View style={styles.tag}>
+                          <LiveDot />
+                        </View>
+                      ) : null}
+                    </Card>
+                  );
+                };
                 return (
-                  <Card
-                    key={routine.id}
-                    onPress={() => openWorkout(activeTraining.id, routine.id)}
-                    style={[styles.routine, isDone && styles.done]}>
-                    {routine.name ? (
-                      <ThemedText type="small" themeColor="primaryText">
-                        {dayLabel(index)}
+                  <>
+                    {free.length > 0 && doneList.length > 0 ? (
+                      <ThemedText type="smallBold" themeColor="textSecondary">
+                        Disponibles
                       </ThemedText>
                     ) : null}
-                    <ThemedText type="subtitle" style={styles.routineName}>
-                      {routineTitle(activeTraining.routines, routine.id)}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {summary.counts}
-                    </ThemedText>
-                    {started ? (
-                      <View style={styles.tag}>
-                        <LiveDot />
-                      </View>
-                    ) : isDone ? (
-                      <View style={styles.tag} accessible accessibilityLabel="Hecha">
-                        <DoneTick />
-                      </View>
+                    {free.map((routine) => card(routine, null))}
+                    {doneList.length > 0 ? (
+                      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.groupTitle}>
+                        Hechas esta semana
+                      </ThemedText>
                     ) : null}
-                  </Card>
+                    {doneList.map((routine, i) => card(routine, i))}
+                  </>
                 );
-              })}
+              })()}
               {/* Los tics solo se quitan aquí, cuando el usuario decide. Sin tics no procede: el botón sale apagado. */}
               <View style={styles.newWeek}>
                 {allDone ? (
@@ -229,11 +243,14 @@ export function TodayScreen() {
 const styles = StyleSheet.create({
   empty: { gap: Spacing.three, padding: Spacing.four },
   routine: { gap: Spacing.one, paddingVertical: Spacing.four },
-  // Arriba a la derecha de la tarjeta, a la altura de «Día N».
+  // Arriba a la derecha de la tarjeta.
   tag: { position: 'absolute', top: Spacing.four, right: Spacing.three },
   // Una rutina ya hecha en este ciclo se ve más tenue; se puede volver a elegir.
   done: { opacity: 0.55 },
   newWeek: { gap: Spacing.two, marginTop: Spacing.two },
   newWeekText: { textAlign: 'center' },
   routineName: { fontSize: 26, lineHeight: 32 },
+  // Una rutina sin nombre muestra sus primeros ejercicios: más pequeño para que quepa.
+  routineNameLong: { fontSize: 20, lineHeight: 26 },
+  groupTitle: { marginTop: Spacing.two },
 });
