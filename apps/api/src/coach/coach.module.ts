@@ -8,6 +8,7 @@ import { ProfileModule } from "../profile/profile.module.js";
 import { SessionsModule } from "../sessions/sessions.module.js";
 import { SettingsModule } from "../settings/settings.module.js";
 import { TrainingsModule } from "../trainings/trainings.module.js";
+import { StepsModule } from "../steps/steps.module.js";
 import { WeightsModule } from "../weights/weights.module.js";
 import { CoachContextService } from "./coach-context.service.js";
 import { CoachConversationService } from "./coach-conversation.service.js";
@@ -46,6 +47,7 @@ import { CoachService } from "./coach.service.js";
     SessionsModule,
     SettingsModule,
     TrainingsModule,
+    StepsModule,
     WeightsModule,
   ],
   controllers: [CoachController],

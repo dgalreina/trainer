@@ -49,6 +49,20 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "getDailySteps",
+    description:
+      "Los pasos que el usuario ha anotado cada día (los copia de la app Salud): por día, los pasos acumulados desde las 00:00 " +
+      "hasta la hora en que los anotó. Si anotó pasos a media tarde, el total del día será mayor: no los des por el total. " +
+      "Úsala para hablar de cuánto anda. Los días sin dato no los anotó.",
+    input_schema: {
+      type: "object",
+      properties: {
+        days: { type: "integer", minimum: 1, maximum: 60, description: "Cuántos días hacia atrás (por defecto 14)" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "getActiveTraining",
     description:
       "El entrenamiento que el usuario tiene como actual: nombre, semana en la que va y cada rutina con sus ejercicios " +
@@ -234,6 +248,9 @@ export const exerciseProgressInput = z.object({
 });
 export const weightTrendInput = z.object({
   weeks: z.number().int().min(1).max(52).default(12),
+});
+export const dailyStepsInput = z.object({
+  days: z.number().int().min(1).max(60).default(14),
 });
 export const searchExercisesInput = z.object({
   query: z.string().trim().min(1).max(100),

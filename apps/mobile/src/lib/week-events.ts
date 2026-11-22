@@ -6,6 +6,7 @@ import {
   type Meal,
   type MealItem,
   type MealLog,
+  type StepEntry,
   type WeightEntry,
   type WorkoutSession,
 } from '@trainer/shared';
@@ -22,7 +23,7 @@ import { useSessionsVersion } from '@/lib/session-events';
 import { useSettings } from '@/lib/settings';
 import { useTrainings } from '@/lib/trainings';
 
-export type EventKind = 'workout' | 'weight' | 'meal' | 'plan';
+export type EventKind = 'workout' | 'weight' | 'steps' | 'meal' | 'plan';
 
 /** Algo que pasó en un momento del día: un entreno, una pesada o una comida. */
 export interface DayEvent {
@@ -38,6 +39,9 @@ export interface DayEvent {
   weightId?: string;
   /** Solo en pesadas: los kilos, para poder editarla. */
   weightKg?: number;
+  /** Solo en pasos: el id del registro y los pasos acumulados hasta esa hora, para poder editarlos. */
+  stepsId?: string;
+  steps?: number;
   /** Solo en comidas: el id del registro, para poder moverlo. */
   mealId?: string;
   /** Solo en comidas registradas: el registro entero, para poder editarlo. */
@@ -82,6 +86,7 @@ export function useWeekEvents(weekStart: string, span: { before: number; after: 
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [meals, setMeals] = useState<MealLog[]>([]);
+  const [stepLogs, setStepLogs] = useState<StepEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Qué días cubren los datos que hay (de "from" incluido a "to" excluido): fuera de ahí no se sabe qué hay.
@@ -136,15 +141,17 @@ export function useWeekEvents(weekStart: string, span: { before: number; after: 
     const to = startOfDay(toDay).toISOString();
     const range = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     try {
-      const [s, w, m] = await Promise.all([
+      const [s, w, m, st] = await Promise.all([
         api.get<WorkoutSession[]>(`/sessions?limit=100&${range}`),
         api.get<WeightEntry[]>(`/me/weights?${range}`),
         api.get<MealLog[]>(`/me/meals?${range}`),
+        api.get<StepEntry[]>(`/me/steps?${range}`),
       ]);
       if (mine !== request.current) return;
       setSessions(s);
       setWeights(w);
       setMeals(m);
+      setStepLogs(st);
       setLoaded({ from: fromDay, to: toDay });
     } catch (err) {
       if (mine !== request.current) return;
@@ -191,6 +198,19 @@ export function useWeekEvents(weekStart: string, span: { before: number; after: 
         weightKg: entry.weightKg,
       };
     });
+    const walked = stepLogs.map((entry): DayEvent => {
+      const start = new Date(entry.date);
+      return {
+        id: `steps-${entry.id}`,
+        kind: 'steps',
+        start,
+        end: new Date(start.getTime() + POINT_EVENT_MINUTES * MINUTE_MS),
+        title: 'Pasos',
+        subtitle: entry.steps.toLocaleString('es-ES'),
+        stepsId: entry.id,
+        steps: entry.steps,
+      };
+    });
     // Las comidas de la dieta descartadas ese día no se muestran (solo evitan que reaparezcan).
     const eaten = meals.filter((meal) => !meal.skipped).map((meal): DayEvent => {
       const start = new Date(meal.date);
@@ -205,8 +225,8 @@ export function useWeekEvents(weekStart: string, span: { before: number; after: 
         subtitle: `${loggedMacros([meal]).kcal} kcal`,
       };
     });
-    return [...workouts, ...inProgress, ...weighIns, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [sessions, weights, meals, trainings, inProgress]);
+    return [...workouts, ...inProgress, ...weighIns, ...walked, ...eaten].sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [sessions, weights, stepLogs, meals, trainings, inProgress]);
 
   /** ¿Cae ese momento en el día "AAAA-MM-DD"? */
   const inDay = useCallback((moment: Date, day: string) => isoOf(moment) === day, []);
@@ -316,6 +336,11 @@ export function useWeekEvents(weekStart: string, span: { before: number; after: 
         if (event.kind === 'weight' && event.weightId) {
           setWeights((prev) => prev.map((w) => (w.id === event.weightId ? { ...w, date } : w)));
           await updateWeight(event.weightId, { date });
+        } else if (event.kind === 'steps' && event.stepsId) {
+          // Pasos acumulados: si cambia de día, el servidor (un registro por día) rechaza si ya hay otro.
+          setStepLogs((prev) => prev.map((x) => (x.id === event.stepsId ? { ...x, date, day: isoOf(newStart) } : x)));
+          await api.patch(`/me/steps/${event.stepsId}`, { date, day: isoOf(newStart) });
+          await load();
         } else if (event.kind === 'meal' && event.mealId && event.log?.dietMealId && !sameDay) {
           // Una comida de la dieta (ya tocada ese día) que cambia de día: ese día queda como descartada, para que la de la
           // dieta no reaparezca, y en el nuevo se registra como una comida normal (si no, taparía la que la dieta ya tenga allí).

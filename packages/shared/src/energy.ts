@@ -57,6 +57,12 @@ export interface DayEnergyInput {
    * calorías («Mi peso»). Se reparte por igual entre las {@link ACTIVITY_FROM_HOUR}:00 y las {@link ACTIVITY_TO_HOUR}:00.
    */
   extraBurn?: number;
+  /**
+   * Pasos del día (acumulados desde las 00:00 hasta `at`) ya convertidos en kcal por encima del basal. Si hay, sustituyen al
+   * `extraBurn` hasta `at` (se reparten entre las 7:00 y `at`); de `at` a las 23:00 el día aún no tiene datos y sigue la
+   * actividad media (`extraBurn`) como previsión. Un día sin pasos usa solo `extraBurn`.
+   */
+  steps?: { at: number; kcal: number };
 }
 
 export interface DayEnergy {
@@ -129,21 +135,28 @@ function spread(slots: number[], dayStart: number, start: number, end: number, k
  * o una comida fuera del día no cuenta. El día se trata como 24 h fijas (96 tramos): el día del cambio
  * de hora, lo de después de las 23:00 locales queda ±1 h desplazado (igual que las tarjetas del calendario).
  */
-export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel = 0, extraBurn = 0 }: DayEnergyInput): DayEnergy {
+export function dayEnergy({ dayStart, bmr, weightKg, workouts, meals, startLevel = 0, extraBurn = 0, steps }: DayEnergyInput): DayEnergy {
   const hasBurn = bmr !== null && bmr > 0;
   const basalPerSlot = hasBurn ? bmr / ENERGY_SLOTS : 0;
   const burn = Array.from({ length: ENERGY_SLOTS }, () => basalPerSlot);
   const intake = Array.from({ length: ENERGY_SLOTS }, () => 0);
 
-  // La actividad diaria, por igual entre las 7:00 y las 23:00.
+  // La actividad diaria, por igual entre las 7:00 y las 23:00; si el día tiene pasos, hasta su hora cuentan ellos.
   const activity = Array.from({ length: ENERGY_SLOTS }, () => 0);
-  if (hasBurn && extraBurn > 0) {
+  if (hasBurn) {
     const first = (ACTIVITY_FROM_HOUR * 60) / ENERGY_SLOT_MINUTES;
     const last = (ACTIVITY_TO_HOUR * 60) / ENERGY_SLOT_MINUTES;
-    for (let i = first; i < last; i++) {
-      activity[i] = extraBurn / (last - first);
-      burn[i] += activity[i];
+    // Primer tramo que ya no cubren los pasos: todo el día sin pasos, o el que sigue a su hora.
+    let from = first;
+    if (steps && steps.kcal > 0 && Number.isFinite(steps.at)) {
+      const at = Math.min(Math.max(steps.at, dayStart), dayStart + DAY_MS);
+      // Antes de las 7:00 no hay tramos de actividad: los pasos van desde las 00:00 hasta su hora.
+      const sevenAm = dayStart + ACTIVITY_FROM_HOUR * 3_600_000;
+      spread(activity, dayStart, at > sevenAm ? sevenAm : dayStart, at, steps.kcal);
+      from = Math.min(last, Math.max(first, Math.ceil((at - dayStart) / SLOT_MS)));
     }
+    if (extraBurn > 0) for (let i = from; i < last; i++) activity[i] += extraBurn / (last - first);
+    for (let i = 0; i < ENERGY_SLOTS; i++) burn[i] += activity[i];
   }
 
   let workoutsKcal = 0;

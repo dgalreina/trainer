@@ -1,4 +1,4 @@
-import { calculateTargets, loggedMacros } from '@trainer/shared';
+import { calculateTargets, loggedMacros, stepsKcal } from '@trainer/shared';
 import { useCallback } from 'react';
 
 import { startOfDay, todayISO } from '@/lib/dates';
@@ -25,6 +25,13 @@ export function useEnergyInput() {
       bmr,
       weightKg,
       extraBurn,
+      // Los pasos del día (acumulados hasta su hora): ese día cuentan ellos en vez de la actividad media.
+      steps: (() => {
+        const walked = list.find((e) => e.kind === 'steps' && e.steps);
+        return walked && weightKg && weightKg > 0
+          ? { at: walked.start.getTime(), kcal: stepsKcal(walked.steps ?? 0, weightKg) }
+          : undefined;
+      })(),
       workouts: list
         .filter((e) => e.kind === 'workout' && !e.inProgress)
         .map((e) => ({ start: e.start.getTime(), end: e.end.getTime() })),

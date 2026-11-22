@@ -11,6 +11,7 @@ import { Screen } from '@/components/screen';
 import { SessionSheet } from '@/components/session-sheet';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
+import { StepsSheet } from '@/components/steps-sheet';
 import { WeighInSheet } from '@/components/weigh-in-card';
 import { COACH_COLUMN } from '@/components/coach/coach-layout';
 import { Radius, Spacing } from '@/constants/theme';
@@ -88,6 +89,7 @@ export function CalendarScreen() {
     isLoaded,
     error: loadError,
     moveEvent,
+    reload,
     // La ventana de semanas se mueve al terminar el scroll, no a cada lunes que se cruza: así volver a hoy
     // desde lejos no lanza cientos de peticiones.
   } = useWeekEvents(useSettled(mondayOf(visibleDay)));
@@ -181,6 +183,8 @@ export function CalendarScreen() {
   const [weighAt, setWeighAt] = useState<string | null>(null);
   /** La pesada que se edita (si se abrió desde un círculo); sin ella, la ventana crea una nueva. */
   const [weighEdit, setWeighEdit] = useState<{ id: string; kg: string } | null>(null);
+  /** Los pasos del día que se abren: sin `id`, se crean unos nuevos a esa hora. */
+  const [stepsAt, setStepsAt] = useState<{ time: string; id?: string; steps?: string } | null>(null);
   // Alto de la tarjeta de abajo: el «centro» de lo visible (el día que se muestra) queda por encima de ella.
   const [summaryHeight, setSummaryHeight] = useState(0);
 
@@ -196,6 +200,11 @@ export function CalendarScreen() {
         setActionDay(isoOf(event.start));
         setWeighEdit({ id: event.weightId, kg: String(event.weightKg ?? '') });
         setWeighAt(formatTime(event.start));
+        return;
+      }
+      if (event.kind === 'steps' && event.stepsId) {
+        setActionDay(isoOf(event.start));
+        setStepsAt({ time: formatTime(event.start), id: event.stepsId, steps: String(event.steps ?? '') });
         return;
       }
       if (event.kind === 'workout') {
@@ -326,6 +335,17 @@ export function CalendarScreen() {
                     closeSlot();
                   }}
                 />
+                {/* Un registro de pasos por día: si ese día ya tiene, se edita desde su círculo. */}
+                {eventsOf(isoOf(slot)).some((e) => e.kind === 'steps') ? null : (
+                  <Button
+                    variant="secondary"
+                    title="Pasos"
+                    onPress={() => {
+                      setStepsAt({ time: formatTime(slot) });
+                      closeSlot();
+                    }}
+                  />
+                )}
                 <Button variant="secondary" title="Entrenamiento" onPress={() => setChoosingWorkout(true)} />
                 <LinkButton centered title="Cancelar" onPress={closeSlot} />
               </>
@@ -367,6 +387,16 @@ export function CalendarScreen() {
             sessionId={sessionOpen?.id ?? null}
             title={sessionOpen?.title ?? ''}
             onClose={() => setSessionOpen(null)}
+          />
+
+          <StepsSheet
+            visible={stepsAt !== null}
+            day={actionDay}
+            time={stepsAt?.time ?? '20:00'}
+            stepsId={stepsAt?.id}
+            steps={stepsAt?.steps}
+            onSaved={reload}
+            onClose={() => setStepsAt(null)}
           />
 
           <WeighInSheet

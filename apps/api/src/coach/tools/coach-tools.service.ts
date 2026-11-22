@@ -17,6 +17,7 @@ import { MealLogsService } from "../../meal-logs/meal-logs.service.js";
 import { SessionsService } from "../../sessions/sessions.service.js";
 import { SettingsService } from "../../settings/settings.service.js";
 import { TrainingsService } from "../../trainings/trainings.service.js";
+import { StepsService } from "../../steps/steps.service.js";
 import { WeightsService } from "../../weights/weights.service.js";
 import { NutritionTargetsService } from "../nutrition-targets.service.js";
 import { CoachProposalsService, ProposalError } from "../proposals/coach-proposals.service.js";
@@ -30,6 +31,7 @@ import {
   searchFoodsInput,
   trainingDesignSchema,
   weightTrendInput,
+  dailyStepsInput,
 } from "./definitions.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -93,6 +95,7 @@ export class CoachToolsService {
     private readonly sessions: SessionsService,
     private readonly exercises: ExercisesService,
     private readonly weights: WeightsService,
+    private readonly steps: StepsService,
     private readonly settings: SettingsService,
     private readonly trainings: TrainingsService,
     private readonly proposals: CoachProposalsService,
@@ -121,6 +124,8 @@ export class CoachToolsService {
         return await this.exerciseProgress(userId, exerciseProgressInput.parse(input));
       case "getWeightTrend":
         return await this.weightTrend(userId, weightTrendInput.parse(input));
+      case "getDailySteps":
+        return await this.dailySteps(userId, dailyStepsInput.parse(input));
       case "getActiveTraining":
         return await this.activeTraining(userId);
       case "searchExercises":
@@ -366,6 +371,17 @@ export class CoachToolsService {
       .reverse(); // de la más antigua a la más reciente
     if (rows.length === 0) return { exercise: found.name, message: `No hay series de «${found.name}» en las últimas ${weeks} semanas.` };
     return { exercise: found.name, sessions: rows.slice(-MAX_PROGRESS_ROWS) };
+  }
+
+  /** Pasos anotados por día (acumulados hasta la hora en que los anotó), del más reciente al más antiguo. */
+  private async dailySteps(userId: string, { days }: { days: number }) {
+    const entries = await this.steps.list(userId, daysAgo(days), new Date(Date.now() + DAY_MS));
+    return {
+      note: "Cada cifra son los pasos acumulados desde las 00:00 hasta 'upTo'; si es temprano, el día aún no ha acabado.",
+      days: entries
+        .map((e) => ({ day: e.day, steps: e.steps, upTo: localParts(new Date(e.date)).time }))
+        .sort((a, b) => b.day.localeCompare(a.day)),
+    };
   }
 
   private async weightTrend(userId: string, { weeks }: { weeks: number }) {

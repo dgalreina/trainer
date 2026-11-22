@@ -15,6 +15,7 @@ import { SettingsModule } from "./settings/settings.module.js";
 import { TrainingsModule } from "./trainings/trainings.module.js";
 import { TrainingTemplatesModule } from "./training-templates/training-templates.module.js";
 import { MealLogsModule } from "./meal-logs/meal-logs.module.js";
+import { StepsModule } from "./steps/steps.module.js";
 import { WeightsModule } from "./weights/weights.module.js";
 
 // Todos viven en la misma Lambda: un solo arranque en frío para toda la API.
@@ -41,6 +42,7 @@ import { WeightsModule } from "./weights/weights.module.js";
     SettingsModule,
     SessionsModule,
     ProfileModule,
+    StepsModule,
     WeightsModule,
   ],
   controllers: [HealthController],

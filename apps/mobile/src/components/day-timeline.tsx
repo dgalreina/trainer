@@ -880,10 +880,11 @@ function EventCircle({
   const moved = circleTop(event.start.getTime(), dayStart) + (minutes / 60) * HOUR_HEIGHT;
   const top = crossesDays && dragging ? moved : Math.min(Math.max(moved, 0), DAY_HEIGHT - CIRCLE);
 
-  // Salmón para lo que entra (comidas), azul cielo para lo que se gasta (entrenos) y neutro para el peso.
-  const tone = event.kind === 'workout' ? theme.sky : event.kind === 'weight' ? theme.textSecondary : theme.primary;
+  // Salmón para lo que entra (comidas), azul cielo para el gasto de los entrenos, verde para los pasos (la actividad diaria) y neutro para el peso.
+  const tone =
+    event.kind === 'workout' ? theme.sky : event.kind === 'steps' ? theme.teal : event.kind === 'weight' ? theme.textSecondary : theme.primary;
   const fill =
-    event.kind === 'workout' ? theme.skySoft : event.kind === 'weight' ? theme.backgroundElement : theme.primarySoft;
+    event.kind === 'workout' ? theme.skySoft : event.kind === 'steps' ? theme.tealSoft : event.kind === 'weight' ? theme.backgroundElement : theme.primarySoft;
 
   return (
     <View
