@@ -2,13 +2,14 @@ import { useState } from 'react';
 
 import { AccountSection } from '@/components/account-section';
 import { AdminSection } from '@/components/admin-section';
+import { ExerciseProgressSection } from '@/components/exercise-progress';
 import { ProfileForm } from '@/components/profile-form';
 import { Screen } from '@/components/screen';
 import { SectionTabs } from '@/components/section-tabs';
 import { WeightTrendSection } from '@/components/weight-trend';
 import { useCoach } from '@/lib/coach';
 
-type Section = 'datos' | 'peso' | 'cuenta' | 'admin';
+type Section = 'datos' | 'peso' | 'progreso' | 'cuenta' | 'admin';
 
 /** «Yo»: los datos personales, cómo evoluciona el peso y la cuenta. */
 export function MeScreen() {
@@ -26,6 +27,7 @@ export function MeScreen() {
           options={[
             { key: 'datos', label: 'Mis datos' },
             { key: 'peso', label: 'Mi peso' },
+            { key: 'progreso', label: 'Progreso' },
             { key: 'cuenta', label: 'Mi cuenta' },
             ...(isAdmin ? [{ key: 'admin' as const, label: 'Admin' }] : []),
           ]}
@@ -37,6 +39,8 @@ export function MeScreen() {
         <ProfileForm />
       ) : section === 'peso' ? (
         <WeightTrendSection />
+      ) : section === 'progreso' ? (
+        <ExerciseProgressSection />
       ) : section === 'admin' && isAdmin ? (
         <AdminSection />
       ) : (
