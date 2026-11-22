@@ -29,8 +29,8 @@ export function MeScreen() {
             { key: 'peso', label: 'Mi peso' },
             { key: 'progreso', label: 'Progreso' },
             { key: 'cuenta', label: 'Mi cuenta' },
-            ...(isAdmin ? [{ key: 'admin' as const, label: 'Admin' }] : []),
           ]}
+          extra={isAdmin ? [{ key: 'admin', label: 'Admin' }] : []}
           value={section}
           onChange={setSection}
         />
