@@ -412,10 +412,12 @@ export function WorkoutScreen() {
 
   const restRemaining = draft.restEndsAt === null ? null : Math.ceil((draft.restEndsAt - now) / 1000);
 
-  // La barra de abajo deja libre, a la derecha, la columna del icono del entrenador (la barra ya tiene su margen de 24 px).
-  const footer = (
+  // La barra de abajo (solo mientras hay descanso en marcha) deja libre, a la derecha, la columna del icono del entrenador
+  // (la barra ya tiene su margen de 24 px). «Finalizar» ya no va aquí: está al final de los ejercicios.
+  const footer =
+    restRemaining === null ? undefined : (
     <View style={{ paddingRight: COACH_COLUMN - Spacing.four, gap: Spacing.two }}>
-      {restRemaining !== null && (
+      {(
         <View style={[styles.restBar, { backgroundColor: theme.primarySoft }]}>
           <View style={styles.restText}>
             <ThemedText type="small" themeColor="textSecondary">
@@ -452,12 +454,6 @@ export function WorkoutScreen() {
           )}
         </View>
       )}
-      <ErrorText message={error} />
-      <Button
-        title={draft.startedAt === null ? 'Finalizar' : `Finalizar · ${formatClock((now - draft.startedAt) / 1000)}`}
-        onPress={finish}
-        loading={saving}
-      />
     </View>
   );
 
@@ -682,6 +678,17 @@ export function WorkoutScreen() {
           <View style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: theme.primaryText }]} />
         </Pressable>
       </View>
+
+      {/* «Finalizar» solo existe con el entreno comenzado, y va al final de los ejercicios (con el tiempo en marcha). Deja libre,
+          a la derecha, la columna del icono del entrenador. */}
+      {draft.startedAt !== null ? (
+        <View style={{ paddingRight: COACH_COLUMN - Spacing.four, gap: Spacing.two }}>
+          <ErrorText message={error} />
+          <Button title={`Finalizar · ${formatClock((now - draft.startedAt) / 1000)}`} onPress={finish} loading={saving} />
+        </View>
+      ) : (
+        <ErrorText message={error} />
+      )}
 
       <LinkButton title="Descartar entreno" onPress={discard} />
 

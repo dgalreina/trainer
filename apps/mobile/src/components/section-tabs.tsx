@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { Chip } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
@@ -14,8 +14,9 @@ export function SectionTabs<T extends string>({
   value: T;
   onChange: (key: T) => void;
 }) {
+  // Si no caben todos (Yo con «Admin»), la fila se desplaza de lado; si caben, quedan centrados.
   return (
-    <View style={styles.row}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll} contentContainerStyle={styles.row}>
       {options.map((option) => (
         <Chip
           key={option.key}
@@ -24,7 +25,7 @@ export function SectionTabs<T extends string>({
           onPress={() => onChange(option.key)}
         />
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -38,6 +39,8 @@ export function TemplatesPlaceholder({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
+  // La fila llega hasta los bordes de la pantalla (se sale del margen de la página) para que se vea que sigue al deslizar.
+  scroll: { marginHorizontal: -Spacing.four },
+  row: { flexGrow: 1, paddingHorizontal: Spacing.four, flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
   placeholder: { textAlign: 'center', paddingTop: Spacing.four },
 });

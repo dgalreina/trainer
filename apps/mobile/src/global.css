@@ -64,7 +64,8 @@ body {
 input:focus-visible,
 textarea:focus-visible {
   outline: 2px solid #ff8f7e;
-  outline-offset: 0;
+  /* Por dentro del campo: las ventanas (Sheet) recortan lo que sobresale, y un campo pegado a su borde perdía el filo. */
+  outline-offset: -2px;
 }
 
 /* Duración del fundido de la transición de vista (cambio claro/oscuro desde Mi cuenta). */
