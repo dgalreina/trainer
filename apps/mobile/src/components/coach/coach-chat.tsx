@@ -32,6 +32,8 @@ const SUGGESTIONS = [
   '¿Qué me recomiendas para crecer más?',
 ];
 
+/** Un toque más largo que esto (ms) cuenta como «mantener pulsado»: al soltar, el dictado se para. */
+const HOLD_MS = 450;
 /** Ancho máximo de la columna del chat a pantalla completa (en pantallas anchas queda centrada). */
 const CHAT_MAX_WIDTH = 720;
 /** Alto mínimo y máximo (unas 6 líneas) del cuadro de texto. */
@@ -140,6 +142,8 @@ export function CoachChat() {
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   // Dictado: lo que había escrito al pulsar el micrófono se conserva y lo dictado se añade detrás.
   const dictationBase = useRef('');
+  const pressedAt = useRef(0);
+  const stoppedOnPress = useRef(false);
   const dictation = useDictation((text) => {
     const base = dictationBase.current;
     setDraft(base && text ? `${base} ${text}` : base || text);
@@ -358,14 +362,23 @@ export function CoachChat() {
               {dictation.supported ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={dictation.listening ? 'Dejar de dictar' : 'Dictar'}
-                  onPress={() => {
+                  accessibilityLabel="Mantén pulsado para dictar"
+                  // Dos formas de usarlo: un toque empieza y otro toque para; o mantener pulsado graba mientras dure
+                  // y al soltar se para. El texto queda en el cuadro para revisarlo y enviarlo.
+                  onPressIn={() => {
+                    pressedAt.current = Date.now();
+                    stoppedOnPress.current = dictation.listening;
                     if (dictation.listening) {
                       dictation.stop();
                     } else {
                       dictationBase.current = draft.trim();
                       dictation.start();
                     }
+                  }}
+                  onPressOut={() => {
+                    // Si el toque era para parar, ya está parado. Si se mantuvo pulsado un rato, al soltar se para.
+                    if (stoppedOnPress.current) return;
+                    if (Date.now() - pressedAt.current >= HOLD_MS) dictation.stop();
                   }}
                   style={[
                     styles.send,
