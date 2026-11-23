@@ -22,6 +22,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useCoach, type CoachMessage } from '@/lib/coach';
+import { useDictation } from '@/lib/use-dictation';
 
 /** Preguntas para empezar, las que hará el usuario casi siempre. */
 const SUGGESTIONS = [
@@ -60,6 +61,16 @@ function ArrowUpIcon({ color }: { color: string }) {
 }
 
 /** El cuadrado de «parar» mientras el entrenador responde. */
+/** El micrófono del dictado. */
+function MicIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Rect x={9} y={3} width={6} height={11} rx={3} stroke={color} strokeWidth={2} />
+      <Path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 function StopIcon({ color }: { color: string }) {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24">
@@ -127,6 +138,12 @@ export function CoachChat() {
   // Alto del texto escrito: el cuadro crece con él hasta INPUT_MAX_HEIGHT y luego hace scroll por dentro.
   const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT);
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
+  // Dictado: lo que había escrito al pulsar el micrófono se conserva y lo dictado se añade detrás.
+  const dictationBase = useRef('');
+  const dictation = useDictation((text) => {
+    const base = dictationBase.current;
+    setDraft(base && text ? `${base} ${text}` : base || text);
+  });
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
   // La conversación ya está colocada en el último mensaje (hasta entonces se mantiene invisible, sin recorrido visible).
@@ -198,6 +215,7 @@ export function CoachChat() {
 
   function submit() {
     if (!draft.trim() || busy) return;
+    dictation.stop();
     send(draft);
     setDraft('');
   }
@@ -307,6 +325,11 @@ export function CoachChat() {
             </FadingScroll>
 
             {/* El cuadro de texto, pegado abajo: crece con lo que escribes y lleva dentro el botón de enviar. */}
+            {dictation.error ? (
+              <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: 'center', paddingBottom: Spacing.one }}>
+                {dictation.error}
+              </ThemedText>
+            ) : null}
             <View style={[styles.inputBox, { backgroundColor: theme.skySoft }]}>
               <TextInput
                 ref={inputRef}
@@ -332,6 +355,25 @@ export function CoachChat() {
                   { outlineStyle: 'none' } as object,
                 ]}
               />
+              {dictation.supported ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={dictation.listening ? 'Dejar de dictar' : 'Dictar'}
+                  onPress={() => {
+                    if (dictation.listening) {
+                      dictation.stop();
+                    } else {
+                      dictationBase.current = draft.trim();
+                      dictation.start();
+                    }
+                  }}
+                  style={[
+                    styles.send,
+                    { backgroundColor: dictation.listening ? theme.teal : theme.background },
+                  ]}>
+                  <MicIcon color={dictation.listening ? theme.onPrimary : theme.aiText} />
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={busy ? 'Parar' : 'Enviar'}
