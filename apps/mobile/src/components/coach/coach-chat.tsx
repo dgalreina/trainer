@@ -139,6 +139,10 @@ export function CoachChat() {
   const [draft, setDraft] = useState('');
   // Alto del texto escrito: el cuadro crece con él hasta INPUT_MAX_HEIGHT y luego hace scroll por dentro.
   const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT);
+  // Al vaciar el cuadro (al enviar), vuelve al tamaño original: en iOS el alto del contenido no siempre se avisa al borrar.
+  useEffect(() => {
+    if (draft === '') setInputHeight(INPUT_MIN_HEIGHT);
+  }, [draft]);
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   // Dictado: lo que había escrito al pulsar el micrófono se conserva y lo dictado se añade detrás.
   const dictationBase = useRef('');
@@ -345,14 +349,6 @@ export function CoachChat() {
                 autoComplete="off"
                 multiline
                 onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
-                onKeyPress={(e) => {
-                  // En la web, Enter envía y Mayús+Enter hace salto de línea.
-                  const native = e.nativeEvent as unknown as { key: string; shiftKey?: boolean };
-                  if (Platform.OS === 'web' && native.key === 'Enter' && !native.shiftKey) {
-                    e.preventDefault();
-                    submit();
-                  }
-                }}
                 style={[
                   styles.input,
                   { color: theme.text, height: Math.min(INPUT_MAX_HEIGHT, Math.max(INPUT_MIN_HEIGHT, inputHeight)) },
@@ -440,7 +436,8 @@ const styles = StyleSheet.create({
   },
   // El contenedor se ajusta al contenido y solo encoge si no cabe (el bocadillo tiene un alto máximo).
   // Un margen arriba: la conversación no toca el borde de la pantalla (la parte de arriba de lo que se desplaza se corta ahí).
-  messagesBox: { flex: 1, marginTop: Spacing.three },
+  // Un hueco debajo para que el texto no quede pegado al cuadro de escritura al hacer scroll.
+  messagesBox: { flex: 1, marginTop: Spacing.three, marginBottom: Spacing.three },
   messages: { flex: 1 },
   messagesContent: { padding: Spacing.three, gap: Spacing.two },
   row: { flexDirection: 'row' },

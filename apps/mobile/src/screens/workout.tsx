@@ -679,10 +679,9 @@ export function WorkoutScreen() {
         </Pressable>
       </View>
 
-      {/* «Finalizar» solo existe con el entreno comenzado, y va al final de los ejercicios (con el tiempo en marcha). Deja libre,
-          a la derecha, la columna del icono del entrenador. */}
+      {/* «Finalizar» solo existe con el entreno comenzado, y va al final de los ejercicios (con el tiempo en marcha), a todo el ancho. */}
       {draft.startedAt !== null ? (
-        <View style={{ paddingRight: COACH_COLUMN - Spacing.four, gap: Spacing.two }}>
+        <View style={{ gap: Spacing.two }}>
           <ErrorText message={error} />
           <Button title={`Finalizar · ${formatClock((now - draft.startedAt) / 1000)}`} onPress={finish} loading={saving} />
         </View>
