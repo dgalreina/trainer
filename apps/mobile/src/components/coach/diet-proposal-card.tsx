@@ -33,7 +33,7 @@ export function DietProposalCard({
 }) {
   const theme = useTheme();
   const router = useRouter();
-  const { updateProposal } = useCoach();
+  const { updateProposal, setOpen: setChatOpen } = useCoach();
   const { reload } = useDiets();
   const { settings, setActiveDiet } = useSettings();
   const [open, setOpen] = useState<number | null>(null);
@@ -149,7 +149,10 @@ export function DietProposalCard({
             {proposal.dietId ? (
               <ActionButton
                 label="Ver dieta"
-                onPress={() => router.push({ pathname: '/mi-dieta/[id]', params: { id: proposal.dietId as string } })}
+                onPress={() => {
+                  setChatOpen(false);
+                  router.push({ pathname: '/mi-dieta/[id]', params: { id: proposal.dietId as string } });
+                }}
               />
             ) : null}
             {proposal.dietId && !isActive ? (

@@ -35,7 +35,7 @@ function TrainingProposalCard({
 }) {
   const theme = useTheme();
   const router = useRouter();
-  const { updateProposal } = useCoach();
+  const { updateProposal, setOpen: setChatOpen } = useCoach();
   const { reload } = useTrainings();
   const { settings, setActiveTraining } = useSettings();
   const [open, setOpen] = useState<number | null>(null);
@@ -155,7 +155,11 @@ function TrainingProposalCard({
             {proposal.trainingId ? (
               <ActionButton
                 label="Ver entrenamiento"
-                onPress={() => router.push({ pathname: '/entrenamiento/[id]', params: { id: proposal.trainingId as string } })}
+                onPress={() => {
+                  // El chat es pantalla completa y va por encima de todo: hay que cerrarlo para ver la pantalla.
+                  setChatOpen(false);
+                  router.push({ pathname: '/entrenamiento/[id]', params: { id: proposal.trainingId as string } });
+                }}
               />
             ) : null}
             {proposal.trainingId && !isActive ? (
