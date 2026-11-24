@@ -301,7 +301,7 @@ export function CoachChat() {
             <FadingScroll
               mask
               fadeBottom={false}
-              fadeTop={0}
+              fadeTop={insets.top + 28}
               scrollRef={scroller}
               containerStyle={[styles.messagesBox, { opacity: positioned ? 1 : 0 }]}
               style={styles.messages}
